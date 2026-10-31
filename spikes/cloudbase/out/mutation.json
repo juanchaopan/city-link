@@ -1,0 +1,42 @@
+[
+  {
+    "name": "入账不检查结算单序号",
+    "caught": true,
+    "failed": 8
+  },
+  {
+    "name": "不补做未完成的结算单",
+    "caught": true,
+    "failed": 8
+  },
+  {
+    "name": "提交不检查编号唯一",
+    "caught": true,
+    "failed": 4
+  },
+  {
+    "name": "结算单游标不继承",
+    "caught": true,
+    "failed": 2
+  },
+  {
+    "name": "同步不去重",
+    "caught": false,
+    "failed": 0
+  },
+  {
+    "name": "同步读取后不判断序号",
+    "caught": false,
+    "failed": 0
+  },
+  {
+    "name": "入账先写标记后写钱",
+    "caught": true,
+    "failed": 16
+  },
+  {
+    "name": "租约永远可抢",
+    "caught": false,
+    "failed": 0
+  }
+]

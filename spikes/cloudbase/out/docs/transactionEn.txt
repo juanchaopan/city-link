@@ -1,0 +1,248 @@
+https://docs.cloudbase.net/en/database/transaction
+HTTP 200
+
+ 
+ Transaction Operations | 腾讯云开发 CloudBase - AI 原生后端一体化平台 
+ Skip to main content 
+ Quick Start Products Core 
+ Cloud Database 
+ Cloud Storage 
+ Cloud Functions 
+ Cloud Run 
+ Hosting 
+ Auth 
+ AI 
+ Integration Center 
+ Platform 
+ HTTP Gateway 
+ Environment Configuration 
+ LogManage 
+ AnyService 
+ Others 
+ ICP Filing 
+ Dev Tools AI Dev Tools 
+ CloudBase CLI 
+ Solutions Platform Integration 
+ VibeCoding Platform 
+ AI Builder 
+ Reference SDKs 
+ JavaScript SDK 
+ Flutter SDK 
+ C# SDK 
+ Manager Node SDK 
+ APIs 
+ HTTP API 
+ Cloud API 
+ Error Codes 
+ More Resources ChangeLog 
+ FAQ 
+ Best Practices 
+ Migration Guides 
+ Pricing 
+ Blog 
+ Follow Official Account for Benefits 
+ Console English 简体中文 
+ English 
+ Search 
+ Database
+ Document Database 
+ Document Cloud Database 
+ Overview 
+ Data Operations 
+ Field Type 
+ CRUD 
+ Transaction Operations 
+ Aggregation Search 
+ Permission Configuration 
+ Basic Permissions 
+ Security Rules 
+ Advanced Features 
+ Index Management 
+ Real-time push 
+ Import/Export 
+ Database Rollback 
+ Data Model 
+ Connect Your Own MongoDB 
+ Other References 
+ Dedicated Instance Upgrade Guide 
+ FAQ 
+ Document Cloud Database 
+ Data Operations 
+ Transaction Operations 
+ Supported Regions: 上海 
+ On this page 
+ Transaction Operations
+ Transactional operations ensure that multiple database operations either all succeed or all fail, guaranteeing data consistency. CloudBase supports database transactions and ensures the ACID properties of transactions.
+ Note
+ Currently, database transactions are only supported for server-side execution, and only the node-sdk supports transactions.
+ Use Cases ​ 
+ In most scenarios, single-document operations can fully meet requirements. However, in some cases, database transactions offer more distinct advantages compared to single-document operations:
+ Migrating from Traditional Relational Databases to CloudBase : Smooth data model migration with low business code transformation costs.
+ Business Processes Involving Multiple Documents/Collections : Ensure that a series of read/write operations either fully succeed or completely fail, preventing intermediate states.
+ Supported Methods ​ 
+ Transaction Process Methods ​ 
+ API | Description | 
+ startTransaction | Initiate Transaction | 
+ commit | Commit Transaction | 
+ rollback | Rollback Transaction | 
+ runTransaction | Auto-commit Transaction | 
+ Data Operations in Transactions ​ 
+ API | Description | 
+ get | Query documents | 
+ add | Insert documents | 
+ delete | Delete documents | 
+ update | Update documents | 
+ set | Update documents, creating them if they do not exist | 
+ Basic Transactions ​ 
+ Parameter Description ​ 
+ Parameter | Type | Required | Description | 
+ updateFunction | function | ✅ Yes | Transaction update function that receives a transaction parameter | 
+ Code Example ​ 
+ const cloudbase = require ( &#x27;@cloudbase/node-sdk&#x27; ) 
+ // Initialize the database. 
+ const app = cloudbase . init ( { 
+ env : &#x27;your-env-id&#x27; 
+ } ) 
+ const db = app . database ( ) 
+ // Basic Transaction Operations 
+ const result = await db . runTransaction ( async transaction =&gt; { 
+ // Perform multiple operations within a transaction 
+ const todoDoc = await transaction . collection ( &#x27;todos&#x27; ) . doc ( &#x27;todo-id&#x27; ) . get ( ) 
+ if ( ! todoDoc . data ) { 
+ throw new Error ( &#x27;Todo item does not exist&#x27; ) 
+ } 
+ // Update todo item status 
+ await transaction . collection ( &#x27;todos&#x27; ) . doc ( &#x27;todo-id&#x27; ) . update ( { 
+ data : { 
+ completed : true , 
+ completedAt : new Date ( ) 
+ } 
+ } ) 
+ // Update user statistics 
+ await transaction . collection ( &#x27;users&#x27; ) . doc ( &#x27;user-id&#x27; ) . update ( { 
+ data : { 
+ completedTodos : db . command . inc ( 1 ) 
+ } 
+ } ) 
+ return { success : true } 
+ } ) 
+ console . log ( &#x27;Transaction execution result:&#x27; , result ) 
+ Result ​ 
+ { 
+ result : { success : true } , // Return value of updateFunction 
+ errMsg : &quot;runTransaction:ok&quot; 
+ } 
+ Complex Transaction Example ​ 
+ Clear Shopping Cart Scenario ​ 
+ Using the &quot;Clear Shopping Cart&quot; requirement as an example, this demonstrates the use of database transactions in complex business scenarios:
+ // Node.js environment 
+ const cloudbase = require ( &#x27;@cloudbase/node-sdk&#x27; ) 
+ // Initialize the database. 
+ const app = cloudbase . init ( { 
+ env : &#x27;your-env-id&#x27; 
+ } ) 
+ const db = app . database ( ) 
+ exports . main = async ( event , context ) =&gt; { 
+ const userId = &#x27;user1&#x27; 
+ const transaction = await db . startTransaction ( ) 
+ try { 
+ const usersCollection = transaction . collection ( &#x27;users&#x27; ) 
+ const goodsCollection = transaction . collection ( &#x27;goods&#x27; ) 
+ // 1. Obtain user information. 
+ const user = await usersCollection . doc ( userId ) . get ( ) 
+ const { cart , balance } = user . data 
+ // 2. Obtain shopping cart data and corresponding product information. 
+ const goods = [ ] 
+ for ( const { id } of cart ) { 
+ const good = await goodsCollection . doc ( id ) . get ( ) 
+ goods . push ( good . data ) 
+ } 
+ let totalPrice = 0 
+ for ( let i = 0 ; i &lt; cart . length ; ++ i ) { 
+ // 3. Calculate the total price of items in the shopping cart. 
+ totalPrice += cart [ i ] . num * goods [ i ] . price 
+ // 4. Update product inventory. 
+ await goodsCollection . doc ( goods [ i ] . _id ) . set ( { 
+ inventory : goods [ i ] . inventory - cart [ i ] . num 
+ } ) 
+ } 
+ // 5. Update user account balance and clear the shopping cart. 
+ await usersCollection . doc ( userId ) . set ( { 
+ balance : balance - totalPrice , 
+ cart : [ ] 
+ } ) 
+ await transaction . commit ( ) 
+ return { success : true , totalPrice } 
+ } catch ( error ) { 
+ await transaction . rollback ( ) 
+ throw error 
+ } 
+ } 
+ Transaction Mechanism ​ 
+ Snapshot Isolation ​ 
+ When db.startTransaction() is called to initiate a transaction, the &quot;snapshot&quot; is generated only after the first read operation
+ Before calling transaction.commit() to commit the transaction, all read and write operations are performed on the &quot;snapshot&quot;
+ After the transaction is successfully committed, the data in the &quot;snapshot&quot; is persisted to disk, and the relevant document data is updated
+ Lock and Write Conflict ​ 
+ When a transaction modifies a document, it locks the relevant documents to prevent them from being affected by other modifications until the transaction ends
+ If a transaction fails to obtain the lock on the documents it is attempting to modify, the transaction will abort with a write conflict
+ Reading documents does not require the same lock as modifying documents
+ Error Handling ​ 
+ It is recommended to use try-catch to capture exceptions during transaction operations:
+ try { 
+ const transaction = await db . startTransaction ( ) 
+ // Transaction operations involving document modifications 
+ await transaction . collection ( &#x27;orders&#x27; ) . add ( { 
+ data : { /* order data */ } 
+ } ) 
+ // If an error occurs, throw an exception to trigger a rollback 
+ if ( someCondition ) { 
+ throw new Error ( &#x27;Business logic error&#x27; ) 
+ } 
+ await transaction . collection ( &#x27;products&#x27; ) . doc ( &#x27;product-id&#x27; ) . update ( { 
+ data : { stock : db . command . inc ( - 1 ) } 
+ } ) 
+ await transaction . commit ( ) 
+ } catch ( error ) { 
+ console . error ( &#x27;Transaction failed, automatically rolled back:&#x27; , error ) 
+ // When a write conflict occurs, perform exception handling 
+ } 
+ Transaction Limitations ​ 
+ Operation Restrictions ​ 
+ Limitation Item | Description | Impact | 
+ Operation Count | Up to 100 operations per transaction | Requires proper planning of transaction scope | 
+ Execution Time | Transaction execution time cannot exceed 30 seconds | Avoid complex calculations and external calls | 
+ Document Operations | Only supports the doc method, does not support the where method | The current transaction only supports single-document operations | 
+ DDL Operations | Avoid performing transactions during DDL operations | May cause transactions to fail to acquire locks | 
+ Notes ​ 
+ // ❌ Error example: Making external calls within a transaction 
+ await db . runTransaction ( async transaction =&gt; { 
+ // Do not call cloud functions or external APIs within a transaction 
+ const result = await wx . cloud . callFunction ( { 
+ name : &#x27;someFunction&#x27; 
+ } ) 
+ // Transaction operations... 
+ } ) 
+ // ✅ Correct example: Obtain data first, then execute the transaction 
+ const externalData = await wx . cloud . callFunction ( { 
+ name : &#x27;someFunction&#x27; 
+ } ) 
+ await db . runTransaction ( async transaction =&gt; { 
+ // Use pre-obtained data 
+ await transaction . collection ( &#x27;data&#x27; ) . add ( { 
+ data : externalData . result 
+ } ) 
+ } ) 
+ Previous
+ CRUD
+ Next
+ Aggregation Search
+ Use Cases 
+ Supported Methods 
+ Basic Transactions 
+ Complex Transaction Example 
+ Transaction Mechanism 
+ Error Handling 
+ Transaction Limitations 
+ Copy page View Markdown Give feedback Ask AI about this page 
+ 
