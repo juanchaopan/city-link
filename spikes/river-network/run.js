@@ -6,6 +6,7 @@ const zlib = require('zlib');
 const { makeRng } = require('./core');
 const { createCluster, generate } = require('./terrain');
 const { verifySeams, verifyNetwork, lineLook } = require('./verify');
+const { analyzePorts } = require('./ports');
 const { drawCluster } = require('./draw');
 const OPT = require('./params');
 
@@ -53,6 +54,13 @@ function run(name, clusters, N, maxLevel, opt, draw) {
   const groups = { main: [], trib: [], none: [] };
   const metrics = [];
   const look = { main: { tiles: 0, sharp: 0, loops: 0, straight: [] }, trib: { tiles: 0, sharp: 0, loops: 0, straight: [] } };
+  const pieces = {};
+  const shapes = {};
+  const river = {
+    banks: [], sites: [], bridges: [], routes: 0, failed: 0, slotMismatch: 0, lengthSum: 0, lengthMax: 0, viaSum: 0,
+    mainSlots: 0, mainWithSites: 0, reachedOpen: 0, reachedIfBlocked: 0, bridgesPlaced: 0,
+  };
+  const portRng = makeRng(0x4242);
   let sample = null;
   let second = null;
   for (let seed = 1; seed <= clusters; seed++) {
@@ -76,6 +84,8 @@ function run(name, clusters, N, maxLevel, opt, draw) {
       const m = result.terrain.metrics;
       metrics.push(m);
       groups[cluster.skeleton.slots[index].kind].push(m);
+      for (const [key, count] of Object.entries(m.pieces)) pieces[key] = (pieces[key] || 0) + count;
+      for (const [key, count] of Object.entries(m.shapes)) shapes[key] = (shapes[key] || 0) + count;
       for (const line of result.terrain.lines) {
         const l = lineLook(line.points);
         const target = look[line.kind];
@@ -90,10 +100,32 @@ function run(name, clusters, N, maxLevel, opt, draw) {
     const n = verifyNetwork(cluster);
     coverage.push(n.coverage);
     for (const key of Object.keys(network)) network[key] += n[key];
+    if (stats.hardFailures === 0) {
+      const p = analyzePorts(cluster, portRng, 30);
+      river.mainSlots += p.stats.length;
+      for (const item of p.stats) {
+        river.banks.push(item.bank);
+        river.sites.push(item.sites);
+        river.bridges.push(item.bridges);
+      }
+      river.routes += p.routes;
+      river.failed += p.failed;
+      river.slotMismatch += p.slotMismatch;
+      river.lengthSum += p.lengthSum;
+      river.lengthMax = Math.max(river.lengthMax, p.lengthMax);
+      river.viaSum += p.viaSum;
+      river.mainWithSites += p.mainWithSites;
+      river.reachedOpen += p.mainReachedOpen;
+      river.reachedIfBlocked += p.mainReachedIfBridgesBlock;
+      river.bridgesPlaced += p.bridgesPlaced;
+    }
   }
   const pick = (list, key) => list.map((m) => m[key]);
   const summary = (list, key) => (list.length ? {
     mean: round(mean(pick(list, key))), p05: round(quantile(pick(list, key), 0.05)), min: round(Math.min(...pick(list, key))),
+  } : null);
+  const spread = (values) => (values.length ? {
+    mean: round(mean(values), 1), p05: quantile(values, 0.05), min: Math.min(...values), max: Math.max(...values),
   } : null);
   const lookSummary = (entry) => ({
     tiles: entry.tiles,
@@ -125,6 +157,24 @@ function run(name, clusters, N, maxLevel, opt, draw) {
     createMs: { mean: round(mean(creates), 2), max: round(Math.max(...creates), 2) },
     skeletonJsonBytes: { mean: Math.round(mean(skeletonBytes)), max: Math.max(...skeletonBytes) },
     look: { main: lookSummary(look.main), trib: lookSummary(look.trib) },
+    roadPieces: pieces,
+    shapes,
+    river: {
+      mainSlots: river.mainSlots,
+      mainWithSites: river.mainWithSites,
+      bankTiles: spread(river.banks),
+      portSites: spread(river.sites),
+      bridgeSpans: spread(river.bridges),
+      routes: river.routes,
+      routesFailed: river.failed,
+      slotPathMismatch: river.slotMismatch,
+      routeTilesMean: round(river.lengthSum / Math.max(1, river.routes - river.failed), 1),
+      routeTilesMax: river.lengthMax,
+      viaCitiesMean: round(river.viaSum / Math.max(1, river.routes - river.failed), 1),
+      reachedWithBridgesPassable: river.reachedOpen,
+      reachedIfBridgesBlockedShips: river.reachedIfBlocked,
+      bridgesPlaced: river.bridgesPlaced,
+    },
   });
   if (draw) {
     fs.mkdirSync(OUT, { recursive: true });
@@ -150,7 +200,8 @@ function main() {
     fs.mkdirSync(OUT, { recursive: true });
     fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ node: process.version, opt: OPT, stats }, null, 2));
   }
-  console.log(JSON.stringify(stats, null, 1));
+  const { roadPieces, shapes, ...brief } = stats;
+  console.log(JSON.stringify(brief, null, 1));
 }
 
 if (require.main === module) main();

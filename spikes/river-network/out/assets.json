@@ -1,0 +1,34 @@
+{
+  "clusters": 8,
+  "riverDualPatterns": 16,
+  "coastDualPatterns": 9,
+  "blobPatternsSeen": 162,
+  "riverEnds": 203,
+  "junctionTiles": 47113,
+  "mouths": 8,
+  "channelTiles": 51895,
+  "landShapes": {
+    "flat": 1639267,
+    "corner": 149227,
+    "ramp": 167232,
+    "saddle": 341
+  },
+  "bankOnSlope": {
+    "flat": 82309,
+    "slope": 88
+  },
+  "slopeRoadUse1920Cities": {
+    "needsRoadbed": {
+      "uses": 15875,
+      "combos": 36
+    },
+    "corner:straight": 7412,
+    "existingPiece": {
+      "uses": 8903,
+      "combos": 12
+    },
+    "ramp:straight": 6773,
+    "ramp:diagonal": 5837,
+    "corner:diagonal": 4756
+  }
+}

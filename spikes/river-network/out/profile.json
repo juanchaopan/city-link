@@ -1,0 +1,231 @@
+{
+  "node": "v24.22.1",
+  "cpus": 16,
+  "loadavg": [
+    0,
+    0,
+    0
+  ],
+  "passes": [
+    {
+      "seconds": 41.6,
+      "p50": 19.87,
+      "p95": 36.48,
+      "p99": 48.03,
+      "max": 109.67,
+      "carveP95": 21.37,
+      "carveMax": 65.65,
+      "measureP95": 15.45,
+      "measureMax": 38.95
+    },
+    {
+      "seconds": 37.19,
+      "p50": 17.69,
+      "p95": 32.75,
+      "p99": 45.66,
+      "max": 71.72,
+      "carveP95": 19.36,
+      "carveMax": 53.37,
+      "measureP95": 13.5,
+      "measureMax": 25.71
+    },
+    {
+      "seconds": 37.88,
+      "p50": 18.28,
+      "p95": 32.46,
+      "p99": 45.03,
+      "max": 99.48,
+      "carveP95": 18.2,
+      "carveMax": 85.23,
+      "measureP95": 14.05,
+      "measureMax": 26.37
+    }
+  ],
+  "gc": {
+    "count": 2120,
+    "totalMs": 1334.22,
+    "maxMs": 37.23
+  },
+  "slowest": [
+    {
+      "pass": 0,
+      "seed": 1,
+      "slot": 40,
+      "ms": 109.67,
+      "carve": 35.45,
+      "measure": 38.95,
+      "attempts": 1,
+      "samePassesMs": [
+        109.67,
+        14.53,
+        12.97
+      ],
+      "gcOverlapMs": 5.46
+    },
+    {
+      "pass": 2,
+      "seed": 10,
+      "slot": 9,
+      "ms": 99.48,
+      "carve": 85.23,
+      "measure": 10.65,
+      "attempts": 1,
+      "samePassesMs": [
+        48.78,
+        54.9,
+        99.48
+      ],
+      "gcOverlapMs": 3.72
+    },
+    {
+      "pass": 0,
+      "seed": 17,
+      "slot": 36,
+      "ms": 82.05,
+      "carve": 65.65,
+      "measure": 11.62,
+      "attempts": 1,
+      "samePassesMs": [
+        82.05,
+        40.08,
+        58.71
+      ],
+      "gcOverlapMs": 1.86
+    },
+    {
+      "pass": 0,
+      "seed": 13,
+      "slot": 48,
+      "ms": 76.48,
+      "carve": 59.51,
+      "measure": 12.2,
+      "attempts": 1,
+      "samePassesMs": [
+        76.48,
+        55.01,
+        64.91
+      ],
+      "gcOverlapMs": 2.3
+    },
+    {
+      "pass": 0,
+      "seed": 12,
+      "slot": 10,
+      "ms": 75.69,
+      "carve": 55.1,
+      "measure": 15.27,
+      "attempts": 1,
+      "samePassesMs": [
+        75.69,
+        17.1,
+        23.61
+      ],
+      "gcOverlapMs": 37.23
+    },
+    {
+      "pass": 0,
+      "seed": 25,
+      "slot": 2,
+      "ms": 74.69,
+      "carve": 61.72,
+      "measure": 8.98,
+      "attempts": 1,
+      "samePassesMs": [
+        74.69,
+        55.16,
+        48.67
+      ],
+      "gcOverlapMs": 2.19
+    },
+    {
+      "pass": 1,
+      "seed": 6,
+      "slot": 43,
+      "ms": 71.72,
+      "carve": 53.37,
+      "measure": 11.69,
+      "attempts": 1,
+      "samePassesMs": [
+        22.89,
+        71.72,
+        20.86
+      ],
+      "gcOverlapMs": 36.45
+    },
+    {
+      "pass": 2,
+      "seed": 10,
+      "slot": 35,
+      "ms": 66.17,
+      "carve": 50.58,
+      "measure": 11.27,
+      "attempts": 1,
+      "samePassesMs": [
+        34.82,
+        37.59,
+        66.17
+      ],
+      "gcOverlapMs": 0.72
+    },
+    {
+      "pass": 0,
+      "seed": 19,
+      "slot": 25,
+      "ms": 65.8,
+      "carve": 49.37,
+      "measure": 12.53,
+      "attempts": 1,
+      "samePassesMs": [
+        65.8,
+        47.16,
+        44.38
+      ],
+      "gcOverlapMs": 1.08
+    },
+    {
+      "pass": 2,
+      "seed": 13,
+      "slot": 48,
+      "ms": 64.91,
+      "carve": 48.86,
+      "measure": 11.65,
+      "attempts": 1,
+      "samePassesMs": [
+        76.48,
+        55.01,
+        64.91
+      ],
+      "gcOverlapMs": 0.79
+    },
+    {
+      "pass": 1,
+      "seed": 27,
+      "slot": 30,
+      "ms": 61.65,
+      "carve": 42.77,
+      "measure": 10.33,
+      "attempts": 1,
+      "samePassesMs": [
+        39.14,
+        61.65,
+        35.11
+      ],
+      "gcOverlapMs": 8.97
+    },
+    {
+      "pass": 0,
+      "seed": 13,
+      "slot": 23,
+      "ms": 61.23,
+      "carve": 34.43,
+      "measure": 20.3,
+      "attempts": 1,
+      "samePassesMs": [
+        61.23,
+        21.47,
+        28.05
+      ],
+      "gcOverlapMs": 0.78
+    }
+  ]
+}

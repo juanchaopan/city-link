@@ -211,6 +211,7 @@ function lineLook(points) {
   let sharp = 0;
   let loops = 0;
   let inSharp = false;
+  const sharpAt = [];
   for (let i = 4; i < samples.length - 4; i++) {
     const [ax, ay] = samples[i - 4];
     const [bx, by] = samples[i];
@@ -220,7 +221,10 @@ function lineLook(points) {
     const dot = (u[0] * v[0] + u[1] * v[1]) / ((Math.hypot(...u) * Math.hypot(...v)) || 1);
     const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI;
     if (angle > 70) {
-      if (!inSharp) sharp++;
+      if (!inSharp) {
+        sharp++;
+        sharpAt.push([bx, by]);
+      }
       inSharp = true;
     } else {
       inSharp = false;
@@ -237,6 +241,8 @@ function lineLook(points) {
   }
   let straight = 0;
   let start = 0;
+  let straightFrom = 0;
+  let straightTo = 0;
   for (let i = 2; i < samples.length; i++) {
     const [ax, ay] = samples[start];
     const [bx, by] = samples[i];
@@ -247,9 +253,17 @@ function lineLook(points) {
       if (d > far) far = d;
     }
     if (far > 1) start = i - 1;
-    straight = Math.max(straight, i - start);
+    if (i - start > straight) {
+      straight = i - start;
+      straightFrom = start;
+      straightTo = i;
+    }
   }
-  return { tiles: samples.length, sharp, loops, straight };
+  return {
+    tiles: samples.length, sharp, loops, straight, sharpAt, straightPoints: samples.slice(straightFrom, straightTo + 1),
+  };
 }
 
-module.exports = { verifySeams, verifyNetwork, lineLook, globalMasks };
+module.exports = {
+  verifySeams, verifyNetwork, lineLook, globalMasks, channelMask, flood, DIR8,
+};

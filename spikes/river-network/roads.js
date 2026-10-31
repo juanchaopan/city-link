@@ -49,7 +49,7 @@ function connectionTiles(cluster, sx, sy) {
   return list;
 }
 
-// 路网按“方向 + 地块”做广度优先搜索，返回能到达的地块和到达每个地块的路径。
+// 路网按“方向 + 地块”做广度优先搜索。除鞍形地块外，所有坡地都能走八个方向，切坡路基负责把路面放平。
 function roadSearch(terrain, rule) {
   const { N, h, water } = terrain;
   const V = N + 1;
@@ -62,13 +62,10 @@ function roadSearch(terrain, rule) {
   const start = center * N + center;
   const shapeOf = new Uint8Array(N * N);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) shapeOf[y * N + x] = tileShape(h, V, x, y);
-  const canEnter = (t, d) => {
+  const canEnter = (t) => {
     if (water[t]) return false;
     const shape = SHAPE_AXIS[shapeOf[t]];
-    if (!shape || shape.kind === 'saddle') return false;
-    if (shape.kind === 'flat') return true;
-    if (d >= 4) return rule.diagonalRamp && shape.kind === 'corner' && shape.axes.includes(AXIS_OF_DIR[d]);
-    return shape.kind === 'ramp' && shape.axes.includes(AXIS_OF_DIR[d]);
+    return Boolean(shape) && shape.kind !== 'saddle';
   };
   for (let d = 0; d < 8; d++) {
     const s = start * 8 + d;
@@ -102,7 +99,7 @@ function roadSearch(terrain, rule) {
         }
         if (bx < 0 || by < 0 || bx >= N || by >= N || water[by * N + bx]) continue;
         const landing = by * N + bx;
-        if (!canEnter(landing, nd)) continue;
+        if (!canEnter(landing)) continue;
         const ns = landing * 8 + nd;
         if (parent[ns] === -2) {
           parent[ns] = s;
@@ -110,7 +107,7 @@ function roadSearch(terrain, rule) {
         }
         continue;
       }
-      if (!canEnter(nt, nd)) continue;
+      if (!canEnter(nt)) continue;
       if (nd >= 4) {
         const sideA = ny * N + x;
         const sideB = y * N + nx;
@@ -154,7 +151,7 @@ function pathPieces(search, target, N, pieces) {
   return true;
 }
 
-function measure(terrain, cluster, opt) {
+function measure(terrain, cluster) {
   const { N, h, water, forest, mineral } = terrain;
   const V = N + 1;
   let flat = 0;
@@ -180,8 +177,8 @@ function measure(terrain, cluster, opt) {
   }
   const area = N * N;
   const targets = connectionTiles(cluster, terrain.sx, terrain.sy);
-  const noBridge = roadSearch(terrain, { diagonalRamp: opt.diagonalRamp, bridge: false });
-  const withBridge = roadSearch(terrain, { diagonalRamp: opt.diagonalRamp, bridge: true });
+  const noBridge = roadSearch(terrain, { bridge: false });
+  const withBridge = roadSearch(terrain, { bridge: true });
   const pieces = {};
   let reachNoBridge = 0;
   let reachBridge = 0;
@@ -207,4 +204,4 @@ function measure(terrain, cluster, opt) {
   };
 }
 
-module.exports = { tileShape, measure, roadSearch, connectionTiles, SHAPE_AXIS };
+module.exports = { tileShape, measure, roadSearch, connectionTiles, SHAPE_AXIS, BRIDGE_SPAN };

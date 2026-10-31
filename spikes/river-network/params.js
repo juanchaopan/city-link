@@ -9,7 +9,6 @@ module.exports = {
   mineralChance: 0.5,
   buildableFloor: 0.6,
   cornerPad: true,
-  diagonalRamp: true,
   mainShare: 0.45,
   riverShare: 0.8,
   meanderCell: 14,

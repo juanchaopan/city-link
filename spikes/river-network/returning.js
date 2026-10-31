@@ -4,140 +4,203 @@ const fs = require('fs');
 const path = require('path');
 const { makeRng } = require('./core');
 const { createCluster, generate } = require('./terrain');
-const { signature, STEP, OPPOSITE } = require('./skeleton');
+const { signature } = require('./skeleton');
 const { verifySeams, verifyNetwork } = require('./verify');
 const { fill, shuffle } = require('./run');
 const { drawCluster } = require('./draw');
+const { bestSpot, adopt } = require('./placement');
 const OPT = require('./params');
 
 const N = 64;
 const LEVELS = 3;
-const SEARCH_LIMIT = 400;
-const OPEN_FILL = 20;
 const OUT = path.join(__dirname, 'out');
+const OPEN_LISTED = 8;
+const SEARCH_LIMIT = 50;
 
-const isOuter = (side, sx, sy) => (side === 'W' && sx === 0) || (side === 'E' && sx === 7) || (side === 'N' && sy === 0) || (side === 'S' && sy === 7);
-const outerSides = (sx, sy) => ['W', 'E', 'N', 'S'].filter((side) => isOuter(side, sx, sy));
-
-// 位置要和旧城市的外边界类型相同，贴着外边界时四条外边都要一样，否则角上的退坡对不上。
-function sameBoundary(source, target) {
-  const a = outerSides(source.sx, source.sy);
-  const b = outerSides(target.sx, target.sy);
-  if (a.join() !== b.join()) return false;
-  if (a.length === 0) return true;
-  return ['W', 'E', 'N', 'S'].every((side) => source.edges[side] === target.edges[side]);
-}
-
-function clearAround(cluster, sx, sy) {
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      const x = sx + dx;
-      const y = sy + dy;
-      if (x >= 0 && y >= 0 && x < 8 && y < 8 && cluster.slots[y * 8 + x]) return false;
+// 新玩家优先放在真人旁边，所以开放城市群里的占用是连成片的；随机散布只作对照。
+function occupancy(rng, count, pattern) {
+  if (pattern === 'random') return shuffle([...Array(64).keys()], rng).slice(0, count);
+  const taken = [(rng() * 64) | 0];
+  while (taken.length < count) {
+    const options = [];
+    for (const index of taken) {
+      const x = index % 8;
+      const y = (index / 8) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx;
+        const ny = y + dy;
+        const next = ny * 8 + nx;
+        if (nx >= 0 && ny >= 0 && nx < 8 && ny < 8 && !taken.includes(next)) options.push(next);
+      }
     }
+    taken.push(options[(rng() * options.length) | 0]);
   }
-  return true;
+  return taken;
 }
 
-function candidates(cluster, source, wanted) {
+function openCluster(seed, rng, share, pattern) {
+  const cluster = createCluster(seed, N, LEVELS, OPT);
+  const taken = occupancy(rng, Math.round(64 * share), pattern);
+  for (const index of taken) cluster.slots[index] = true;
+  return { cluster, taken };
+}
+
+// 只看骨架：全部 1920 座城市，在不同占用率下有多少能回到开放城市群。
+function placementStats() {
+  const rng = makeRng(0x7755);
+  const sources = [];
+  for (let seed = 1; seed <= 30; seed++) sources.push(createCluster(seed, N, LEVELS, OPT));
   const out = [];
-  for (let sy = 0; sy < 8; sy++) {
-    for (let sx = 0; sx < 8; sx++) {
-      if (signature(cluster.skeleton.slots[sy * 8 + sx]) !== wanted) continue;
-      if (!clearAround(cluster, sx, sy)) continue;
-      if (sameBoundary(source, { sx, sy, edges: cluster.edges })) out.push([sx, sy]);
+  for (const pattern of ['contiguous', 'random']) {
+    for (const share of [0.1, 0.3, 0.5, 0.7]) {
+      const pool = [];
+      for (let i = 0; i < 40; i++) pool.push(openCluster(20000 + i * 7, rng, share, pattern).cluster);
+      for (const listed of [1, 3, OPEN_LISTED]) {
+        let placed = 0;
+        let cost = 0;
+        for (const source of sources) {
+          for (let index = 0; index < 64; index++) {
+            const from = { sx: index % 8, sy: (index / 8) | 0, edges: source.edges };
+            const sides = source.skeleton.slots[index].sides;
+            for (let k = 0; k < listed; k++) {
+              const spot = bestSpot(pool[(index * 3 + k * 11 + source.seed * 5) % pool.length], from, sides);
+              if (spot) {
+                placed++;
+                cost += spot.cost;
+                break;
+              }
+            }
+          }
+        }
+        out.push({
+          pattern, share, listed, placedInOpen: placed, of: 1920, rate: Number((placed / 1920).toFixed(3)), meanEdgesChanged: Number((cost / Math.max(1, placed)).toFixed(2)),
+        });
+        console.log(JSON.stringify(out[out.length - 1]));
+      }
     }
   }
   return out;
 }
 
-// 把骨架上这个位置的四个边界口改成旧城市的偏移，四周没有地形，所以改动不影响任何已生成的城市。
-function adopt(cluster, sx, sy, sides, terrain) {
-  for (const side of Object.keys(sides)) {
-    const { offset } = sides[side];
-    cluster.skeleton.slots[sy * 8 + sx].sides[side].offset = offset;
-    if (isOuter(side, sx, sy)) continue;
-    const nx = sx + STEP[side][0];
-    const ny = sy + STEP[side][1];
-    cluster.skeleton.slots[ny * 8 + nx].sides[OPPOSITE[side]].offset = offset;
+function verifyOne(report, item, rng, nextSeed) {
+  const { terrain, sides, from, tag } = item;
+  report.sources++;
+  report.signatures[tag] = (report.signatures[tag] || 0) + 1;
+  let cluster = null;
+  let taken = [];
+  let spot = null;
+  let openShare = null;
+  for (let k = 0; k < OPEN_LISTED && !spot; k++) {
+    const candidate = openCluster(nextSeed(), rng, 0.3, 'contiguous');
+    spot = bestSpot(candidate.cluster, from, sides);
+    if (spot) {
+      ({ cluster, taken } = candidate);
+      openShare = k + 1;
+    }
   }
-  cluster.slots[sy * 8 + sx] = { ...terrain, sx, sy };
+  if (spot) {
+    report.placedInOpen++;
+    report.openTries[openShare] = (report.openTries[openShare] || 0) + 1;
+    // 占位换成真实地形：这些位置都不在回归城市周围，骨架改动影响不到它们。
+    const saved = [...taken];
+    for (const index of saved) cluster.slots[index] = null;
+    for (const index of saved) {
+      const result = generate(cluster, index % 8, (index / 8) | 0, OPT);
+      if (!result.ok) report.generateFailures++;
+    }
+  } else {
+    let tries = 0;
+    while (tries < SEARCH_LIMIT && !spot) {
+      tries++;
+      cluster = createCluster(nextSeed(), N, LEVELS, OPT);
+      spot = bestSpot(cluster, from, sides);
+    }
+    report.searchMax = Math.max(report.searchMax, tries);
+    if (!spot) {
+      report.unplaced++;
+      report.unplacedTags[tag] = (report.unplacedTags[tag] || 0) + 1;
+      return null;
+    }
+    report.placedInNew++;
+  }
+  report.placed++;
+  report.edgesChanged += spot.cost;
+  adopt(cluster, spot, terrain);
+  for (const slot of shuffle([...Array(64).keys()], rng)) {
+    if (cluster.slots[slot]) continue;
+    const result = generate(cluster, slot % 8, (slot / 8) | 0, OPT);
+    for (const [reason, count] of Object.entries(result.failures)) {
+      report.failureReasons[reason] = (report.failureReasons[reason] || 0) + count;
+    }
+    if (!result.ok) report.generateFailures++;
+  }
+  const seams = verifySeams(cluster);
+  for (const key of Object.keys(seams)) report.seams[key] = (report.seams[key] || 0) + seams[key];
+  const network = verifyNetwork(cluster);
+  report.minCoverage = Math.min(report.minCoverage, network.coverage);
+  for (const key of ['mainSlots', 'mainReached', 'mouths', 'mouthsBroken']) report[key] += network[key];
+  report.clustersVerified++;
+  return cluster;
+}
+
+function newReport() {
+  return {
+    sources: 0, placed: 0, placedInOpen: 0, placedInNew: 0, openTries: {}, searchMax: 0, edgesChanged: 0, signatures: {},
+    unplaced: 0, unplacedTags: {}, generateFailures: 0, failureReasons: {}, seams: {}, minCoverage: 1,
+    mainSlots: 0, mainReached: 0, mouths: 0, mouthsBroken: 0, clustersVerified: 0,
+  };
+}
+
+function cityItem(source, index) {
+  return {
+    terrain: source.slots[index],
+    sides: source.skeleton.slots[index].sides,
+    from: { sx: index % 8, sy: (index / 8) | 0, edges: source.edges },
+    tag: signature(source.skeleton.slots[index]),
+  };
+}
+
+function verifySamples() {
+  const rng = makeRng(0x2468);
+  let seed = 50000;
+  const nextSeed = () => seed++;
+  const sources = [];
+  for (let s = 1; s <= 8; s++) sources.push(fill(s, N, LEVELS, OPT).cluster);
+
+  const sample = newReport();
+  for (const source of sources.slice(0, 4)) {
+    for (const index of shuffle([...Array(64).keys()], makeRng(source.seed * 97)).slice(0, 15)) {
+      const cluster = verifyOne(sample, cityItem(source, index), rng, nextSeed);
+      if (cluster && sample.placed === 1) drawCluster(path.join(OUT, 'returning.png'), cluster, 2);
+    }
+  }
+  console.log(JSON.stringify(sample));
+
+  // 再把出现过的每种签名和外边界组合都放一遍，覆盖少见的情况，t-t- 也在其中。
+  const seen = new Map();
+  for (const source of sources) {
+    for (let index = 0; index < 64; index++) {
+      const item = cityItem(source, index);
+      const outer = `${item.from.sx === 0 ? 'W' : item.from.sx === 7 ? 'E' : ''}${item.from.sy === 0 ? 'N' : item.from.sy === 7 ? 'S' : ''}`;
+      const key = `${item.tag}|${outer}`;
+      if (!seen.has(key)) seen.set(key, item);
+    }
+  }
+  const every = newReport();
+  every.combinations = seen.size;
+  for (const item of seen.values()) verifyOne(every, item, rng, nextSeed);
+  console.log(JSON.stringify(every));
+  return { sample, every };
 }
 
 function main() {
-  const report = {
-    sources: 0, placed: 0, signatures: {}, placedInOpen: 0, placedInNew: 0, searchMax: 0, searchMean: 0,
-    generateFailures: 0, failureReasons: {}, seams: {}, mainSlots: 0, mainReached: 0, mouths: 0, mouthsBroken: 0,
-    clustersVerified: 0, unplaced: 0, unplacedSignatures: {},
-  };
-  const rng = makeRng(0x2468);
-  let searches = 0;
-  let drawn = false;
-  const sources = [];
-  for (let seed = 1; seed <= 4; seed++) sources.push(fill(seed, N, LEVELS, OPT).cluster);
-  let nextSeed = 5000;
-  for (const source of sources) {
-    const picks = shuffle([...Array(64).keys()], rng).slice(0, 15);
-    for (const index of picks) {
-      const terrain = source.slots[index];
-      if (!terrain) continue;
-      report.sources++;
-      const wanted = signature(source.skeleton.slots[index]);
-      report.signatures[wanted] = (report.signatures[wanted] || 0) + 1;
-      const from = { sx: index % 8, sy: (index / 8) | 0, edges: source.edges };
-
-      // 先试已占用约三成的开放城市群，再试新建城市群，新建时可以换种子。
-      let cluster = fill(nextSeed++, N, LEVELS, OPT, OPEN_FILL).cluster;
-      let spots = candidates(cluster, from, wanted);
-      let way = 'open';
-      if (spots.length === 0) {
-        way = 'new';
-        let tries = 0;
-        for (; tries < SEARCH_LIMIT && spots.length === 0; tries++) {
-          cluster = createCluster(nextSeed++, N, LEVELS, OPT);
-          spots = candidates(cluster, from, wanted);
-        }
-        report.searchMax = Math.max(report.searchMax, tries);
-        searches += tries;
-        if (spots.length === 0) {
-          report.unplaced++;
-          report.unplacedSignatures[wanted] = (report.unplacedSignatures[wanted] || 0) + 1;
-          continue;
-        }
-      }
-      const [sx, sy] = spots[(rng() * spots.length) | 0];
-      adopt(cluster, sx, sy, source.skeleton.slots[index].sides, terrain);
-      report.placed++;
-      if (way === 'open') report.placedInOpen++;
-      else report.placedInNew++;
-
-      for (const slot of shuffle([...Array(64).keys()], rng)) {
-        if (cluster.slots[slot]) continue;
-        const result = generate(cluster, slot % 8, (slot / 8) | 0, OPT);
-        for (const [reason, count] of Object.entries(result.failures)) {
-          report.failureReasons[reason] = (report.failureReasons[reason] || 0) + count;
-        }
-        if (!result.ok) report.generateFailures++;
-      }
-      const seams = verifySeams(cluster);
-      for (const key of Object.keys(seams)) report.seams[key] = (report.seams[key] || 0) + seams[key];
-      const network = verifyNetwork(cluster);
-      report.mainSlots += network.mainSlots;
-      report.mainReached += network.mainReached;
-      report.mouths += network.mouths;
-      report.mouthsBroken += network.mouthsBroken;
-      report.clustersVerified++;
-      if (!drawn) {
-        fs.mkdirSync(OUT, { recursive: true });
-        drawCluster(path.join(OUT, 'returning.png'), cluster, 2);
-        drawn = true;
-      }
-    }
-  }
-  report.searchMean = Number((searches / Math.max(1, report.placedInNew + report.unplaced)).toFixed(1));
   fs.mkdirSync(OUT, { recursive: true });
-  fs.writeFileSync(path.join(OUT, 'returning.json'), JSON.stringify(report, null, 2));
-  console.log(JSON.stringify(report, null, 1));
+  const mode = process.argv[2] || 'verify';
+  const file = path.join(OUT, 'returning.json');
+  const previous = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+  const result = mode === 'stats' ? { ...previous, placementStats: placementStats() } : { ...previous, ...verifySamples() };
+  delete result.sources;
+  fs.writeFileSync(file, JSON.stringify(result, null, 2));
 }
 
 main();
