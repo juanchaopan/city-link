@@ -1,2 +1,4 @@
 // 街区切法的打分权重，和算法分开放，调参时只改这里。五项的取值都在 0 到 1 之间。
-export const WEIGHTS = { size: 0.3, regular: 0.12, cuts: 0.08, even: 0.1, diagonal: 0.4 };
+// 块大是第一位的，其次是切得少：切法之间的差别主要应该体现在能不能留下大块、完整的物业上。
+// 沿街均匀和规整只在前两项差不多时起作用，否则一长条地会被切成一串 1×1。
+export const WEIGHTS = { size: 0.5, regular: 0.1, cuts: 0.2, even: 0.05, diagonal: 0.15 };

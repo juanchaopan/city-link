@@ -22,6 +22,9 @@ const MAX_REGION = 72;
 const LARGEST_SPEC_ATOMS = 36;
 const BLOCK_BUDGET = 3000;
 
+/** 斜边朝街的形状：斜向地块和三角形的斜边都顺着斜路，沿街的立面是 45° 的。 */
+const FOLLOWS_DIAGONAL = new Set(['diagonal', 'triangle']);
+
 /** 每个原子的形心和相邻原子，全部预先算好。原子的三条边都落在格线或对角线上。 */
 export function atomTable(N) {
   const count = N * N * 4;
@@ -149,7 +152,7 @@ function sideOf(line, id, table) {
   return x - y < line.k;
 }
 
-/** 五项打分：块更大（平均面积相对最大规格）、更规整、切得更少、沿街更均匀、斜路边用斜向物业。 */
+/** 五项打分：块更大（平均面积相对最大规格）、更规整、切得更少、沿街更均匀、斜路边用顺着斜路的形状。 */
 function scoreOf(candidate, totalAtoms) {
   const { pieces, cuts } = candidate;
   if (pieces.length === 0) return { total: 0, size: 0, regular: 0, cuts: 0, even: 0, diagonal: 0 };
@@ -165,7 +168,7 @@ function scoreOf(candidate, totalAtoms) {
     minFront = Math.min(minFront, piece.front);
     maxFront = Math.max(maxFront, piece.front);
     diagonalFront += piece.diagonalFront;
-    if (piece.spec.shape === 'diagonal') diagonalServed += piece.diagonalFront;
+    if (FOLLOWS_DIAGONAL.has(piece.spec.shape)) diagonalServed += piece.diagonalFront;
   }
   const parts = {
     size: Math.min(1, covered / pieces.length / LARGEST_SPEC_ATOMS),
