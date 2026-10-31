@@ -1,18 +1,18 @@
 {
   "outdir": "dist/wx",
-  "gameJsBytes": 774580,
-  "gameJsGzip": 217017,
-  "gameJsBrotli": 176225,
+  "gameJsBytes": 774890,
+  "gameJsGzip": 217166,
+  "gameJsBrotli": 176242,
   "yogaWasmBytes": 71736,
   "atlasBytes": 118228,
   "cityJsonBytes": 59190,
-  "mainPackageBytes": 846409,
-  "mainPackageWithAtlasBytes": 964637,
+  "mainPackageBytes": 846719,
+  "mainPackageWithAtlasBytes": 964947,
   "byPackage": {
-    "pixi": 604404,
+    "pixi": 604423,
     "pixiUi": 4021,
     "pixiLayout": 33679,
-    "yogaGlue": 31990,
+    "yogaGlue": 31982,
     "cityData": 61970
   }
 }
