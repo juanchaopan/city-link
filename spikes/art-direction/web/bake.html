@@ -12,7 +12,7 @@
       import { Baker } from './kit/bake.js';
       import { palettes } from './kit/palettes.js';
       import { generateCity, keysOf } from './sim/city.js';
-      import { EXTRA_KEYS, specFor } from './kit/catalog.js';
+      import { bakeKey, EXTRA_KEYS, specFor } from './kit/catalog.js';
 
       const baker = new Baker();
       const GUTTER = 2;
@@ -60,8 +60,8 @@
         const keys = new Set(EXTRA_KEYS);
         const footprints = new Set();
         for (const N of sizes) {
-          for (const layout of ['spread', 'concentrated']) {
-            const city = generateCity(N, 11, layout);
+          for (const [layout, linked] of [['spread', false], ['spread', true], ['concentrated', false]]) {
+            const city = generateCity(N, 11, layout, linked);
             for (const key of keysOf(city)) keys.add(key);
             for (const object of city.objects) if (object.footprintKey) footprints.add(object.footprintKey);
           }
@@ -77,9 +77,9 @@
         const sprites = [];
         const started = performance.now();
         for (const key of keys) {
-          const spec = specFor(key, palette);
           const t0 = performance.now();
-          const { glow, ...sprite } = baker.bake(spec);
+          const { spec, result } = bakeKey(baker, key, palette);
+          const { glow, ...sprite } = result;
           const ms = performance.now() - t0;
           const entry = (groups[spec.group] ??= { count: 0, ms: 0, pixels: 0 });
           entry.count += 1;

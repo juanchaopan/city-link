@@ -52,6 +52,7 @@ function crossDistance(dir, spokes, walk) {
  * 一格里的路面中线，坐标相对格子中心。
  * 两个方向的路连成一条线：对向是直线，转弯用二次贝塞尔，切线正好是两端的方向，所以和相邻格平滑相接。
  * 三个方向以上是路口，每个方向一条从中心出发的线。
+ * 只有一个方向的格子是断头路，起点用平切，路面不会以圆头结束。
  */
 export function cellPaths(roadMask, highwayMask) {
   const mask = roadMask | highwayMask;
@@ -67,7 +68,7 @@ export function cellPaths(roadMask, highwayMask) {
   return spokes.map((dir) => {
     const kind = kindOf(dir);
     const cross = spokes.length > 1 ? crossDistance(dir, spokes, ROAD_SPEC[kind].walk) : -1;
-    return { points: [[0, 0], spokeEnd(dir)], kind, clipStart: false, clipEnd: true, cross };
+    return { points: [[0, 0], spokeEnd(dir)], kind, clipStart: spokes.length === 1, clipEnd: true, cross };
   });
 }
 

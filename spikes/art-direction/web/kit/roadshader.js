@@ -2,18 +2,34 @@ import * as THREE from 'three';
 import { linear } from './builder.js';
 import { ROAD_SPEC } from '../sim/network.js';
 
-// 路面用距离场在片元里画，而不是拼多边形：
-// 人行道、路缘和斑马线都是到中线距离的函数，所以弯道、斜路和路口都是连续的，路口内角有自然的圆角。
+// 路面用距离场在片元里画。一格路的精灵会盖到邻格，所以拼接要靠下面三条规则，而不是靠相邻格碰巧对齐：
+// 1. 路面分三层绘制，全图的人行道、路缘、车道各画一遍。后画的层永远盖住先画的层，
+//    人行道和路缘因此不可能出现在车道上，不管相邻格怎么排列。
+// 2. 裁剪按整条路做，不按线段做。否则弯道折线中间的端点会带着圆头越过格子边界。
+// 3. 路口的圆角来自各方向沿直线延长后的平滑并集，只取比直路多出来的部分，垫在夹角里。
+//    对向的两个方向算一条直线，直通的一侧不会鼓包。
 
 const MAX_SEGMENTS = 32;
+const MAX_RAYS = 8;
+const RAY_LENGTH = 1.5;
+const CLIP_OVERLAP = 0.016;
+
+export const LAYER = { walk: 0, curb: 1, deck: 2, both: 3 };
 
 const HEADER = `
   #define MAX_SEGMENTS ${String(MAX_SEGMENTS)}
+  #define MAX_RAYS ${String(MAX_RAYS)}
   uniform vec4 uSegment[MAX_SEGMENTS];
   uniform vec4 uWidths[MAX_SEGMENTS];
   uniform vec4 uPath[MAX_SEGMENTS];
   uniform vec4 uFlags[MAX_SEGMENTS];
+  uniform vec4 uClipA[MAX_SEGMENTS];
+  uniform vec4 uClipB[MAX_SEGMENTS];
+  uniform vec4 uRay[MAX_RAYS];
+  uniform float uRayBack[MAX_RAYS];
   uniform int uCount;
+  uniform int uRayCount;
+  uniform int uLayer;
   uniform vec3 uAsphalt, uHighway, uWalk, uShoulder, uCurb, uLine, uMedian;
   varying vec2 vXZ;
   float smin(float a, float b, float k) {
@@ -26,23 +42,15 @@ const BODY = `
   vec2 p = vXZ;
   float walk = 1e3;
   float deck = 1e3;
-  float pathWalk = 1e3;
-  float pathDeck = 1e3;
-  float current = -1.0;
   float bestD = 1e3;
   float bestU = 0.0;
   float bestV = 0.0;
   int best = -1;
   for (int i = 0; i < uCount; i++) {
-    if (uFlags[i].x != current) {
-      if (current >= 0.0) {
-        walk = smin(walk, pathWalk, 0.12);
-        deck = smin(deck, pathDeck, 0.12);
-      }
-      current = uFlags[i].x;
-      pathWalk = 1e3;
-      pathDeck = 1e3;
-    }
+    bool outside = false;
+    if (uClipA[i].z != 0.0 || uClipA[i].w != 0.0) outside = dot(p - uClipA[i].xy, uClipA[i].zw) > ${CLIP_OVERLAP.toFixed(3)};
+    if (uClipB[i].z != 0.0 || uClipB[i].w != 0.0) outside = outside || dot(p - uClipB[i].xy, uClipB[i].zw) > ${CLIP_OVERLAP.toFixed(3)};
+    if (outside) continue;
     vec2 a = uSegment[i].xy;
     vec2 b = uSegment[i].zw;
     vec2 ba = b - a;
@@ -51,16 +59,12 @@ const BODY = `
     vec2 pa = p - a;
     float t = dot(pa, dir);
     float side = dot(pa, vec2(-dir.y, dir.x));
-    bool clipLow = uFlags[i].y > 0.5;
-    bool clipHigh = uFlags[i].z > 0.5;
-    if (clipLow && t < -0.016) continue;
-    if (clipHigh && t > len + 0.016) continue;
     float ct = t;
-    if (!clipLow) ct = max(ct, 0.0);
-    if (!clipHigh) ct = min(ct, len);
+    if (uFlags[i].y < 0.5) ct = max(ct, 0.0);
+    if (uFlags[i].z < 0.5) ct = min(ct, len);
     float d = length(p - (a + dir * ct));
-    pathWalk = min(pathWalk, d - uWidths[i].x);
-    pathDeck = min(pathDeck, d - uWidths[i].y);
+    walk = min(walk, d - uWidths[i].x);
+    deck = min(deck, d - uWidths[i].y);
     if (d < bestD) {
       bestD = d;
       best = i;
@@ -68,38 +72,56 @@ const BODY = `
       bestV = side;
     }
   }
-  if (current >= 0.0) {
-    walk = smin(walk, pathWalk, 0.12);
-    deck = smin(deck, pathDeck, 0.12);
-  }
-  if (best < 0 || walk > 0.0) discard;
 
-  float highway = uWidths[best].z;
-  vec3 ground = mix(uAsphalt, uHighway, highway);
-  vec3 side = mix(uWalk, uShoulder, highway);
-  vec3 color = side;
-  if (deck < 0.014) color = uCurb;
-  if (walk > -0.008) color = mix(side, uCurb, 0.45);
-  if (deck < 0.0) {
-    color = ground;
-    float pathLength = uPath[best].y;
-    float cross = uPath[best].z;
-    float halfDeck = uWidths[best].y;
-    float period = pathLength / max(1.0, floor(pathLength / 0.25 + 0.5));
-    float dash = abs(fract(bestU / period + 0.5) - 0.5) * period;
-    bool junction = cross >= 0.0;
-    bool marked = !junction || bestU > cross + 0.15;
-    if (highway > 0.5) {
-      bool markHere = !junction || bestU > 0.46;
-      if (markHere) {
-        if (abs(bestV) < 0.026) color = uMedian;
-        else if (abs(abs(bestV) - 0.205) < 0.008 && dash < period * 0.25) color = uLine;
-        else if (abs(abs(bestV) - 0.37) < 0.006) color = uLine;
-      }
-    } else {
-      if (marked && abs(bestV) < 0.007 && dash < period * 0.27) color = uLine;
-      if (junction && cross > 0.0 && cross < 0.39 && bestU > cross && bestU < cross + 0.09 && abs(bestV) < halfDeck - 0.03) {
-        if (fract((bestV + 10.0) / 0.074) < 0.5) color = uLine;
+  float roundWalk = 1e3;
+  float roundDeck = 1e3;
+  float rawWalk = 1e3;
+  float rawDeck = 1e3;
+  for (int i = 0; i < uRayCount; i++) {
+    vec2 dir = uRay[i].xy;
+    float t = clamp(dot(p, dir), -uRayBack[i], ${RAY_LENGTH.toFixed(1)});
+    float d = length(p - dir * t);
+    rawWalk = min(rawWalk, d - uRay[i].z);
+    rawDeck = min(rawDeck, d - uRay[i].w);
+    roundWalk = smin(roundWalk, d - uRay[i].z, 0.24);
+    roundDeck = smin(roundDeck, d - uRay[i].w, 0.36);
+  }
+  bool padWalk = uRayCount > 1 && roundWalk < 0.0 && rawWalk > 0.0;
+  bool padDeck = uRayCount > 1 && roundDeck < 0.0 && rawDeck > 0.0;
+  bool inWalk = walk < 0.0 || padWalk;
+  bool inDeck = deck < 0.0 || padDeck;
+  float edge = uRayCount > 1 ? min(deck, roundDeck) : deck;
+  bool inCurb = inWalk && edge >= 0.0 && edge < 0.016;
+
+  if (uLayer == 0 && !inWalk) discard;
+  if (uLayer == 1 && !inCurb) discard;
+  if (uLayer == 2 && !inDeck) discard;
+  if (uLayer == 3 && !inWalk && !inDeck) discard;
+
+  float highway = best >= 0 ? uWidths[best].z : 0.0;
+  vec3 color = mix(uWalk, uShoulder, highway);
+  if (uLayer == 1 || (uLayer == 3 && inCurb)) color = uCurb;
+  if (uLayer >= 2 && inDeck) {
+    color = mix(uAsphalt, uHighway, highway);
+    if (deck < 0.0 && !padDeck && best >= 0) {
+      float pathLength = uPath[best].y;
+      float crossAt = uPath[best].z;
+      float halfDeck = uWidths[best].y;
+      float period = pathLength / max(1.0, floor(pathLength / 0.25 + 0.5));
+      float dash = abs(fract(bestU / period + 0.5) - 0.5) * period;
+      bool junction = uRayCount > 1;
+      if (highway > 0.5) {
+        if (!junction || bestU > 0.5) {
+          if (abs(bestV) < 0.026) color = uMedian;
+          else if (abs(abs(bestV) - 0.205) < 0.008 && dash < period * 0.25) color = uLine;
+          else if (abs(abs(bestV) - 0.37) < 0.006) color = uLine;
+        }
+      } else {
+        bool marked = !junction || (crossAt > 0.0 && bestU > crossAt + 0.15);
+        if (marked && abs(bestV) < 0.007 && dash < period * 0.27) color = uLine;
+        if (junction && crossAt > 0.0 && crossAt < 0.39 && bestU > crossAt && bestU < crossAt + 0.09 && abs(bestV) < halfDeck - 0.03) {
+          if (fract((bestV + 10.0) / 0.074) < 0.5) color = uLine;
+        }
       }
     }
   }
@@ -107,43 +129,83 @@ const BODY = `
   diffuseColor.a = 1.0;
 `;
 
-function uniformsFor(paths, P) {
+const unit = (a, b) => {
+  const dx = b[0] - a[0];
+  const dz = b[1] - a[1];
+  const length = Math.hypot(dx, dz);
+  return [dx / length, dz / length];
+};
+
+const blank = () => new THREE.Vector4(0, 0, 0, 0);
+
+/** 路口各方向的延长线。对向且同宽的两个方向合成一条穿过中心的直线。 */
+function junctionRays(paths) {
+  if (paths.length < 2) return [];
+  const rays = paths.map((entry) => {
+    const spec = ROAD_SPEC[entry.kind];
+    const [dx, dz] = unit([0, 0], entry.points[entry.points.length - 1]);
+    return { dx, dz, walk: spec.walk / 2, deck: spec.deck / 2, back: 0, merged: false };
+  });
+  rays.forEach((ray, i) => {
+    if (ray.merged) return;
+    for (let j = i + 1; j < rays.length; j += 1) {
+      const other = rays[j];
+      const opposite = Math.hypot(ray.dx + other.dx, ray.dz + other.dz) < 1e-6;
+      if (!other.merged && opposite && other.walk === ray.walk) {
+        ray.back = RAY_LENGTH;
+        other.merged = true;
+      }
+    }
+  });
+  return rays.filter((ray) => !ray.merged);
+}
+
+function uniformsFor(paths, P, layer) {
   const segment = [];
   const widths = [];
   const path = [];
   const flags = [];
+  const clipA = [];
+  const clipB = [];
   paths.forEach((entry, index) => {
     const spec = ROAD_SPEC[entry.kind];
+    const { points } = entry;
     let total = 0;
-    for (let i = 0; i < entry.points.length - 1; i += 1) {
-      const [ax, az] = entry.points[i];
-      const [bx, bz] = entry.points[i + 1];
-      total += Math.hypot(bx - ax, bz - az);
+    for (let i = 0; i < points.length - 1; i += 1) {
+      total += Math.hypot(points[i + 1][0] - points[i][0], points[i + 1][1] - points[i][1]);
     }
+    const startDir = unit(points[1], points[0]);
+    const endDir = unit(points[points.length - 2], points[points.length - 1]);
+    const first = points[0];
+    const last = points[points.length - 1];
     let start = 0;
-    for (let i = 0; i < entry.points.length - 1; i += 1) {
-      const [ax, az] = entry.points[i];
-      const [bx, bz] = entry.points[i + 1];
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const [ax, az] = points[i];
+      const [bx, bz] = points[i + 1];
       segment.push(new THREE.Vector4(ax, az, bx, bz));
       widths.push(new THREE.Vector4(spec.walk / 2, spec.deck / 2, entry.kind === 'highway' ? 1 : 0, 0));
       path.push(new THREE.Vector4(start, total, entry.cross, 0));
-      flags.push(
-        new THREE.Vector4(
-          index,
-          entry.clipStart && i === 0 ? 1 : 0,
-          entry.clipEnd && i === entry.points.length - 2 ? 1 : 0,
-          0,
-        ),
-      );
+      flags.push(new THREE.Vector4(index, entry.clipStart && i === 0 ? 1 : 0, entry.clipEnd && i === points.length - 2 ? 1 : 0, 0));
+      clipA.push(entry.clipStart ? new THREE.Vector4(first[0], first[1], startDir[0], startDir[1]) : blank());
+      clipB.push(entry.clipEnd ? new THREE.Vector4(last[0], last[1], endDir[0], endDir[1]) : blank());
       start += Math.hypot(bx - ax, bz - az);
     }
   });
   const count = segment.length;
   while (segment.length < MAX_SEGMENTS) {
-    segment.push(new THREE.Vector4());
-    widths.push(new THREE.Vector4());
-    path.push(new THREE.Vector4());
-    flags.push(new THREE.Vector4());
+    segment.push(blank());
+    widths.push(blank());
+    path.push(blank());
+    flags.push(blank());
+    clipA.push(blank());
+    clipB.push(blank());
+  }
+  const rays = junctionRays(paths);
+  const rayData = rays.map((ray) => new THREE.Vector4(ray.dx, ray.dz, ray.walk, ray.deck));
+  const rayBack = rays.map((ray) => ray.back);
+  while (rayData.length < MAX_RAYS) {
+    rayData.push(blank());
+    rayBack.push(0);
   }
   const vec3 = (hex) => new THREE.Vector3(...linear(hex));
   return {
@@ -151,7 +213,13 @@ function uniformsFor(paths, P) {
     uWidths: { value: widths },
     uPath: { value: path },
     uFlags: { value: flags },
+    uClipA: { value: clipA },
+    uClipB: { value: clipB },
+    uRay: { value: rayData },
+    uRayBack: { value: rayBack },
     uCount: { value: count },
+    uRayCount: { value: rays.length },
+    uLayer: { value: layer },
     uAsphalt: { value: vec3(P.road.asphalt) },
     uHighway: { value: vec3(P.road.highway) },
     uWalk: { value: vec3(P.road.walk) },
@@ -162,9 +230,9 @@ function uniformsFor(paths, P) {
   };
 }
 
-export function roadMaterial(paths, P) {
+function roadMaterial(paths, P, layer) {
   const material = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
-  const uniforms = uniformsFor(paths, P);
+  const uniforms = uniformsFor(paths, P, layer);
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
@@ -174,14 +242,13 @@ export function roadMaterial(paths, P) {
       .replace('#include <common>', `#include <common>\n${HEADER}`)
       .replace('#include <color_fragment>', BODY);
   };
-  material.customProgramCacheKey = () => 'road-distance-field';
+  material.customProgramCacheKey = () => 'road-distance-field-layered';
   return material;
 }
 
 /** 路面网格。平地是一块平板；坡上按 deckHeight 起伏，路面横向保持水平。 */
-export function roadMesh(paths, P, deckHeight) {
-  const span = 3;
-  const steps = deckHeight ? 96 : 1;
+export function roadMesh(paths, P, deckHeight, layer, span = 3.6) {
+  const steps = deckHeight ? 120 : 1;
   const geometry = new THREE.PlaneGeometry(span, span, steps, steps);
   geometry.rotateX(-Math.PI / 2);
   if (deckHeight) {
@@ -191,7 +258,7 @@ export function roadMesh(paths, P, deckHeight) {
     }
     geometry.computeVertexNormals();
   }
-  const mesh = new THREE.Mesh(geometry, roadMaterial(paths, P));
+  const mesh = new THREE.Mesh(geometry, roadMaterial(paths, P, layer));
   mesh.frustumCulled = false;
   return mesh;
 }

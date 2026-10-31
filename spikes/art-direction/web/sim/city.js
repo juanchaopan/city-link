@@ -1,6 +1,7 @@
 import { DIRECTIONS, spokesOf } from './network.js';
 import { metroPlan } from './metro.js';
 import { generateParcels, ZONE } from './parcels.js';
+import { roadSprites } from './roadsprites.js';
 import { coverageOf } from './services.js';
 import { computeTraffic } from './traffic.js';
 
@@ -26,17 +27,17 @@ function valueNoise(seed) {
   };
 }
 
-/** 台地：边是直线的矩形土丘，一层坡一层平，直坡上才能检验 45° 斜路的切坡路基。 */
+/** 台地：边是直线的矩形土丘。四周是连续的直坡，一格升一层，路穿过时切坡路基才连成一整段。 */
 function mound(x, y, [x0, y0, x1, y1], peak) {
   const margin = Math.min(x - x0, x1 - x, y - y0, y1 - y);
-  return Math.max(0, Math.min(peak, Math.floor(margin / 2) + 1));
+  return Math.max(0, Math.min(peak, margin + 1));
 }
 
 function terrain(N, s, riverAt, protect) {
   const corner = (x, y) => y * (N + 1) + x;
   const h = new Int8Array((N + 1) * (N + 1));
   const mounds = [
-    { rect: [26 * s, 5 * s, 36 * s, 20 * s], peak: 2 },
+    { rect: [26 * s, 6 * s, 36 * s, 20 * s], peak: Math.min(3, 1 + s) },
     { rect: [-3 * s, -3 * s, 5 * s, 4 * s], peak: 3 },
     { rect: [17 * s, -3 * s, 33 * s, 2 * s], peak: 2 },
   ];
@@ -97,8 +98,8 @@ function terrain(N, s, riverAt, protect) {
   return { h, water, corner };
 }
 
-/** 街区宽度 3、4、5 交替。行线取列线的镜像，斜大道就正好穿过每个街区的两个角，切出整块的大三角。 */
-export function buildRoads(N, s, center, riverAt) {
+/** 按折线铺路。沿途每格记下通向相邻格的方向。 */
+export function traceRoads(N) {
   const roads = new Map();
   const link = (kind, x, y, dir) => {
     const id = y * N + x;
@@ -121,6 +122,12 @@ export function buildRoads(N, s, center, riverAt) {
       }
     }
   };
+  return { roads, walk };
+}
+
+/** 街区宽度 3、4、5 交替。行线取列线的镜像，斜大道就正好穿过每个街区的两个角，切出整块的大三角。 */
+export function buildRoads(N, s, center, riverAt) {
+  const { roads, walk } = traceRoads(N);
 
   const steps = N > 32 ? [5, 4, 6, 5, 4, 6, 5] : [5, 4, 6, 5];
   const width = steps.reduce((a, b) => a + b, 0);
@@ -145,7 +152,7 @@ export function buildRoads(N, s, center, riverAt) {
   const ringColumn = left - 2;
   walk('highway', [[N - 1, ringRow], [ringColumn + 2, ringRow], [ringColumn, ringRow + 2], [ringColumn, N - 1]]);
   const bridgeColumn = columns.reduce((best, x) => (Math.abs(x - center) < Math.abs(best - center) ? x : best), columns[0]);
-  walk('road', [[bridgeColumn, south], [bridgeColumn, N - 3]]);
+  walk('road', [[bridgeColumn, south], [bridgeColumn, N - 1]]);
   walk('road', [[left, usableRows[1]], [ringColumn, usableRows[1]]]);
 
   // 切坡路基：路沿 (+1, -1) 方向斜穿台地朝南的直坡。这个方向在屏幕上接近水平，
@@ -156,7 +163,12 @@ export function buildRoads(N, s, center, riverAt) {
   const directRow = usableRows[Math.max(0, usableRows.length - 3)];
   walk('road', [[right, directRow], [climbTo[0], directRow]]);
   walk('road', [climbTo, [climbTo[0], directRow]]);
-  return { roads, columns, rows: usableRows, top, left, right, south, ringRow, ringColumn, climbFrom, climbTo };
+  const gates = [
+    { x: N - 1, y: ringRow, kind: 'highway', inward: 4, axis: 'x' },
+    { x: ringColumn, y: N - 1, kind: 'highway', inward: 6, axis: 'z' },
+    { x: bridgeColumn, y: N - 1, kind: 'road', inward: 6, axis: 'z' },
+  ];
+  return { roads, columns, rows: usableRows, top, left, right, south, ringRow, ringColumn, climbFrom, climbTo, gates };
 }
 
 /** 公共用地的街区。spread 时分散在城市各处，concentrated 时全挤在一个角上，用来对比盲区。 */
@@ -249,7 +261,13 @@ export function footprintKey(parcel) {
   return `R${String(parcel.spanU)}x${String(parcel.spanV)}`;
 }
 
-export function generateCity(N, seed = 11, publicLayout = 'spread') {
+/** 节日只装饰关键位置：公共服务、广场和市中心的高层商业，其余地块保持原样。 */
+function isFestive(parcel) {
+  if (parcel.shape === 'service' || parcel.use === 'plaza') return true;
+  return parcel.zone === ZONE.commercial && parcel.level === 3 && parcel.shape !== 'triangle';
+}
+
+export function generateCity(N, seed = 11, publicLayout = 'spread', linked = false) {
   const s = N / 32;
   const center = Math.round(N / 2);
   const riverAt = (x) => Math.round(center + 9 * s + 2 * s * Math.sin((x / N) * Math.PI * 2 + 0.7));
@@ -303,37 +321,29 @@ export function generateCity(N, seed = 11, publicLayout = 'spread') {
   const cellSquare = (x, y) => [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]];
   const addObject = (key, px, py, level, footprint, extra = {}) => objects.push({ key, px, py, level, footprint, ...extra });
 
+  const sprites = roadSprites({ N, roads, cornersOf, isFlat, levelOf, isWater, gates: plan.gates, linked });
+  for (const { key, x, y } of sprites.bridges) addObject(key, x + 0.5, y + 0.5, 0, cellSquare(x, y));
+  for (const { key, x, y, level } of sprites.planned) addObject(key, x + 0.5, y + 0.5, level, cellSquare(x, y));
+
   for (const id of [...roads.keys()].sort((a, b) => a - b)) {
     const { road, highway } = roads.get(id);
     const x = id % N;
     const y = Math.floor(id / N);
-    const mask = road | highway;
-    const spokes = spokesOf(mask);
-    const tag = `${road.toString(16)}-${highway.toString(16)}`;
-    if (isWater(x, y)) {
-      if (spokes.length === 2) addObject(`br-${tag}`, x + 0.5, y + 0.5, 0, cellSquare(x, y));
-      continue;
-    }
-    const level = levelOf(x, y);
-    if (isFlat(x, y)) {
-      overlays.push({ key: `r-${tag}`, x, y, level });
-      if (spokes.length === 2 && (spokes[0] + 4) % 8 === spokes[1] && hash2(seed, x, y) < 0.26) {
-        const pick = hash2(seed + 1, x, y);
-        const dir = pick < 0.5 ? spokes[0] : spokes[1];
-        const axis = Math.min(dir, (dir + 4) % 8);
-        const [dx, dy] = DIRECTIONS[dir];
-        const length = Math.hypot(dx, dy);
-        const ox = (-dy / length) * 0.12;
-        const oy = (dx / length) * 0.12;
-        const rotation = (8 - axis) % 8;
-        const kind = hash2(seed + 2, x, y) < 0.12 ? `bus-${String(rotation)}` : `car-${String(Math.floor(hash2(seed + 3, x, y) * 4))}-${String(rotation)}`;
-        const px = x + 0.5 + ox;
-        const py = y + 0.5 + oy;
-        addObject(kind, px, py, level, [[px - 0.1, py - 0.1], [px + 0.1, py - 0.1], [px + 0.1, py + 0.1], [px - 0.1, py + 0.1]]);
-      }
-    } else {
-      const shape = cornersOf(x, y).map((v) => v - level).join('');
-      overlays.push({ key: `rs-${tag}-${shape}`, x, y, level });
+    const spokes = spokesOf(road | highway);
+    if (isWater(x, y) || !isFlat(x, y)) continue;
+    if (spokes.length === 2 && (spokes[0] + 4) % 8 === spokes[1] && hash2(seed, x, y) < 0.26) {
+      const pick = hash2(seed + 1, x, y);
+      const dir = pick < 0.5 ? spokes[0] : spokes[1];
+      const axis = Math.min(dir, (dir + 4) % 8);
+      const [dx, dy] = DIRECTIONS[dir];
+      const length = Math.hypot(dx, dy);
+      const ox = (-dy / length) * 0.12;
+      const oy = (dx / length) * 0.12;
+      const rotation = (8 - axis) % 8;
+      const kind = hash2(seed + 2, x, y) < 0.12 ? `bus-${String(rotation)}` : `car-${String(Math.floor(hash2(seed + 3, x, y) * 4))}-${String(rotation)}`;
+      const px = x + 0.5 + ox;
+      const py = y + 0.5 + oy;
+      addObject(kind, px, py, levelOf(x, y), [[px - 0.1, py - 0.1], [px + 0.1, py - 0.1], [px + 0.1, py + 0.1], [px - 0.1, py + 0.1]]);
     }
   }
 
@@ -349,7 +359,7 @@ export function generateCity(N, seed = 11, publicLayout = 'spread') {
         overlays.push({ key: `f-${String(crop)}-${axis}`, x, y, level: levelOf(x, y) });
       }
     } else {
-      addObject(specKey(parcel), parcel.px, parcel.py, level, parcel.polygon, { footprintKey: footprintKey(parcel), parcel: parcel.id });
+      addObject(specKey(parcel), parcel.px, parcel.py, level, parcel.polygon, { footprintKey: footprintKey(parcel), parcel: parcel.id, festive: isFestive(parcel) });
     }
   }
 
@@ -379,9 +389,34 @@ export function generateCity(N, seed = 11, publicLayout = 'spread') {
   const dockX = Math.round(center + 6 * s) + 1;
   addObject('dock-0', dockX + 0.5, riverAt(dockX) - 0.5, 0, cellSquare(dockX, riverAt(dockX) - 1));
 
-  return { N, ground, overlays, objects, parcels: result, traffic, coverage, metro: metroPlan(plan), roads, water, slopes, zones, density, plan, levelOf };
+  return {
+    N,
+    ground,
+    overlays,
+    objects,
+    walks: sprites.walks,
+    curbs: sprites.curbs,
+    decks: sprites.decks,
+    neighbors: sprites.neighbors,
+    roadCells: sprites.cells,
+    grades: sprites.grades,
+    parcels: result,
+    traffic,
+    coverage,
+    metro: metroPlan(plan),
+    roads,
+    water,
+    slopes,
+    zones,
+    density,
+    plan,
+    levelOf,
+    cornersOf,
+    isFlat,
+    isWater,
+  };
 }
 
 export function keysOf(city) {
-  return [...city.ground, ...city.overlays, ...city.objects].map((entry) => entry.key);
+  return [...city.ground, ...city.overlays, ...city.walks, ...city.curbs, ...city.decks, ...city.neighbors, ...city.objects].map((entry) => entry.key);
 }

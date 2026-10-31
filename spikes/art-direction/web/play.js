@@ -1,17 +1,19 @@
-import { Application, Container, Graphics, Text } from 'pixi.js';
+import { Application, Color, Container, Graphics, Text } from 'pixi.js';
 import { generateCity } from './sim/city.js';
 import { resolveStyle } from './sim/packs.js';
 import { SERVICES } from './sim/services.js';
-import { applyTime, buildWorld, loadAtlas, screenOf, TILE_HALF_H, TILE_HALF_W } from './world.js';
+import { applyTime, buildWorld, loadAtlas, multiplyColor, screenOf, TILE_HALF_H, TILE_HALF_W } from './world.js';
 import { palettes } from './kit/palettes.js';
 
-// 可以操作的样张：拖动、双指或滚轮缩放、时间滑块，以及交通、公共服务和地铁三个视图。
+// 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图，以及和邻城打通的开关。
 
 const params = new URLSearchParams(location.search);
 const N = Number(params.get('n') ?? 64);
 const mode = params.get('mode') ?? 'layer';
 const seam = params.get('seam') === '1';
+const seamBackground = params.get('backdrop');
 const festivalOn = params.get('festival') === '1';
+const linked = params.get('linked') === '1';
 const view = params.get('view') ?? 'city';
 const publicLayout = params.get('public') ?? 'spread';
 const hudOn = params.get('ui') === '1';
@@ -21,6 +23,7 @@ const controlsOn = params.get('controls') !== '0';
 const installedStyles = { standard: { id: 'standard', atlas: 'sunny' } };
 const style = resolveStyle(installedStyles, params.get('style') ?? 'standard');
 const palette = palettes[style.atlas];
+const backdrop = new Color(palette.backdrop).toNumber();
 
 const app = new Application();
 await app.init({
@@ -30,22 +33,23 @@ await app.init({
   resolution: window.devicePixelRatio,
   autoDensity: true,
   antialias: false,
-  backgroundColor: seam ? '#ff00ff' : palette.backdrop,
+  backgroundColor: seam ? (seamBackground ?? '#ff00ff') : palette.backdrop,
   preference: 'webgl',
   hello: false,
 });
 
-const city = generateCity(N, 11, publicLayout);
+const city = generateCity(N, 11, publicLayout, linked);
 const atlas = await loadAtlas(style.atlas, festivalOn ? 'national-day' : null);
 const layers = seam ? ['ground'] : ['ground', 'overlays', 'objects'];
-const scene = buildWorld(atlas, city, { layers, festival: festivalOn, dynamicTint: mode === 'layer' });
+const bare = params.get('bare') === '1';
+const scene = buildWorld(atlas, city, { layers, festival: festivalOn, dynamicTint: mode === 'layer', palette, bare });
 
 const camera = new Container();
 camera.addChild(scene.world);
 let second = null;
 if (mode === 'atlas2') {
   const duskAtlas = await loadAtlas('dusk', null);
-  second = buildWorld(duskAtlas, city, { layers, festival: false, dynamicTint: false });
+  second = buildWorld(duskAtlas, city, { layers, festival: false, dynamicTint: false, palette: palettes.dusk });
   second.world.alpha = 0;
   camera.addChild(second.world);
 }
@@ -69,7 +73,8 @@ function table() {
   return g;
 }
 
-if (!seam) camera.addChildAt(table(), 0);
+const tableLayer = seam ? null : table();
+if (tableLayer) camera.addChildAt(tableLayer, 0);
 
 const ground = (px, py) => {
   const level = city.levelOf(Math.min(N - 1, Math.max(0, Math.floor(px))), Math.min(N - 1, Math.max(0, Math.floor(py))));
@@ -203,6 +208,10 @@ let hour = Number(params.get('t') ?? 12);
 function setTime(next) {
   hour = next;
   const state = applyTime(scene, hour);
+  if (!seam) {
+    app.renderer.background.color = multiplyColor(backdrop, state.tint);
+    tableLayer.tint = state.tint;
+  }
   if (second) {
     second.world.alpha = Math.min(1, Math.max(0, state.glow * 1.25));
     const night = hour < 6 || hour > 20.5;
@@ -287,13 +296,17 @@ if (panel && controlsOn) {
     url.searchParams.set('view', select.value);
     location.href = url.toString();
   });
-  const festival = document.getElementById('festival');
-  festival.checked = festivalOn;
-  festival.addEventListener('change', () => {
-    const url = new URL(location.href);
-    url.searchParams.set('festival', festival.checked ? '1' : '0');
-    location.href = url.toString();
-  });
+  const toggle = (id, name, value) => {
+    const box = document.getElementById(id);
+    box.checked = value;
+    box.addEventListener('change', () => {
+      const url = new URL(location.href);
+      url.searchParams.set(name, box.checked ? '1' : '0');
+      location.href = url.toString();
+    });
+  };
+  toggle('festival', 'festival', festivalOn);
+  toggle('linked', 'linked', linked);
 }
 
 window.sceneStats = {

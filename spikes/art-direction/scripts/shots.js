@@ -1,5 +1,5 @@
 // 生成样张截图、拼缝检查和帧率测量。
-// 用法：node scripts/shots.js [截图名前缀...]；SEAM=1 时只跑拼缝检查，FPS=1 时只测帧率，SOFT=1 时用软件渲染。
+// 用法：node scripts/shots.js [截图名前缀...]；SEAM=1 时只跑拼缝和露底检查，FPS=1 时只测帧率，SOFT=1 时用软件渲染。
 // 截图脚本用自己的端口，不影响 4180 上正在运行的页面。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
@@ -9,26 +9,26 @@ const PORT = process.env.SOFT ? 4184 : 4183;
 const filter = process.argv.slice(2);
 const base = 'n=64&controls=0';
 const views = [
-  { name: 'r5-overview', query: `${base}&zoom=0.078` },
-  { name: 'r5-center', query: `${base}&zoom=0.3&x=31&y=30` },
-  { name: 'r5-detail', query: `${base}&zoom=0.55&x=30&y=31` },
-  { name: 'r5-triangle-houses', query: `${base}&zoom=0.55&x=45&y=21` },
-  { name: 'r5-triangle-commerce', query: `${base}&zoom=0.55&x=28&y=32` },
-  { name: 'r5-triangle-mixed', query: `${base}&zoom=0.55&x=37&y=23` },
-  { name: 'r5-farm', query: `${base}&zoom=0.3&x=26&y=56` },
-  { name: 'r5-cut', query: `${base}&zoom=0.62&x=57&y=38` },
-  { name: 'r5-junction', query: `${base}&zoom=0.62&x=24&y=38` },
-  { name: 'r5-ui', query: `${base}&zoom=0.42&x=31&y=33&ui=1` },
-  { name: 'r5-traffic', query: `${base}&view=traffic&zoom=0.095&x=31&y=30` },
-  { name: 'r5-coverage', query: `${base}&view=coverage&zoom=0.095&x=31&y=30` },
-  { name: 'r5-coverage-concentrated', query: `${base}&view=coverage&zoom=0.095&x=31&y=30&public=concentrated` },
-  { name: 'r5-metro', query: `${base}&view=metro&zoom=0.095&x=33&y=29` },
-  { name: 'r5-festival', query: `${base}&festival=1&zoom=0.42&x=30&y=31` },
-  { name: 'r5-time-dawn', query: `${base}&zoom=0.3&x=31&y=30&t=6.5` },
-  { name: 'r5-time-noon', query: `${base}&zoom=0.3&x=31&y=30&t=12` },
-  { name: 'r5-time-dusk', query: `${base}&zoom=0.3&x=31&y=30&t=18.6` },
-  { name: 'r5-time-night', query: `${base}&zoom=0.3&x=31&y=30&t=23` },
-  { name: 'r5-time-night-two-atlases', query: `${base}&zoom=0.3&x=31&y=30&t=23&mode=atlas2` },
+  { name: 'r6-overview', query: `${base}&zoom=0.078` },
+  { name: 'r6-overview-night', query: `${base}&zoom=0.078&t=22` },
+  { name: 'r6-center', query: `${base}&zoom=0.3&x=31&y=30` },
+  { name: 'r6-detail', query: `${base}&zoom=0.55&x=30&y=31` },
+  { name: 'r6-avenue', query: `${base}&zoom=0.42&x=28&y=32` },
+  { name: 'r6-farm', query: `${base}&zoom=0.3&x=26&y=56` },
+  { name: 'r6-cut', query: `${base}&zoom=0.62&x=57&y=38` },
+  { name: 'r6-junction', query: `${base}&zoom=0.62&x=24&y=38` },
+  { name: 'r6-gate-planned', query: `${base}&zoom=0.5&x=62&y=10` },
+  { name: 'r6-gate-linked', query: `${base}&zoom=0.5&x=63&y=11&linked=1` },
+  { name: 'r6-gate-road-linked', query: `${base}&zoom=0.5&x=34&y=63&linked=1` },
+  { name: 'r6-ui', query: `${base}&zoom=0.42&x=31&y=33&ui=1` },
+  { name: 'r6-traffic', query: `${base}&view=traffic&zoom=0.095&x=31&y=30` },
+  { name: 'r6-coverage', query: `${base}&view=coverage&zoom=0.095&x=31&y=30` },
+  { name: 'r6-metro', query: `${base}&view=metro&zoom=0.16&x=31&y=30` },
+  { name: 'r6-festival', query: `${base}&festival=1&zoom=0.3&x=30&y=31` },
+  { name: 'r6-time-dawn', query: `${base}&zoom=0.3&x=31&y=30&t=6.5` },
+  { name: 'r6-time-noon', query: `${base}&zoom=0.3&x=31&y=30&t=12` },
+  { name: 'r6-time-dusk', query: `${base}&zoom=0.3&x=31&y=30&t=18.6` },
+  { name: 'r6-time-night', query: `${base}&zoom=0.3&x=31&y=30&t=23` },
 ].filter((view) => filter.length === 0 || filter.some((prefix) => view.name.startsWith(prefix)));
 
 mkdirSync('out', { recursive: true });
@@ -56,48 +56,95 @@ async function open(query) {
   await page.waitForTimeout(700);
 }
 
-/** 拼缝检查：背景设成品红，只画地表，统计城市内部露出品红的像素。 */
+/** 把截图读回像素，在页面里逐点统计。 */
+async function pixelStats(viewZoom, focus, measure) {
+  const shot = await page.screenshot({ type: 'png' });
+  return page.evaluate(
+    async ([base64, zoom, [fx, fy], body]) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${base64}`;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context2d = canvas.getContext('2d');
+      context2d.drawImage(image, 0, 0);
+      const { data } = context2d.getImageData(0, 0, image.width, image.height);
+      const dpr = 3;
+      const originX = (fx - fy) * 64;
+      const originY = (fx + fy) * 32;
+      const toGround = (px, py) => {
+        const sx = (px / dpr - 195) / zoom + originX;
+        const sy = (py / dpr - 422) / zoom + originY;
+        return [(sx / 64 + sy / 32 + 1) / 2, (sy / 32 - sx / 64 + 1) / 2];
+      };
+      const run = new Function('data', 'width', 'height', 'toGround', body);
+      return run(data, image.width, image.height, toGround);
+    },
+    [shot.toString('base64'), viewZoom, focus, measure],
+  );
+}
+
+const COUNT_MAGENTA = `
+  let solid = 0, tinted = 0, inside = 0;
+  for (let py = 0; py < height; py += 1) {
+    for (let px = 0; px < width; px += 1) {
+      const [gx, gy] = toGround(px, py);
+      if (gx < 1 || gy < 1 || gx > 31 || gy > 31) continue;
+      inside += 1;
+      const i = (py * width + px) * 4;
+      const red = data[i] - data[i + 1];
+      const blue = data[i + 2] - data[i + 1];
+      if (red > 90 && blue > 90) solid += 1;
+      else if (red > 40 && blue > 40) tinted += 1;
+    }
+  }
+  return { solid, tinted, inside };
+`;
+
+// 网格线：格子边上的像素比格子中间亮。只看纯草地的范围，沿格线取样和格子中心比较。
+const GRID_CONTRAST = `
+  let edge = 0, edgeCount = 0, middle = 0, middleCount = 0;
+  for (let py = 0; py < height; py += 1) {
+    for (let px = 0; px < width; px += 1) {
+      const [gx, gy] = toGround(px, py);
+      if (gx < 2 || gy < 2 || gx > 62 || gy > 9) continue;
+      const fx = gx - Math.floor(gx);
+      const fy = gy - Math.floor(gy);
+      const near = Math.min(fx, 1 - fx, fy, 1 - fy);
+      const i = (py * width + px) * 4;
+      const lum = data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11;
+      if (near < 0.06) { edge += lum; edgeCount += 1; }
+      else if (near > 0.3) { middle += lum; middleCount += 1; }
+    }
+  }
+  return { edge: edge / edgeCount, middle: middle / middleCount, contrast: edge / edgeCount - middle / middleCount };
+`;
+
+/** 露底检查：背景设成品红，只画地表，统计城市内部露出品红的像素。白天和夜里都跑。 */
 async function seamCheck() {
   const rows = [];
-  for (const zoom of [0.25, 0.3333, 0.5, 0.75, 1, 2]) {
-    await open(`n=32&controls=0&zoom=${String(zoom)}&x=15&y=14&seam=1`);
-    const shot = await page.screenshot({ type: 'png' });
-    const result = await page.evaluate(
-      async ([base64, viewZoom]) => {
-        const image = new Image();
-        image.src = `data:image/png;base64,${base64}`;
-        await image.decode();
-        const canvas = document.createElement('canvas');
-        canvas.width = image.width;
-        canvas.height = image.height;
-        const context2d = canvas.getContext('2d');
-        context2d.drawImage(image, 0, 0);
-        const { data } = context2d.getImageData(0, 0, image.width, image.height);
-        const dpr = 3;
-        let solid = 0;
-        let tinted = 0;
-        let inside = 0;
-        for (let py = 0; py < image.height; py += 1) {
-          for (let px = 0; px < image.width; px += 1) {
-            const sx = (px / dpr - 195) / viewZoom + 64;
-            const sy = (py / dpr - 422) / viewZoom + 29 * 32;
-            const gx = (sx / 64 + sy / 32) / 2;
-            const gy = (sy / 32 - sx / 64) / 2;
-            if (gx < 1 || gy < 1 || gx > 31 || gy > 31) continue;
-            inside += 1;
-            const i = (py * image.width + px) * 4;
-            const red = data[i] - data[i + 1];
-            const blue = data[i + 2] - data[i + 1];
-            if (red > 90 && blue > 90) solid += 1;
-            else if (red > 40 && blue > 40) tinted += 1;
-          }
-        }
-        return { solid, tinted, inside };
-      },
-      [shot.toString('base64'), zoom],
-    );
-    rows.push({ zoom, ...result });
-    console.log('zoom', zoom, JSON.stringify(result));
+  for (const hour of [12, 22]) {
+    for (const zoom of [0.078, 0.25, 0.3333, 0.5, 0.75, 1, 2]) {
+      await open(`n=32&controls=0&zoom=${String(zoom)}&x=15&y=14&seam=1&t=${String(hour)}`);
+      const result = await pixelStats(zoom, [15.5, 14.5], COUNT_MAGENTA);
+      rows.push({ hour, zoom, ...result });
+      console.log(hour, 'zoom', zoom, JSON.stringify(result));
+    }
+  }
+  return rows;
+}
+
+/** 网格线检查：全图缩小到游戏最小倍率，夜里比较格线和格子中间的亮度差。bare 是不垫底的版本。 */
+async function gridCheck() {
+  const rows = [];
+  for (const bare of [true, false]) {
+    for (const hour of [12, 22]) {
+      await open(`n=64&controls=0&zoom=0.078&t=${String(hour)}&bare=${bare ? '1' : '0'}`);
+      const result = await pixelStats(0.078, [32.5, 32.5], GRID_CONTRAST);
+      rows.push({ bare, hour, ...result });
+      console.log(bare ? '不垫底' : '垫底', hour, JSON.stringify(result));
+    }
   }
   return rows;
 }
@@ -105,6 +152,7 @@ async function seamCheck() {
 const report = {};
 if (process.env.SEAM) {
   report.seams = await seamCheck();
+  report.grid = await gridCheck();
   writeFileSync('out/seam-report.json', JSON.stringify(report, null, 2));
 } else if (process.env.FPS) {
   const cases = [

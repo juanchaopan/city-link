@@ -6,14 +6,19 @@ import {
   buildField,
   buildGround,
   buildMeadow,
+  buildNeighbor,
+  buildPlannedEnd,
   buildRoad,
   buildSkirt,
   buildSlopeRoad,
   buildWater,
+  fadeNeighbor,
+  LAYER,
   waterLevel,
 } from './tiles.js';
 
 // 精灵的名字决定它的画法，生成器只需要知道名字。类别用来分别统计数量和耗时。
+// 路面名字：rw、rc、rd 是人行道、路缘、车道三层，r 是三层合一，只用于界面缩略图；坡上的路加前缀 s。
 
 const flags = (text) => [...text].map((c) => c === '1');
 
@@ -39,6 +44,10 @@ function propertyBox(key) {
   return { group: parts[3] === 'a' ? '直角物业' : '斜向物业', span: Math.max(w, h) * unit + 0.6, tall: 420 };
 }
 
+const ROAD_LAYERS = { r: LAYER.both, rw: LAYER.walk, rc: LAYER.curb, rd: LAYER.deck, srw: LAYER.walk, src: LAYER.curb, srd: LAYER.deck };
+
+const gradeOf = (text) => text.split('_').map((value) => Number(value.replace('n', '-')) / 1000);
+
 export function specFor(key, P) {
   const parts = key.split('-');
   const kind = parts[0];
@@ -62,18 +71,26 @@ export function specFor(key, P) {
   if (kind === 'f') {
     return { group: '农田', w: 160, h: 120, anchorY: 60, lit: false, build: () => buildField(Number(parts[1]), parts[2], P, seed) };
   }
-  if (kind === 'r') {
-    const { build, extra } = buildRoad(parseInt(parts[1], 16), parseInt(parts[2], 16), P);
-    return { group: '线路', w: 300, h: 200, anchorY: 100, lit: false, build, extra };
+  if (kind === 'r' || kind === 'rw' || kind === 'rc' || kind === 'rd') {
+    const { build, extra } = buildRoad(parseInt(parts[1], 16), parseInt(parts[2], 16), P, ROAD_LAYERS[kind]);
+    return { group: '线路', w: 400, h: 260, anchorY: 130, lit: false, build, extra };
   }
-  if (kind === 'rs') {
+  if (kind === 'srw' || kind === 'src' || kind === 'srd') {
     const corners = [...parts[3]].map(Number);
-    const { build, extra } = buildSlopeRoad(parseInt(parts[1], 16), parseInt(parts[2], 16), corners, P);
-    return { group: '坡上线路', w: 360, h: 320, anchorY: 190, lit: false, build, extra };
+    const grade = parts[4] ? gradeOf(parts[4]) : null;
+    const { build, extra } = buildSlopeRoad(parseInt(parts[1], 16), parseInt(parts[2], 16), corners, grade, P, ROAD_LAYERS[kind]);
+    return { group: '坡上线路', w: 400, h: 340, anchorY: 200, lit: false, build, extra };
   }
   if (kind === 'br') {
     const { build, extra } = buildBridge(parseInt(parts[1], 16), parseInt(parts[2], 16), P);
     return { group: '桥', w: 320, h: 240, anchorY: 110, shadow: true, groundY: waterLevel, reach: 2, build, extra };
+  }
+  if (kind === 'gate') {
+    return { group: '道路收尾', w: 240, h: 200, anchorY: 110, shadow: true, reach: 1.2, build: () => buildPlannedEnd(parts[1], Number(parts[2]), P) };
+  }
+  if (kind === 'nb') {
+    const { build, extra } = buildNeighbor(parts[1], parts[2], P);
+    return { group: '邻城', w: 1100, h: 800, anchorY: 340, lit: false, build, extra, fade: (sprite) => fadeNeighbor(sprite, parts[1]) };
   }
   if (kind === 'car' || kind === 'bus') {
     return { group: '车船', w: 120, h: 90, anchorY: 50, shadow: true, reach: 1.2, build: () => buildObject(key, P) };
@@ -99,6 +116,13 @@ export function specFor(key, P) {
   }
   const { group, span, tall } = propertyBox(key);
   return { group, ...box(span, tall), shadow: true, reach: 2.2 + span * 0.8, build: () => buildObject(key, P) };
+}
+
+/** 烘焙一张精灵，包含只有裁好之后才能做的后处理。 */
+export function bakeKey(baker, key, P) {
+  const spec = specFor(key, P);
+  const result = baker.bake(spec);
+  return { spec, result: spec.fade ? spec.fade(result) : result };
 }
 
 /** 一批不进示例城市、但要进图集的精灵，主界面的缩略图用。 */

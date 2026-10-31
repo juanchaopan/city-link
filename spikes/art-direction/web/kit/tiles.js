@@ -1,16 +1,18 @@
-import * as THREE from 'three';
 import { LEVEL } from './bake.js';
 import { Builder, hashString, linear, mix, shade } from './builder.js';
-import { roadMesh } from './roadshader.js';
+import { LAYER, roadMesh } from './roadshader.js';
 import { cellPaths, DIRECTIONS, ROAD_SPEC, spokeEnd, spokesOf } from '../sim/network.js';
 
-// 地表、水面、河岸、线路和农田。线路都是覆盖层，画在地表之上，所以斜路可以越过格子的角。
+// 地表、水面、河岸、线路和农田。线路分三层绘制：全图先画人行道，再画路缘，最后画车道。
 
 const BLEED = 0.013;
 const WATER_Y = -0.13;
 const BED_Y = -0.24;
+const NEIGHBOR_DEPTH = 3;
+const NEIGHBOR_HALF_WIDTH = 2.5;
+const EMBANKMENT_WIDTH = 0.2;
 
-export { DIRECTIONS };
+export { DIRECTIONS, LAYER };
 
 const smooth = (t) => {
   const c = Math.max(0, Math.min(1, t));
@@ -21,9 +23,16 @@ const smooth = (t) => {
  * 四个角的高度插值，单位是世界坐标。插值用平滑曲线，格子边界处的坡度正好是 0，
  * 所以坡到平地的过渡是连续的，不会出现一条折线。corners 依次是 (-,-)、(+,-)、(+,+)、(-,+)。
  */
-function heightAt([a, b, c, d], x, z) {
+export function heightAt([a, b, c, d], x, z) {
   const u = smooth(x + 0.5);
   const v = smooth(z + 0.5);
+  return (a * (1 - u) * (1 - v) + b * u * (1 - v) + c * u * v + d * (1 - u) * v) * LEVEL;
+}
+
+/** 同样四个角的线性外推。路基的边会伸到邻格，这时用坡面的延长线，相邻两格算出来的才是同一个面。 */
+function planeAt([a, b, c, d], x, z) {
+  const u = x + 0.5;
+  const v = z + 0.5;
   return (a * (1 - u) * (1 - v) + b * u * (1 - v) + c * u * v + d * (1 - u) * v) * LEVEL;
 }
 
@@ -240,9 +249,9 @@ export function buildSkirt(axis, water, P) {
   return b;
 }
 
-export function buildRoad(road, highway, P) {
+export function buildRoad(road, highway, P, layer) {
   const paths = cellPaths(road, highway);
-  return { build: () => new Builder(1), extra: () => [roadMesh(paths, P, null)] };
+  return { build: () => new Builder(1), extra: () => [roadMesh(paths, P, null, layer)] };
 }
 
 function pointOnPath(points, t) {
@@ -258,28 +267,34 @@ function nearestAlong(points, x, z) {
   return Math.max(0, Math.min(1, t));
 }
 
+/** 一格坡路的路面高度，单位是层。grade 是两端高度和两端切线。 */
+export function hermite([h0, h1, m0, m1], t) {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * h0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * h1 + (t3 - t2) * m1;
+}
+
 /**
- * 坡上的路。路面高度取中线处的地形，横向保持水平，高处用挡墙接地形，低处用填方接地形。
- * 只有穿过格子的直路才有路基；坡上不转弯，这是 ADR-0001 的规则。
+ * 坡上的路。整段路的纵坡由 grade 给定，路面平直，不跟着地形起伏，屏幕上也就不会走出 S 形。
+ * 路面横向保持水平，靠山一侧用挡墙接地形，靠外一侧是等宽的填方。填方不按高差放宽，
+ * 否则地形的起伏会让它一段宽一段窄，看起来就是一串鼓包。
+ * 相机只看得见朝南、朝东的挡墙，背对相机的一侧不画，否则墙面会盖住路面。
  */
-export function buildSlopeRoad(road, highway, corners, P) {
+export function buildSlopeRoad(road, highway, corners, grade, P, layer) {
   const paths = cellPaths(road, highway);
   const main = paths[0];
-  const straight = paths.length === 1 && main.points.length === 2;
+  const straight = paths.length === 1 && main.points.length === 2 && grade;
   const terrain = (x, z) => heightAt(corners, x, z);
-  const deckHeight = straight
-    ? (x, z) => {
-        const [px, pz] = pointOnPath(main.points, nearestAlong(main.points, x, z));
-        return terrain(px, pz);
-      }
-    : terrain;
+  const hillside = (x, z) => planeAt(corners, x, z);
+  const deckAt = (t) => hermite(grade, t) * LEVEL;
+  const deckHeight = straight ? (x, z) => deckAt(nearestAlong(main.points, x, z)) : terrain;
 
   const build = () => {
     const b = new Builder(hashString(`${String(road)}${String(highway)}${corners.join('')}`));
-    if (!straight) return b;
+    if (!straight || layer !== LAYER.walk) return b;
     const wall = linear(P.road.wall);
-    const coping = linear(P.road.walk);
-    const fill = linear(P.road.fill);
+    const coping = shade(wall, 1.12);
+    const fill = mix(linear(P.road.fill), linear(P.ground.grass1), 0.3);
     const halfWidth = ROAD_SPEC[main.kind].walk / 2;
     const [a, c] = main.points;
     const dx = c[0] - a[0];
@@ -287,46 +302,41 @@ export function buildSlopeRoad(road, highway, corners, P) {
     const length = Math.hypot(dx, dz);
     const nx = -dz / length;
     const nz = dx / length;
-    const steps = 18;
+    const steps = 20;
+    const edge = (t, side) => {
+      const [x, z] = pointOnPath(main.points, t);
+      const deck = deckAt(t);
+      const point = [x + nx * side * halfWidth, deck, z + nz * side * halfWidth];
+      return { point, ground: hillside(point[0], point[2]) };
+    };
     for (const side of [1, -1]) {
+      const wallVisible = (nx + nz) * side < -0.01;
       for (let i = 0; i < steps; i += 1) {
-        const [x0, z0] = pointOnPath(main.points, i / steps);
-        const [x1, z1] = pointOnPath(main.points, (i + 1) / steps);
-        const deck0 = terrain(x0, z0);
-        const deck1 = terrain(x1, z1);
-        const e0 = [x0 + nx * side * halfWidth, deck0, z0 + nz * side * halfWidth];
-        const e1 = [x1 + nx * side * halfWidth, deck1, z1 + nz * side * halfWidth];
-        const g0 = terrain(e0[0], e0[2]);
-        const g1 = terrain(e1[0], e1[2]);
-        const delta = (g0 - deck0 + g1 - deck1) / 2;
-        if (Math.abs(delta) < 0.003) continue;
-        if (delta > 0) {
-          const face = shade(wall, Math.floor(i / 3) % 2 === 0 ? 0.94 : 1);
-          b.poly([e0, e1, [e1[0], g1, e1[2]], [e0[0], g0, e0[2]]], face, [-nx * side, 0, -nz * side]);
-          b.poly(
-            [
-              [e0[0], g0, e0[2]],
-              [e1[0], g1, e1[2]],
-              [e1[0], g1 + 0.012, e1[2]],
-              [e0[0], g0 + 0.012, e0[2]],
-            ],
-            coping,
-            [-nx * side, 0, -nz * side],
-          );
-        } else {
-          const reach0 = (deck0 - g0) * 1.7;
-          const reach1 = (deck1 - g1) * 1.7;
-          const o0 = [e0[0] + nx * side * reach0, 0, e0[2] + nz * side * reach0];
-          const o1 = [e1[0] + nx * side * reach1, 0, e1[2] + nz * side * reach1];
-          o0[1] = terrain(o0[0], o0[2]) + 0.002;
-          o1[1] = terrain(o1[0], o1[2]) + 0.002;
-          b.poly([e0, e1, o1, o0], shade(mix(fill, linear(P.ground.grass1), 0.28), 0.98 + (i % 2) * 0.04), [nx * side, 0.6, nz * side]);
+        const e0 = edge(i / steps, side);
+        const e1 = edge((i + 1) / steps, side);
+        const d0 = e0.ground - e0.point[1];
+        const d1 = e1.ground - e1.point[1];
+        const p0 = e0.point;
+        const p1 = e1.point;
+        if (wallVisible && (d0 > 0.002 || d1 > 0.002)) {
+          const top0 = Math.max(p0[1], e0.ground);
+          const top1 = Math.max(p1[1], e1.ground);
+          const face = shade(wall, Math.floor(i / 4) % 2 === 0 ? 0.95 : 1);
+          b.poly([p0, p1, [p1[0], top1, p1[2]], [p0[0], top0, p0[2]]], face, [-nx * side, 0, -nz * side]);
+          b.poly([[p0[0], top0, p0[2]], [p1[0], top1, p1[2]], [p1[0], top1 + 0.012, p1[2]], [p0[0], top0 + 0.012, p0[2]]], coping, [-nx * side, 0, -nz * side]);
+        }
+        if (!wallVisible && (d0 < -0.002 || d1 < -0.002)) {
+          const o0 = [p0[0] + nx * side * EMBANKMENT_WIDTH, 0, p0[2] + nz * side * EMBANKMENT_WIDTH];
+          const o1 = [p1[0] + nx * side * EMBANKMENT_WIDTH, 0, p1[2] + nz * side * EMBANKMENT_WIDTH];
+          o0[1] = Math.min(p0[1], hillside(o0[0], o0[2]) + 0.002);
+          o1[1] = Math.min(p1[1], hillside(o1[0], o1[2]) + 0.002);
+          b.poly([p0, p1, o1, o0], shade(fill, 0.98 + (Math.floor(i / 4) % 2) * 0.03), [nx * side, 0.6, nz * side]);
         }
       }
     }
     return b;
   };
-  return { build, extra: () => [roadMesh(paths, P, deckHeight)] };
+  return { build, extra: () => [roadMesh(paths, P, deckHeight, layer)] };
 }
 
 export function buildBridge(road, highway, P) {
@@ -362,7 +372,120 @@ export function buildBridge(road, highway, P) {
     }
     return b;
   };
-  return { build, extra: () => [roadMesh(paths, P, null)] };
+  return { build, extra: () => [roadMesh(paths, P, null, LAYER.both)] };
+}
+
+/**
+ * 还没打通的道路收尾。inward 是路来的方向：路面在格子中心平切，
+ * 前方是一道红白路障和三只锥桶，路障后面到地图边缘是预留路面的虚线。
+ */
+export function buildPlannedEnd(kind, inward, P) {
+  const b = new Builder(hashString(`gate${kind}${String(inward)}`));
+  const [ox, oz] = DIRECTIONS[(inward + 4) % 8];
+  const length = Math.hypot(ox, oz);
+  const rotation = Math.atan2(-oz, ox);
+  const halfDeck = ROAD_SPEC[kind].deck / 2;
+  const reach = length / 2;
+  const dashColor = linear(P.road.plan);
+  const red = linear(P.road.rail);
+  const white = linear('#f6f3ea');
+  b.at(0, 0, 0, rotation, (c) => {
+    for (const v of [-halfDeck, halfDeck]) {
+      for (let x = 0.1; x + 0.07 < reach; x += 0.13) {
+        c.poly([[x, 0.006, v - 0.012], [x + 0.08, 0.006, v - 0.012], [x + 0.08, 0.006, v + 0.012], [x, 0.006, v + 0.012]], dashColor);
+      }
+    }
+    const stripes = Math.max(4, Math.round((halfDeck * 2) / 0.09));
+    const width = (halfDeck * 2 + 0.04) / stripes;
+    for (const height of [0.075, 0.125]) {
+      for (let i = 0; i < stripes; i += 1) {
+        const v = -halfDeck - 0.02 + width * (i + 0.5);
+        c.box(0.03, height, v, 0.02, 0.034, width, i % 2 === 0 ? red : white);
+      }
+    }
+    for (const v of [-halfDeck - 0.01, 0, halfDeck + 0.01]) c.box(0.03, 0, v, 0.024, 0.16, 0.024, shade(white, 0.86));
+    for (const v of [-halfDeck * 0.55, 0, halfDeck * 0.55]) {
+      c.cylinder(0.17, 0, v, 0.034, 0.002, 0.095, 6, linear(P.road.plan));
+      c.cylinder(0.17, 0.038, v, 0.021, 0.015, 0.016, 6, white);
+    }
+  });
+  return b;
+}
+
+/**
+ * 打通后露出的一小段邻城：地面、延续的道路和几栋远处的小房子。朝外的一端在 fadeNeighbor 里淡出，
+ * 路看起来是一直通向远处，而不是被地图边缘切断。axis 是路穿出地图的方向。
+ */
+export function buildNeighbor(axis, kind, P) {
+  const place = (u, v, y = 0) => (axis === 'x' ? [0.5 + u, y, v] : [v, y, 0.5 + u]);
+  const lateral = axis === 'x' ? [0, 0, 1] : [1, 0, 0];
+  const build = () => {
+    const b = new Builder(hashString(`neighbor${axis}${kind}`));
+    const land = mix(linear(P.ground.grass1), linear(P.backdrop), 0.32);
+    const cells = 2;
+    for (let i = 0; i < NEIGHBOR_DEPTH * cells; i += 1) {
+      for (let j = -NEIGHBOR_HALF_WIDTH * cells; j < NEIGHBOR_HALF_WIDTH * cells; j += 1) {
+        const u0 = i / cells;
+        const u1 = (i + 1) / cells;
+        const v0 = j / cells;
+        const v1 = (j + 1) / cells;
+        const shift = i === 0 ? -BLEED : 0;
+        b.poly([place(u0 + shift, v0, -0.002), place(u1, v0, -0.002), place(u1, v1, -0.002), place(u0 + shift, v1, -0.002)], shade(land, 0.97 + b.random() * 0.06));
+      }
+    }
+    const side = (y0, y1, color) => {
+      const near = place(-BLEED, NEIGHBOR_HALF_WIDTH, y0);
+      const far = place(NEIGHBOR_DEPTH, NEIGHBOR_HALF_WIDTH, y0);
+      const farTop = place(NEIGHBOR_DEPTH, NEIGHBOR_HALF_WIDTH, y1);
+      const nearTop = place(-BLEED, NEIGHBOR_HALF_WIDTH, y1);
+      b.poly([near, far, farTop, nearTop], color, lateral);
+    };
+    side(-0.16, -0.002, linear(P.ground.soil));
+    side(-0.5, -0.16, linear(P.ground.plinth));
+    side(-0.54, -0.5, linear(P.ground.plinthDark));
+    const walk = ROAD_SPEC[kind].walk / 2;
+    const border = linear(P.wall.warm);
+    for (const sign of [-1, 1]) {
+      for (let v = walk + 0.12; v < NEIGHBOR_HALF_WIDTH; v += 0.22) {
+        const [ax, , az] = place(0.03, sign * v, 0.004);
+        const [cx, , cz] = place(0.03, sign * (v + 0.12), 0.004);
+        const [wx, wz] = axis === 'x' ? [0.018, 0] : [0, 0.018];
+        b.poly([[ax - wx, 0.004, az - wz], [cx - wx, 0.004, cz - wz], [cx + wx, 0.004, cz + wz], [ax + wx, 0.004, az + wz]], border);
+      }
+      for (const [u, v, scale] of [[0.55, 1.1, 1], [1.2, 1.7, 0.9], [1.75, 0.95, 1.1]]) {
+        const [x, , z] = place(u, sign * v);
+        b.cylinder(x, 0, z, 0.02, 0.014, 0.12, 5, linear(P.tree.trunk));
+        b.blob(x, 0.2 * scale, z, 0.11 * scale, 0.13 * scale, 0.11 * scale, mix(linear(P.tree.leaf[0]), linear(P.backdrop), 0.25));
+      }
+      for (const [u, v, tall] of [[1.45, 1.05, 0.34], [1.9, 1.6, 0.5], [2.2, 0.9, 0.26]]) {
+        const [x, , z] = place(u, sign * v);
+        const wall = mix(linear(P.wall.cool), linear(P.backdrop), 0.3);
+        b.box(x, 0, z, 0.34, tall, 0.34, wall, { top: shade(wall, 0.92) });
+      }
+    }
+    return b;
+  };
+  const start = axis === 'x' ? [0.5, 0] : [0, 0.5];
+  const end = axis === 'x' ? [0.5 + NEIGHBOR_DEPTH, 0] : [0, 0.5 + NEIGHBOR_DEPTH];
+  const paths = [{ points: [start, end], kind, clipStart: true, clipEnd: true, cross: -1 }];
+  return { build, extra: () => [roadMesh(paths, P, null, LAYER.both, 9)] };
+}
+
+/** 邻城朝外的一端淡出到桌面。sprite 是裁好的精灵，按像素反算回地面坐标。 */
+export function fadeNeighbor(sprite, axis) {
+  const { data, w, h, ax, ay } = sprite;
+  for (let py = 0; py < h; py += 1) {
+    for (let px = 0; px < w; px += 1) {
+      const dx = (px - ax) / 64;
+      const dy = (py - ay) / 32;
+      const x = (dx + dy) / 2;
+      const z = (dy - dx) / 2;
+      const u = (axis === 'x' ? x : z) - 0.5;
+      const t = Math.max(0, Math.min(1, (u - 1.3) / (NEIGHBOR_DEPTH - 1.5)));
+      data[(py * w + px) * 4 + 3] *= 1 - t * t * (3 - 2 * t);
+    }
+  }
+  return sprite;
 }
 
 const CROPS = ['wheat', 'greens', 'rape', 'furrow'];
@@ -400,4 +523,3 @@ export function buildField(crop, axis, P, seed) {
 }
 
 export const waterLevel = WATER_Y;
-export { THREE };

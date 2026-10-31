@@ -1,7 +1,8 @@
-import { Container, ImageSource, Particle, ParticleContainer, Rectangle, Texture } from 'pixi.js';
+import { Container, Graphics, ImageSource, Particle, ParticleContainer, Rectangle, Texture } from 'pixi.js';
 import { sortByDepth } from './sim/order.js';
 
 // 把图集和城市数据拼成 Pixi 场景。
+// 地面分层绘制：地表、田块、人行道、路缘、车道，路面的层序保证人行道不会盖到车道上。
 // 物体按拓扑排序后的顺序画；亮窗和节日层紧跟在所属建筑后面，都在同一张纹理上，不增加换纹理的次数。
 
 const CHUNK = 16;
@@ -102,8 +103,38 @@ function screenBox(atlas, object) {
   };
 }
 
-/** 拼出一个世界。dynamicTint 为真时物体的颜色逐粒子更新，亮窗才能不受夜色影响。 */
-export function buildWorld(atlas, city, { layers, festival, dynamicTint }) {
+/**
+ * 地表下面垫一张同色的底。地表精灵在低层 mip 上边缘是半透明的，
+ * 没有这张底，缩小全图时格子之间就会透出桌面，夜里桌面比地面亮，看起来就是一张网格。
+ */
+function underlay(city, palette) {
+  const { N, ground } = city;
+  const g = new Graphics();
+  const colorOf = new Map();
+  for (const entry of ground) {
+    if (entry.key.startsWith('sk')) continue;
+    colorOf.set(entry.y * N + entry.x, entry.key.startsWith('w-') ? palette.water.deep : palette.ground.grass0);
+  }
+  for (let y = 0; y < N; y += 1) {
+    let start = 0;
+    for (let x = 1; x <= N; x += 1) {
+      if (x < N && colorOf.get(y * N + x) === colorOf.get(y * N + start)) continue;
+      const a = screenOf(start, y, 0);
+      const b = screenOf(x, y, 0);
+      const c = screenOf(x, y + 1, 0);
+      const d = screenOf(start, y + 1, 0);
+      g.poly([a.sx, a.sy - 2, b.sx + 3, b.sy, c.sx, c.sy + 2, d.sx - 3, d.sy]).fill(colorOf.get(y * N + start));
+      start = x;
+    }
+  }
+  return g;
+}
+
+/**
+ * 拼出一个世界。dynamicTint 为真时物体的颜色逐粒子更新，亮窗才能不受夜色影响。
+ * bare 为真时不垫底，露底检查用它看精灵本身有没有缝。
+ */
+export function buildWorld(atlas, city, { layers, festival, dynamicTint, palette, bare = false }) {
   const { N } = city;
   const area = new Rectangle(-N * 80, -200, N * 160, N * 80 + 400);
   const groundLayer = new Container();
@@ -121,8 +152,17 @@ export function buildWorld(atlas, city, { layers, festival, dynamicTint }) {
       count.sprites += particles.length;
     }
   };
-  if (layers.includes('ground')) addCells(city.ground);
-  if (layers.includes('overlays')) addCells(city.overlays);
+  if (layers.includes('ground')) {
+    if (!bare) groundLayer.addChild(underlay(city, palette));
+    addCells(city.ground);
+  }
+  if (layers.includes('overlays')) {
+    addCells(city.overlays);
+    addCells(city.walks);
+    addCells(city.curbs);
+    addCells(city.decks);
+    addCells(city.neighbors);
+  }
 
   const objectLayer = new Container();
   if (layers.includes('objects')) {
@@ -147,7 +187,7 @@ export function buildWorld(atlas, city, { layers, festival, dynamicTint }) {
         current.push(glow);
       }
       const decoration = `fx-${object.footprintKey}`;
-      if (festival && object.footprintKey && atlas.frames[decoration]) {
+      if (festival && object.footprintKey && object.festive && atlas.frames[decoration]) {
         const layer = particleFor(atlas, decoration, sx, sy);
         bodies.push(layer);
         current.push(layer);
@@ -182,6 +222,12 @@ function lerpColor(a, b, t) {
     const to = (b >> shift) & 255;
     return Math.round(from + (to - from) * t) << shift;
   };
+  return channel(16) | channel(8) | channel(0);
+}
+
+/** 两个颜色相乘，和 tint 作用在精灵上的效果一样，背景和地面才会一起变暗。 */
+export function multiplyColor(a, b) {
+  const channel = (shift) => Math.round((((a >> shift) & 255) * ((b >> shift) & 255)) / 255) << shift;
   return channel(16) | channel(8) | channel(0);
 }
 
