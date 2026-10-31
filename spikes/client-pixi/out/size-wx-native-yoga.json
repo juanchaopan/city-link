@@ -1,0 +1,18 @@
+{
+  "outdir": "dist/wx-native-yoga",
+  "gameJsBytes": 868953,
+  "gameJsGzip": 256754,
+  "gameJsBrotli": 210405,
+  "yogaWasmBytes": 71736,
+  "atlasBytes": 118228,
+  "cityJsonBytes": 59190,
+  "mainPackageBytes": 940782,
+  "mainPackageWithAtlasBytes": 1059010,
+  "byPackage": {
+    "pixi": 604413,
+    "pixiUi": 4021,
+    "pixiLayout": 33679,
+    "yogaGlue": 127704,
+    "cityData": 61970
+  }
+}

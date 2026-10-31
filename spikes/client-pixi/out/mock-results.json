@@ -1,0 +1,213 @@
+[
+  {
+    "name": "webgl2-particle",
+    "env": {
+      "type": "env",
+      "missing": [],
+      "evalStatus": "blocked: EvalError"
+    },
+    "type": "ready",
+    "probe": {
+      "webGLVersion": 2,
+      "glRenderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "maxTextureSize": 8192,
+      "textBounds": {
+        "w": 173.375,
+        "h": 18
+      },
+      "labelText": "首席规划师 探针 333 fps",
+      "panel": {
+        "x": 0,
+        "y": 772,
+        "w": 390,
+        "h": 72
+      },
+      "button": {
+        "x": 147,
+        "y": 786,
+        "w": 96,
+        "h": 44
+      }
+    },
+    "input": {
+      "dragMoved": true,
+      "pinchZoomed": true,
+      "tapPresses": [
+        "分区"
+      ],
+      "tapPoint": [
+        195,
+        808
+      ],
+      "before": {
+        "x": 195,
+        "y": 40,
+        "zoom": 0.17727272727272728
+      },
+      "afterDrag": {
+        "x": 255,
+        "y": 70
+      },
+      "afterPinch": 0.3223140495867768
+    },
+    "scene": {
+      "sprites": 8880
+    },
+    "evalStatus": "blocked: EvalError",
+    "frameCount": 63,
+    "medianDt": 47.700000047683716,
+    "console": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "name": "webgl1-particle",
+    "env": {
+      "type": "env",
+      "missing": [],
+      "evalStatus": "blocked: EvalError"
+    },
+    "type": "ready",
+    "probe": {
+      "webGLVersion": 1,
+      "glRenderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "maxTextureSize": 8192,
+      "textBounds": {
+        "w": 164.4765625,
+        "h": 18
+      },
+      "labelText": "首席规划师 探针 23 fps",
+      "panel": {
+        "x": 0,
+        "y": 772,
+        "w": 390,
+        "h": 72
+      },
+      "button": {
+        "x": 147,
+        "y": 786,
+        "w": 96,
+        "h": 44
+      }
+    },
+    "input": {
+      "dragMoved": true,
+      "pinchZoomed": true,
+      "tapPresses": [
+        "分区"
+      ],
+      "tapPoint": [
+        195,
+        808
+      ],
+      "before": {
+        "x": 195,
+        "y": 40,
+        "zoom": 0.17727272727272728
+      },
+      "afterDrag": {
+        "x": 255,
+        "y": 70
+      },
+      "afterPinch": 0.3223140495867768
+    },
+    "scene": {
+      "sprites": 8880
+    },
+    "evalStatus": "blocked: EvalError",
+    "frameCount": 63,
+    "medianDt": 39.09999990463257,
+    "console": []
+  },
+  {
+    "name": "webgl2-sprite",
+    "env": {
+      "type": "env",
+      "missing": [],
+      "evalStatus": "blocked: EvalError"
+    },
+    "type": "ready",
+    "probe": {
+      "webGLVersion": 2,
+      "glRenderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "maxTextureSize": 8192,
+      "textBounds": {
+        "w": 164.4765625,
+        "h": 18
+      },
+      "labelText": "首席规划师 探针 12 fps",
+      "panel": {
+        "x": 0,
+        "y": 772,
+        "w": 390,
+        "h": 72
+      },
+      "button": {
+        "x": 147,
+        "y": 786,
+        "w": 96,
+        "h": 44
+      }
+    },
+    "input": {
+      "dragMoved": true,
+      "pinchZoomed": true,
+      "tapPresses": [
+        "分区"
+      ],
+      "tapPoint": [
+        195,
+        808
+      ],
+      "before": {
+        "x": 195,
+        "y": 40,
+        "zoom": 0.17727272727272728
+      },
+      "afterDrag": {
+        "x": 255,
+        "y": 70
+      },
+      "afterPinch": 0.3223140495867768
+    },
+    "scene": {
+      "sprites": 8880
+    },
+    "evalStatus": "blocked: EvalError",
+    "frameCount": 17,
+    "medianDt": 179.59999990463257,
+    "console": []
+  },
+  {
+    "name": "control-no-unsafe-eval",
+    "env": {
+      "type": "env",
+      "missing": [],
+      "evalStatus": "blocked: EvalError"
+    },
+    "type": "error",
+    "message": "Error: Current environment does not allow unsafe-eval, please use pixi.js/unsafe-eval module to enable support.\n    at of._unsafeEvalCheck (http://127.0.0.1:53230/dist/wx-no-eval/game.js:118:17695)\n    at new Ax (http://127.0.0.1:53230/dist/wx-no-eval/game.js:118:14307)\n    at new of (http://127.0.0.1:53230/dist/wx-no-eval/game.js:940:25672)\n    at Wf (http://127.0.0.1:53230/dist/wx-no-eval/game.js:940:106506)\n    at async Zw (http://127.0.0.1:53230/dist/wx-no-eval/game.js:1214:143459)",
+    "evalStatus": "blocked: EvalError",
+    "frameCount": 0,
+    "console": [
+      "Error: Current environment does not allow unsafe-eval, please use pixi.js/unsafe-eval module to enable support.\n    at of._unsafeEvalCheck (http://127.0.0.1:53230/dist/wx-no-eval/game.js:118:17695)\n    at new Ax (http://127.0.0.1:53230/dist/wx-no-eval/game.js:118:14307)\n    at new of (http://127.0.0"
+    ]
+  },
+  {
+    "name": "control-native-yoga",
+    "env": {
+      "type": "env",
+      "missing": [],
+      "evalStatus": "blocked: EvalError"
+    },
+    "type": "error",
+    "message": "TypeError: WebAssembly.RuntimeError is not a constructor\n    at R (http://127.0.0.1:53230/dist/wx-native-yoga/game.js:1213:13687)\n    at http://127.0.0.1:53230/dist/wx-native-yoga/game.js:1214:20749",
+    "evalStatus": "blocked: EvalError",
+    "frameCount": 0,
+    "console": [
+      "failed to asynchronously prepare wasm: Error: WXWebAssembly.instantiate only accepts a package path",
+      "Aborted(Error: WXWebAssembly.instantiate only accepts a package path)",
+      "TypeError: WebAssembly.RuntimeError is not a constructor\n    at R (http://127.0.0.1:53230/dist/wx-native-yoga/game.js:1213:13687)\n    at http://127.0.0.1:53230/dist/wx-native-yoga/game.js:1214:20749"
+    ]
+  }
+]
