@@ -1,43 +1,52 @@
 import { Builder, hashString, linear, mix, shade } from './builder.js';
-import { plate, rectangle, tree, wallOf, windows } from './objects.js';
-import { bodyOffset, steppedTiers } from '../sim/combos.js';
+import { edgesOf, facesCamera, plate, prism, rectangle, scaled, shopFront, tree, triangleBlock, triangleFrame, triangleLot, wallOf, windows } from './objects.js';
+import { steppedTiers } from '../sim/combos.js';
 
 // 模块拼装实验。一栋楼不再烘焙成一整张图，而是底座（地块和底商）、楼身、屋顶三张精灵叠起来，运行时按组合取用。
 // 大小：2x2 是两格见方的直角地块，Q3 是直角边 3 格的大三角地块，方向由底座决定，楼身和屋顶不分方向。
+// 底座按地块的形状长：三角地块上的底座就是三角形，整块地由底座占满，楼身站在上面，露出来的屋面做成花池。
 
 const MODULE_FLOOR = 1 / Math.sqrt(6) / 2;
 const BODY_SIZE = 1.1;
+const SQUARE_PODIUM = 1.24;
 const LOT_LIFT = 0.02;
-const QUADRANTS = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
 const TRIANGLE_LEGS = 3;
+const COLUMN_GAP = 0.42;
+const TERRACE_TREES = 5;
+
+const podiumFloor = { spacing: MODULE_FLOOR - LOT_LIFT, skip: 1 };
 
 const PODIUMS = {
   /** 沿街底商：通长的玻璃橱窗和雨棚。 */
-  shops(b, sx, sz, P) {
-    const glass = linear(P.wall.glass);
-    const accent = linear(P.zones.commercial[0]);
-    b.box(0, LOT_LIFT, 0, sx, MODULE_FLOOR - LOT_LIFT, sz, linear(P.wall.warm));
-    b.box(0, 0.03, sz / 2 + 0.002, sx - 0.08, MODULE_FLOOR - 0.06, 0.006, glass);
-    b.box(sx / 2 + 0.002, 0.03, 0, 0.006, MODULE_FLOOR - 0.06, sz - 0.08, glass);
-    b.box(0, MODULE_FLOOR - 0.03, sz / 2 + 0.03, sx, 0.016, 0.07, accent);
-    b.box(sx / 2 + 0.03, MODULE_FLOOR - 0.03, 0, 0.07, 0.016, sz, accent);
+  shops(b, points, P) {
+    const wall = linear(P.wall.warm);
+    prism(b, points, LOT_LIFT, 1, wall, wall, P, podiumFloor);
+    shopFront(b, points, LOT_LIFT, P, linear(P.zones.commercial[0]));
   },
   /** 架空层：一圈柱子，楼像是站在柱子上。 */
-  pilotis(b, sx, sz, P) {
+  pilotis(b, points, P) {
     const concrete = linear(P.wall.concrete);
-    b.box(0, LOT_LIFT, 0, sx * 0.5, MODULE_FLOOR - LOT_LIFT, sz * 0.5, shade(concrete, 0.7));
-    const step = sx / 3;
-    for (let i = 0; i <= 3; i += 1) {
-      for (const [x, z] of [[-sx / 2 + i * step, sz / 2], [sx / 2, -sz / 2 + i * step], [-sx / 2 + i * step, -sz / 2], [-sx / 2, -sz / 2 + i * step]]) {
-        b.box(x, LOT_LIFT, z, 0.05, MODULE_FLOOR - LOT_LIFT, 0.05, concrete);
+    prism(b, scaled(points, 0.5), LOT_LIFT, 1, shade(concrete, 0.7), shade(concrete, 0.7), P, podiumFloor);
+    prism(b, points, MODULE_FLOOR - 0.03, 1, concrete, shade(concrete, 1.06), P, { spacing: 0.03, skip: 1 });
+    for (const { x0, z0, x1, z1, length } of edgesOf(points)) {
+      const count = Math.max(2, Math.round(length / COLUMN_GAP));
+      for (let i = 0; i < count; i += 1) {
+        const t = i / count;
+        b.box(x0 + (x1 - x0) * t, LOT_LIFT, z0 + (z1 - z0) * t, 0.05, MODULE_FLOOR - LOT_LIFT, 0.05, concrete);
       }
     }
   },
-  /** 大堂：石材基座，正中一个玻璃门厅。 */
-  lobby(b, sx, sz, P) {
-    b.box(0, LOT_LIFT, 0, sx, MODULE_FLOOR - LOT_LIFT, sz, linear(P.wall.brick));
-    b.box(0, 0.03, sz / 2 + 0.03, sx * 0.34, MODULE_FLOOR * 0.8, 0.06, linear(P.wall.glass));
-    b.box(0, MODULE_FLOOR * 0.82, sz / 2 + 0.05, sx * 0.42, 0.018, 0.12, linear(P.wall.cool));
+  /** 大堂：石材基座，朝相机最正的一面开一个玻璃门厅。 */
+  lobby(b, points, P) {
+    const stone = linear(P.wall.brick);
+    prism(b, points, LOT_LIFT, 1, stone, stone, P, podiumFloor);
+    const front = edgesOf(points).filter(facesCamera).reduce((best, edge) => (edge.nx + edge.nz > best.nx + best.nz ? edge : best));
+    const { x0, z0, x1, z1, nx, nz, length } = front;
+    const half = Math.min(0.2, 0.4 / length);
+    const at = (t, y, out) => [x0 + (x1 - x0) * (0.5 + t) + nx * out, y, z0 + (z1 - z0) * (0.5 + t) + nz * out];
+    const hall = MODULE_FLOOR * 0.8;
+    b.poly([at(-half, 0.03, 0.006), at(half, 0.03, 0.006), at(half, hall, 0.006), at(-half, hall, 0.006)], linear(P.wall.glass), [nx, 0, nz]);
+    b.poly([at(-half * 1.2, hall + 0.01, 0), at(half * 1.2, hall + 0.01, 0), at(half * 1.2, hall + 0.01, 0.12), at(-half * 1.2, hall + 0.01, 0.12)], linear(P.wall.cool));
   },
 };
 
@@ -125,16 +134,28 @@ const TONES = [
   (P) => mix(linear(P.wall.glass), linear(P.wall.cool), 0.5),
 ];
 
-function triangleLot(b, q, P) {
-  const [sx, sz] = QUADRANTS[q];
-  const half = TRIANGLE_LEGS / 2;
-  const toLocal = (u, v) => [-sx * half + sx * u, -sz * half + sz * v];
-  plate(b, [toLocal(0.07, 0.07), toLocal(TRIANGLE_LEGS - 0.17, 0.07), toLocal(0.07, TRIANGLE_LEGS - 0.17)], linear(P.road.walk));
-  for (let i = 0; i < 5; i += 1) {
-    const t = (i + 0.7) / 6;
-    const [x, z] = toLocal(2.7 * t + 0.03, 2.7 * (1 - t) + 0.03);
-    tree(b, x, z, P, 0.7);
+/** 三角底座楼身之外的屋面：沿最长的斜边一条花池和一排树。 */
+function terrace(b, points, P) {
+  const { x0, z0, x1, z1, nx, nz } = edgesOf(points).reduce((best, edge) => (edge.length > best.length ? edge : best));
+  const at = (t, out) => [x0 + (x1 - x0) * t - nx * out, z0 + (z1 - z0) * t - nz * out];
+  const strip = [at(0.16, 0.08), at(0.84, 0.08), at(0.84, 0.32), at(0.16, 0.32)];
+  b.poly(strip.map(([x, z]) => [x, MODULE_FLOOR + 0.006, z]), linear(P.ground.lawn));
+  for (let i = 0; i < TERRACE_TREES; i += 1) {
+    const [x, z] = at(0.22 + (i * 0.56) / (TERRACE_TREES - 1), 0.2);
+    tree(b, x, z, P, 0.62, MODULE_FLOOR + 0.006);
   }
+}
+
+/** 地台和这块地上的底座楼形，都是相对物业中心的坐标。 */
+function lotOf(b, size, q, P) {
+  const color = linear(P.road.walk);
+  if (size === '2x2') {
+    plate(b, rectangle(0, 0, 1.9, 1.9), color);
+    return rectangle(0, 0, SQUARE_PODIUM, SQUARE_PODIUM);
+  }
+  triangleLot(b, TRIANGLE_LEGS, q, color);
+  const { toLocal } = triangleFrame(TRIANGLE_LEGS, q);
+  return triangleBlock(TRIANGLE_LEGS).outer.map(([u, v]) => toLocal(u, v));
 }
 
 /**
@@ -148,10 +169,9 @@ export function buildModule(name, P) {
   const b = new Builder(hashString(name));
   if (parts[0] === 'Mp') {
     const [, size, q, kind] = parts;
-    if (size === '2x2') plate(b, rectangle(0, 0, 1.9, 1.9), linear(P.road.walk));
-    else triangleLot(b, Number(q), P);
-    const [ox, oz] = bodyOffset(size, Number(q));
-    b.at(ox, 0, oz, 0, (c) => PODIUMS[kind](c, 1.24, 1.24, P));
+    const points = lotOf(b, size, Number(q), P);
+    PODIUMS[kind](b, points, P);
+    if (size !== '2x2') terrace(b, points, P);
   } else if (parts[0] === 'Mb') {
     const [, kind, floors, tone] = parts;
     BODIES[kind](b, Number(floors), TONES[Number(tone)](P), linear(P.zones.commercial[Number(tone) % 4]), P);

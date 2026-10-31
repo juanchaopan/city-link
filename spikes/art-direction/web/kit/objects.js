@@ -1,5 +1,7 @@
 import { Builder, hashString, linear, mix, shade } from './builder.js';
 import { waterLevel } from './tiles.js';
+import { QUADRANTS } from '../sim/combos.js';
+import { polygonArea } from '../sim/network.js';
 
 // 标准风格的建筑生成器。规格名字决定占地，这里决定外观。
 // 一个地块是一个物业：楼、停车场、绿化画在同一张图里，看起来是设计好的一整套。
@@ -7,23 +9,49 @@ import { waterLevel } from './tiles.js';
 const FLOOR = 0.15;
 const LOT_Y = 0.02;
 const HALF_DIAGONAL = Math.SQRT1_2;
+const LOT_SHRINK = 0.07;
+const EDGE = 0.16;
+const MIN_COURT = 0.5;
+const STREET_WING = 2;
+const ROW_HOUSE = 0.5;
+const ROW_PITCH = 0.62;
+const ROW_MIN_LEGS = 4;
+const ROW_CORNER = ROW_HOUSE * 0.354;
+const MAX_TOWER = 1.3;
+const GREEN_ROOF_AREA = 2.5;
 
 function pick(list, random) {
   return list[Math.floor(random() * list.length) % list.length];
 }
 
-export function plate(b, points, color) {
-  const top = points.map(([x, z]) => [x, LOT_Y, z]);
-  b.poly(top, color);
-  const centerX = points.reduce((sum, p) => sum + p[0], 0) / points.length;
-  const centerZ = points.reduce((sum, p) => sum + p[1], 0) / points.length;
-  for (let i = 0; i < points.length; i += 1) {
-    const [x0, z0] = points[i];
+/** 凸多边形的每条边和它朝外的单位法线。 */
+export function edgesOf(points) {
+  const cx = points.reduce((sum, p) => sum + p[0], 0) / points.length;
+  const cz = points.reduce((sum, p) => sum + p[1], 0) / points.length;
+  return points.map(([x0, z0], i) => {
     const [x1, z1] = points[(i + 1) % points.length];
-    const nx = z1 - z0;
-    const nz = x0 - x1;
-    const flip = (x0 - centerX) * nx + (z0 - centerZ) * nz < 0 ? -1 : 1;
-    b.poly([[x0, 0, z0], [x1, 0, z1], [x1, LOT_Y, z1], [x0, LOT_Y, z0]], shade(color, 0.86), [nx * flip, 0, nz * flip]);
+    const length = Math.hypot(x1 - x0, z1 - z0);
+    const flip = (x0 - cx) * (z1 - z0) + (z0 - cz) * (x0 - x1) < 0 ? -1 : 1;
+    return { x0, z0, x1, z1, nx: (flip * (z1 - z0)) / length, nz: (flip * (x0 - x1)) / length, length };
+  });
+}
+
+/** 朝向相机的边。走向和视线平行的边是 0，这种墙在屏幕上只是一条线。 */
+export function facesCamera({ nx, nz }) {
+  return nx + nz > 0.01;
+}
+
+/** 多边形向自己的重心缩放，k 大于 1 时向外扩。 */
+export function scaled(points, k) {
+  const cx = points.reduce((sum, p) => sum + p[0], 0) / points.length;
+  const cz = points.reduce((sum, p) => sum + p[1], 0) / points.length;
+  return points.map(([x, z]) => [cx + (x - cx) * k, cz + (z - cz) * k]);
+}
+
+export function plate(b, points, color) {
+  b.poly(points.map(([x, z]) => [x, LOT_Y, z]), color);
+  for (const { x0, z0, x1, z1, nx, nz } of edgesOf(points)) {
+    b.poly([[x0, 0, z0], [x1, 0, z1], [x1, LOT_Y, z1], [x0, LOT_Y, z0]], shade(color, 0.86), [nx, 0, nz]);
   }
 }
 
@@ -83,6 +111,51 @@ export function windows(b, sx, sz, y0, floors, P, spacing = FLOOR, size = 0.52, 
           pane(b, [[x - w / 2, y, pz], [x + w / 2, y, pz], [x + w / 2, y + paneH, pz], [x - w / 2, y + paneH, pz]], [0, 0, sign], P);
         }
       }
+    }
+  }
+}
+
+/** 沿一条任意走向的墙开窗。skip 是不开窗的底层数，底商的玻璃橱窗占着这几层。 */
+function edgeWindows(b, edge, y0, floors, P, spacing, skip) {
+  const { x0, z0, x1, z1, nx, nz, length } = edge;
+  const columns = Math.max(1, Math.round(length / 0.16));
+  const half = 0.26 / columns;
+  const at = (t, y) => [x0 + (x1 - x0) * t + nx * 0.003, y, z0 + (z1 - z0) * t + nz * 0.003];
+  for (let f = skip; f < floors; f += 1) {
+    const y = y0 + spacing * (f + 0.3);
+    const top = y + spacing * 0.5;
+    for (let c = 0; c < columns; c += 1) {
+      const t = (c + 0.5) / columns;
+      pane(b, [at(t - half, y), at(t + half, y), at(t + half, top), at(t - half, top)], [nx, 0, nz], P);
+    }
+  }
+}
+
+/** 凸多边形的楼身，地块是什么形状楼就是什么形状。朝相机的墙按楼层开窗，斜墙也一样。 */
+export function prism(b, points, y0, floors, wall, roof, P, { spacing = FLOOR, skip = 0 } = {}) {
+  const y1 = y0 + floors * spacing;
+  b.poly(points.map(([x, z]) => [x, y1, z]), roof);
+  for (const edge of edgesOf(points)) {
+    const { x0, z0, x1, z1, nx, nz } = edge;
+    b.poly([[x0, y0, z0], [x1, y0, z1], [x1, y1, z1], [x0, y1, z0]], wall, [nx, 0, nz]);
+    if (facesCamera(edge)) edgeWindows(b, edge, y0, floors, P, spacing, skip);
+  }
+}
+
+/** 底层一圈玻璃橱窗和条纹雨棚，只画朝相机的边。 */
+export function shopFront(b, points, y0, P, accent) {
+  const glass = linear(P.wall.glass);
+  const white = linear('#ffffff');
+  for (const edge of edgesOf(points).filter(facesCamera)) {
+    const { x0, z0, x1, z1, nx, nz, length } = edge;
+    const at = (t, y, out) => [x0 + (x1 - x0) * t + nx * out, y, z0 + (z1 - z0) * t + nz * out];
+    const inset = Math.min(0.03 / length, 0.2);
+    b.poly([at(inset, y0 + 0.012, 0.004), at(1 - inset, y0 + 0.012, 0.004), at(1 - inset, y0 + 0.1, 0.004), at(inset, y0 + 0.1, 0.004)], glass, [nx, 0, nz]);
+    const stripes = Math.max(4, Math.round(length / 0.09));
+    for (let i = 0; i < stripes; i += 1) {
+      const t0 = i / stripes;
+      const t1 = (i + 1) / stripes;
+      b.poly([at(t0, y0 + 0.13, 0), at(t1, y0 + 0.13, 0), at(t1, y0 + 0.098, 0.07), at(t0, y0 + 0.098, 0.07)], i % 2 === 0 ? accent : white, [nx, 1, nz]);
     }
   }
 }
@@ -277,6 +350,14 @@ export function shopHall(b, cx, cz, sx, sz, floors, seed, P) {
   });
 }
 
+function chimney(b, x, z, y, P) {
+  const red = linear(P.road.rail);
+  const white = linear('#f2f0ea');
+  for (let i = 0; i < 4; i += 1) {
+    b.cylinder(x, y + i * 0.13, z, 0.055 - i * 0.005, 0.05 - i * 0.005, 0.13, 7, i % 2 === 0 ? red : white);
+  }
+}
+
 function sawtooth(b, cx, cz, sx, sz, seed, P) {
   const wall = linear(P.zones.industrial[seed % P.zones.industrial.length]);
   const roof = linear(P.wall.concrete);
@@ -295,11 +376,7 @@ function sawtooth(b, cx, cz, sx, sz, seed, P) {
     }
     windows(c, sx, sz, 0.04, 1, P, 0.18, 0.6, 0.18);
   });
-  const red = linear(P.road.rail);
-  const white = linear('#f2f0ea');
-  for (let i = 0; i < 4; i += 1) {
-    b.cylinder(cx - sx * 0.4, LOT_Y + i * 0.13, cz - sz * 0.42, 0.055 - i * 0.005, 0.05 - i * 0.005, 0.13, 7, i % 2 === 0 ? red : white);
-  }
+  chimney(b, cx - sx * 0.4, cz - sz * 0.42, LOT_Y, P);
 }
 
 export function wallOf(seed, P) {
@@ -367,139 +444,276 @@ function propertyB(b, name, P) {
   });
 }
 
-const QUADRANTS = [
-  [1, 1],
-  [-1, 1],
-  [-1, -1],
-  [1, -1],
-];
+/** 大三角地块的局部坐标：u、v 从直角顶点沿两条直角边量起。 */
+export function triangleFrame(legs, q) {
+  const [sx, sz] = QUADRANTS[q];
+  const half = legs / 2;
+  return { sx, sz, toLocal: (u, v) => [-sx * half + sx * u, -sz * half + sz * v] };
+}
 
-/** 斜边朝街的三角形物业：长楼沿斜边摆，楼身是 45° 的，后面的直角一侧是院子。 */
-function hypotenuseBlock(b, toLocal, sx, sz, legs, zone, level, seed, P) {
-  const inset = 0.42 + legs * 0.1;
-  const [cx, cz] = toLocal(legs / 2 - inset, legs / 2 - inset);
-  const long = legs * Math.SQRT2 * 0.56;
-  const deep = Math.min(0.72, legs * 0.24);
-  const rotation = Math.atan2(sz, sx);
-  const accent = linear(zone === 'r' ? P.zones.residential[seed % 4] : P.zones.commercial[seed % 4]);
-  b.at(cx, 0, cz, rotation, (c) => {
-    if (zone === 'r') slab(c, 0, 0, long, deep, level === 1 ? 2 : level === 2 ? 5 : 10, wallOf(seed, P), accent, P);
-    else if (zone === 'c') {
-      if (level === 3) glassTower(c, 0, 0, long, deep, 11 + seed % 5, seed + 1, P);
-      else shopHall(c, 0, 0, long, deep, level + 1, seed, P);
-    } else sawtooth(c, 0, 0, long, deep, seed, P);
-  });
-  const [gx, gz] = toLocal(legs * 0.24, legs * 0.24);
-  const size = legs * 0.3;
-  if (zone === 'c') parking(b, gx, gz, size, size, P, 'x');
-  else if (zone === 'i') yard(b, gx, gz, size, size, P);
-  else garden(b, gx, gz, size, size, P, 2 + legs);
+function triangleOutline(legs, q) {
+  const { toLocal } = triangleFrame(legs, q);
+  const far = legs - LOT_SHRINK * 2.4;
+  return [toLocal(LOT_SHRINK, LOT_SHRINK), toLocal(far, LOT_SHRINK), toLocal(LOT_SHRINK, far)];
+}
+
+/** 三角地块的地台。 */
+export function triangleLot(b, legs, q, color) {
+  plate(b, triangleOutline(legs, q), color);
 }
 
 /**
- * 大三角形物业。楼不是三角形：主体是矩形或 L 形，贴着两条直角边，
- * 剩下的斜边一侧用停车场、庭院、堆场和一排树填满，整块地仍是一个物业。
- * 变体 1 把长楼沿斜边摆，斜路边的物业就有了沿街的斜向立面。
+ * 大三角地块上的楼形，都是 u、v 坐标。outer 是贴着三条边的整块楼形；地块够大时再切成三翼，
+ * 中间留一个院子，wings 依次是两条直角边和斜边上的一翼。院子太小时只用 outer，不留一条缝。
  */
-function propertyQ(b, name, P) {
-  const [, zoneLevel, legsText, orient, variant] = name.split('-');
-  const zone = zoneLevel[0];
-  const level = Number(zoneLevel[1]);
-  const legs = Number(legsText);
-  const [sx, sz] = QUADRANTS[Number(orient)];
-  const seed = (hashString(name) % 97) + Number(variant);
-  const half = legs / 2;
-  const toLocal = (u, v) => [-sx * half + sx * u, -sz * half + sz * v];
-  const shrink = 0.07;
-  const lotColor = linear(zone === 'r' ? P.ground.lawn : zone === 'c' ? P.road.walk : P.road.yard);
-  plate(b, [toLocal(shrink, shrink), toLocal(legs - shrink * 2.4, shrink), toLocal(shrink, legs - shrink * 2.4)], lotColor);
+export function triangleBlock(legs) {
+  const wing = Math.max(0.5, legs * 0.2);
+  const slope = legs - EDGE * Math.SQRT2;
+  const outer = [[EDGE, EDGE], [slope - EDGE, EDGE], [EDGE, slope - EDGE]];
+  const near = EDGE + wing;
+  const far = slope - wing * Math.SQRT2 - near;
+  const inradius = (slope - 2 * EDGE) * (1 - Math.SQRT1_2);
+  const shape = { wing, slope, outer, inradius, incenter: EDGE + inradius };
+  if (far - near < MIN_COURT) return { ...shape, court: null, wings: [outer] };
+  const [ca, cb, cc] = [[near, near], [far, near], [near, far]];
+  const [oa, ob, oc] = outer;
+  return { ...shape, court: [ca, cb, cc], wings: [[oa, ob, cb, ca], [oa, ca, cc, oc], [ob, oc, cc, cb]] };
+}
 
-  if (variant === '1' && legs >= 3) {
-    hypotenuseBlock(b, toLocal, sx, sz, legs, zone, level, seed, P);
+/** 多边形里随机取几个点，先按扇形分块再取，三角形和四边形都能用。 */
+function scatter(b, points, count) {
+  const [ax, az] = points[0];
+  const spots = [];
+  for (let i = 0; i < count; i += 1) {
+    const fan = 1 + Math.floor(b.random() * (points.length - 2));
+    const [cx, cz] = points[fan];
+    const [dx, dz] = points[fan + 1];
+    const r0 = Math.sqrt(b.random());
+    const r1 = b.random();
+    spots.push([ax * (1 - r0) + cx * r0 * (1 - r1) + dx * r0 * r1, az * (1 - r0) + cz * r0 * (1 - r1) + dz * r0 * r1]);
+  }
+  return spots;
+}
+
+/** 楼顶一圈压顶，是环形的，屋面本身露在中间。 */
+function parapet(b, points, y, accent) {
+  const inner = scaled(points, 0.96);
+  const top = y + 0.016;
+  edgesOf(points).forEach(({ x0, z0, x1, z1, nx, nz }, i) => {
+    const j = (i + 1) % points.length;
+    b.poly([[x0, top, z0], [x1, top, z1], [inner[j][0], top, inner[j][1]], [inner[i][0], top, inner[i][1]]], accent);
+    b.poly([[x0, y, z0], [x1, y, z1], [x1, top, z1], [x0, top, z0]], shade(accent, 0.9), [nx, 0, nz]);
+  });
+}
+
+/** 屋面上的设备箱，面积够大时中间还有一块屋顶花园。 */
+function roofTop(b, points, y, P) {
+  const inner = scaled(points, 0.8);
+  const area = polygonArea(points);
+  const concrete = linear(P.wall.concrete);
+  if (area >= GREEN_ROOF_AREA) {
+    const patch = scaled(points, 0.5);
+    flat(b, patch, y + 0.004, linear(P.ground.lawn));
+    for (const [x, z] of scatter(b, patch, 2 + Math.floor(area / 3))) tree(b, x, z, P, 0.6, y + 0.004);
+  }
+  for (const [x, z] of scatter(b, inner, Math.min(10, 2 + Math.floor(area)))) {
+    b.box(x, y, z, 0.06 + b.random() * 0.06, 0.03 + b.random() * 0.04, 0.06 + b.random() * 0.06, shade(concrete, 0.9 + b.random() * 0.15));
+  }
+}
+
+function wingBlock(b, points, y0, floors, wall, accent, P, skip = 0) {
+  const top = y0 + floors * FLOOR;
+  prism(b, points, y0, floors, wall, shade(wall, 0.9), P, { skip });
+  parapet(b, points, top, accent);
+  roofTop(b, points, top, P);
+}
+
+/** 整块的楼：下面占满楼形，上面几层退台。 */
+function terraced(b, points, low, high, wall, accent, P, skip = 0) {
+  if (high === low) {
+    wingBlock(b, points, LOT_Y, low, wall, accent, P, skip);
     return;
   }
+  prism(b, points, LOT_Y, low, wall, shade(wall, 0.9), P, { skip });
+  parapet(b, points, LOT_Y + low * FLOOR, accent);
+  wingBlock(b, scaled(points, 0.62), LOT_Y + low * FLOOR, high - low, shade(wall, 0.96), accent, P);
+}
 
-  const margin = 0.14;
-  const arm = Math.max(0.5, legs * 0.19);
-  const reach = legs * 0.6;
-  const part = (u0, u1, v0, v1) => {
-    const [ax, az] = toLocal(u0, v0);
-    const [cx, cz] = toLocal(u1, v1);
-    return { x: (ax + cx) / 2, z: (az + cz) / 2, w: Math.abs(cx - ax), d: Math.abs(cz - az) };
+/** 院子。住宅是草地和树，商业是停车场，工业是堆场。 */
+function courtyard(b, points, zone, P) {
+  flat(b, points, LOT_Y + 0.003, linear(zone === 'r' ? P.ground.lawn : P.road.yard));
+  const colors = [P.road.rail, P.zones.commercial[0], P.zones.commercial[3], P.zones.farm[2]];
+  for (const [x, z] of scatter(b, scaled(points, 0.72), Math.max(2, Math.floor(polygonArea(points) * 3)))) {
+    if (zone === 'r') tree(b, x, z, P, 0.8);
+    else if (zone === 'c') {
+      const color = linear(pick(P.cars, b.random));
+      b.box(x, LOT_Y + 0.006, z, 0.098, 0.022, 0.052, color);
+      b.box(x, LOT_Y + 0.028, z, 0.055, 0.014, 0.042, linear(P.window.day), { top: color });
+    } else b.box(x, LOT_Y + 0.004, z, 0.16, 0.075, 0.075, linear(pick(colors, b.random)));
+  }
+}
+
+/**
+ * 低密度住宅：连排的小楼一行行平行于斜边，地块多大就摆多少行，每行均分这一行的长度，两头都顶到地块的尖角。
+ * 斜行排到头后直角一角还剩一块方地，放一栋正向的房子，这个角就不空着。
+ */
+function terraceRows(lot) {
+  const { b, plan, sx, sz, toLocal, seed, P } = lot;
+  const rotation = Math.atan2(sz, sx);
+  const clearance = EDGE + ROW_CORNER;
+  const house = (x, z, index, turn) => {
+    const wall = linear([P.wall.warm, P.wall.cool, P.wall.brick][index % 3]);
+    const roof = linear(P.zones.residential[index % P.zones.residential.length]);
+    b.at(x, LOT_Y, z, turn, (c) => cottage(c, P, wall, roof, ROW_HOUSE, ROW_HOUSE * 0.96, FLOOR * 1.6, 'z'));
   };
-  const wallColor = wallOf(seed, P);
-  const accent = linear(zone === 'r' ? P.zones.residential[seed % 4] : P.zones.commercial[seed % 4]);
-  const wing = (box, floors) => slab(b, box.x, box.z, box.w, box.d, floors, wallColor, accent, P);
-  const armU = part(margin, margin + reach, margin, margin + arm);
-  const armV = part(margin, margin + arm, margin + arm, margin + reach);
-  const block = reach * 0.74;
-  const corner = part(margin, margin + block, margin, margin + block);
-  let extent = margin + arm;
-
-  if (zone === 'r' && level === 1) {
-    const count = Math.max(2, Math.round(reach / 0.72));
+  let line = plan.slope - (ROW_HOUSE / 2) * Math.SQRT2;
+  let row = 0;
+  let last = line;
+  while ((line - 2 * clearance) * Math.SQRT2 >= ROW_HOUSE) {
+    const span = (line - 2 * clearance) * Math.SQRT2;
+    const count = Math.floor(span / ROW_HOUSE);
+    const pitch = span / count;
     for (let i = 0; i < count; i += 1) {
-      const along = margin + 0.3 + i * 0.72;
-      const [ax, az] = toLocal(along, margin + 0.26);
-      houseAt(b, ax, az, seed + i, P);
-      if (i > 0) {
-        const [cx, cz] = toLocal(margin + 0.26, along);
-        houseAt(b, cx, cz, seed + i + 2, P);
-      }
+      const along = ((i + 0.5 - count / 2) * pitch) / Math.SQRT2;
+      const [x, z] = toLocal(line / 2 + along, line / 2 - along);
+      house(x, z, seed + row + i, rotation);
     }
-    extent = margin + 0.56;
-  } else if (zone === 'r' && level === 2) {
-    wing(armU, 3 + seed % 2);
-    wing(armV, 3 + seed % 2);
-  } else if (zone === 'r') {
-    wing(armU, 2);
-    const tower = part(margin, margin + arm * 1.15, margin + arm, margin + arm * 2.3);
-    slab(b, tower.x, tower.z, tower.w, tower.d, 9 + seed % 4, wallColor, accent, P);
-    wing(part(margin, margin + arm, margin + arm * 2.3, margin + reach), 2);
-  } else if (zone === 'c' && level === 1) {
-    shopHall(b, armU.x, armU.z, armU.w, armU.d, 2, seed, P);
-    shopHall(b, armV.x, armV.z, armV.w, armV.d, 2, seed + 1, P);
-  } else if (zone === 'c' && level === 2) {
-    shopHall(b, corner.x, corner.z, corner.w, corner.d, 3, seed, P);
-    extent = margin + block;
-  } else if (zone === 'c') {
-    shopHall(b, armU.x, armU.z, armU.w, armU.d, 2, seed, P);
-    const side = Math.min(arm * 1.25, 1.1);
-    const tower = part(margin, margin + side, margin + arm, margin + arm + side);
-    if (seed % 3 === 2) roundTower(b, tower.x, tower.z, side * 0.42, 12 + seed % 5, seed, P);
-    else glassTower(b, tower.x, tower.z, tower.w * 0.92, tower.d * 0.92, 11 + seed % 6, seed, P);
-    extent = margin + arm;
+    last = line;
+    line -= ROW_PITCH * Math.SQRT2;
+    row += 1;
+  }
+  if (last - ROW_CORNER * Math.SQRT2 >= 2 * (EDGE + ROW_HOUSE)) {
+    const middle = EDGE + ROW_HOUSE / 2;
+    const [x, z] = toLocal(middle, middle);
+    house(x, z, seed + row, 0);
+  }
+}
+
+/** 住宅是连体的院落楼。变体 0 沿斜边的一翼加高，变体 1 在直角一角起一座塔。 */
+function residentialBlock(lot) {
+  const { b, plan, legs, place, level, variant, seed, P } = lot;
+  if (level === 1 && variant === 0 && legs >= ROW_MIN_LEGS) {
+    terraceRows(lot);
+    return;
+  }
+  const low = [2, 4 + seed % 2, 6 + seed % 3][level - 1];
+  const high = low + [0, 2, 5][level - 1];
+  const wall = wallOf(seed, P);
+  const accent = linear(P.zones.residential[seed % 4]);
+  if (!plan.court) {
+    terraced(b, place(plan.outer), low, high, wall, accent, P);
+    return;
+  }
+  plan.wings.forEach((wing, index) => {
+    const top = variant === 0 && index === STREET_WING ? high : low;
+    terraced(b, place(wing), low, top, shade(wall, 1 - index * 0.03), accent, P);
+  });
+  courtyard(b, place(plan.court), 'r', P);
+  if (variant === 1 && high > low) {
+    const near = EDGE + plan.wing;
+    const corner = [[EDGE, EDGE], [near, EDGE], [near, near], [EDGE, near]];
+    wingBlock(b, place(corner), LOT_Y + low * FLOOR, high - low + 3, shade(wall, 0.96), accent, P);
+  }
+}
+
+/** 高层商业的塔楼站在裙房顶上，塔身放在三角形的内切圆里，大地块沿斜边站两座。 */
+function towersOn(lot, y) {
+  const { b, plan, legs, toLocal, variant, seed, P } = lot;
+  const side = Math.min(MAX_TOWER, plan.inradius * 1.3);
+  const twin = legs >= 4;
+  const shift = legs * 0.12;
+  for (const sign of twin ? [-1, 1] : [0]) {
+    const [x, z] = toLocal(plan.incenter + sign * shift, plan.incenter - sign * shift);
+    const floors = 11 + (seed + sign + 1) % 6;
+    b.at(0, y, 0, 0, (c) => {
+      if (variant === 1 && !twin) roundTower(c, x, z, side * 0.46, floors, seed, P);
+      else glassTower(c, x, z, side, side, floors, seed, P);
+    });
+  }
+}
+
+/** 商业是占满地块的裙房，沿街一圈底商。变体 1 中间留一个停车院，地块太小时留不出院子就还是整块。 */
+function commercialBlock(lot) {
+  const { b, plan, place, level, variant, seed, P } = lot;
+  const wall = wallOf(seed, P);
+  const accent = linear(P.zones.commercial[seed % P.zones.commercial.length]);
+  const low = [2, 2, 3][level - 1];
+  const high = [2, 3, 3][level - 1];
+  if (variant === 1 && plan.court) {
+    for (const wing of plan.wings) {
+      wingBlock(b, place(wing), LOT_Y, high, wall, accent, P, 1);
+      shopFront(b, place(wing), LOT_Y, P, accent);
+    }
+    courtyard(b, place(plan.court), 'c', P);
   } else {
-    sawtooth(b, corner.x, corner.z, corner.w, corner.d, seed, P);
-    extent = margin + block;
+    terraced(b, place(plan.outer), low, high, wall, accent, P, 1);
+    shopFront(b, place(plan.outer), LOT_Y, P, accent);
   }
+  if (level === 3) towersOn(lot, high * FLOOR);
+}
 
-  // 外场：沿两条直角边各放一块矩形，都不越过斜边，斜边一侧留给绿化带。
-  const fill = (u0, u1, v0, v1, along) => {
-    if (u1 - u0 < 0.26 || v1 - v0 < 0.26) return;
-    const box = part(u0, u1, v0, v1);
-    if (zone === 'c') parking(b, box.x, box.z, box.w, box.d, P, along);
-    else if (zone === 'i') yard(b, box.x, box.z, box.w, box.d, P);
-    else garden(b, box.x, box.z, box.w, box.d, P, 1 + Math.floor(box.w * box.d * 3));
+/** 厂房的锯齿屋顶，一排排铺满楼形。屋脊总在世界 +z 一侧，玻璃才朝着相机。 */
+function sawRoof(lot, y) {
+  const { b, plan, sz, toLocal, P } = lot;
+  const roof = linear(P.wall.concrete);
+  const glass = linear(P.wall.glass);
+  const pitch = 0.34;
+  const rise = 0.075;
+  const start = EDGE + 0.03;
+  const point = (u, v, h) => {
+    const [x, z] = toLocal(u, v);
+    return [x, h, z];
   };
-  const slope = legs - 0.46;
-  const gap = 0.06;
-  const startU = extent + gap;
-  const depth = Math.min(arm * 1.2, (slope - startU) * 0.62);
-  fill(startU, slope - margin - depth, margin, margin + depth, 'x');
-  fill(margin, margin + depth, startU, slope - margin - depth, 'z');
-  if (extent < margin + block) {
-    const mid = extent + gap;
-    fill(mid, mid + (slope - 2 * mid) * 0.8, mid, mid + (slope - 2 * mid) * 0.8, 'x');
+  for (let v = start; ; v += pitch) {
+    const end = plan.slope - v - pitch - 0.03;
+    if (end - start < 0.2) return;
+    const [ridge, valley] = sz > 0 ? [v + pitch, v] : [v, v + pitch];
+    b.poly([point(start, ridge, y + rise), point(end, ridge, y + rise), point(end, valley, y), point(start, valley, y)], roof);
+    b.poly([point(start, ridge, y), point(end, ridge, y), point(end, ridge, y + rise), point(start, ridge, y + rise)], glass, [0, 0, 1]);
   }
+}
 
-  const hedge = legs - 0.3;
-  const spacing = Math.max(3, Math.floor(hedge / 0.46));
-  for (let i = 0; i <= spacing; i += 1) {
-    const t = (i + 0.5) / (spacing + 1);
-    const [tx, tz] = toLocal(hedge * t + 0.05, hedge * (1 - t) + 0.05);
-    tree(b, tx, tz, P, 0.68 + b.random() * 0.2);
+/** 工业是占满地块的厂房。变体 1 留出堆场，天窗开在三翼的屋顶上。 */
+function industrialBlock(lot) {
+  const { b, plan, place, toLocal, variant, seed, P } = lot;
+  const wall = linear(P.zones.industrial[seed % P.zones.industrial.length]);
+  const roof = linear(P.wall.concrete);
+  const floors = 2;
+  const top = LOT_Y + floors * FLOOR;
+  const open = variant === 1 && plan.court;
+  for (const part of open ? plan.wings : [plan.outer]) {
+    prism(b, place(part), LOT_Y, floors, wall, roof, P, { skip: 1 });
+    if (open) flat(b, scaled(place(part), 0.6), top + 0.002, linear(P.wall.glass));
   }
+  if (open) courtyard(b, place(plan.court), 'i', P);
+  else sawRoof(lot, top);
+  const [x, z] = toLocal(EDGE + 0.14, EDGE + 0.14);
+  chimney(b, x, z, top, P);
+}
+
+const TRIANGLE_MASSES = { r: residentialBlock, c: commercialBlock, i: industrialBlock };
+
+/** 大三角形物业。楼形就是地块的形状：三翼连体围出院子，或者整块裙房，容量由规格决定，这里只管外观。 */
+function propertyQ(b, name, P) {
+  const [, zoneLevel, legsText, orient, variantText] = name.split('-');
+  const zone = zoneLevel[0];
+  const legs = Number(legsText);
+  const variant = Number(variantText);
+  const { sx, sz, toLocal } = triangleFrame(legs, Number(orient));
+  triangleLot(b, legs, Number(orient), linear(zone === 'r' ? P.ground.lawn : zone === 'c' ? P.road.walk : P.road.yard));
+  TRIANGLE_MASSES[zone]({
+    b,
+    P,
+    sx,
+    sz,
+    legs,
+    toLocal,
+    variant,
+    level: Number(zoneLevel[1]),
+    seed: (hashString(name) % 97) + variant,
+    plan: triangleBlock(legs),
+    place: (points) => points.map(([u, v]) => toLocal(u, v)),
+  });
 }
 
 function lotFor(b, sx, sz, color) {
@@ -858,14 +1072,7 @@ function polygonOfFootprint(footprint) {
       (s * u * axisU[1] + t * v * axisV[1]) / 2,
     ]);
   }
-  const [sx, sz] = QUADRANTS[Number(orient)];
-  const half = first / 2;
-  const shrink = 0.07;
-  return [
-    [-sx * half + sx * shrink, -sz * half + sz * shrink],
-    [-sx * half + sx * (first - shrink * 2.4), -sz * half + sz * shrink],
-    [-sx * half + sx * shrink, -sz * half + sz * (first - shrink * 2.4)],
-  ];
+  return triangleOutline(first, Number(orient));
 }
 
 /**
@@ -875,30 +1082,10 @@ function polygonOfFootprint(footprint) {
 export function buildFestival(footprint, P) {
   const b = new Builder(hashString(footprint));
   const polygon = polygonOfFootprint(footprint);
-  const center = polygon.reduce((sum, [x, z]) => [sum[0] + x / polygon.length, sum[1] + z / polygon.length], [0, 0]);
   const red = linear(P.festival.red);
   const gold = linear(P.festival.gold);
   const poleHeight = 0.34;
-  let front = null;
-  let frontness = -Infinity;
-  for (let i = 0; i < polygon.length; i += 1) {
-    const [x0, z0] = polygon[i];
-    const [x1, z1] = polygon[(i + 1) % polygon.length];
-    const mx = (x0 + x1) / 2 - center[0];
-    const mz = (z0 + z1) / 2 - center[1];
-    let nx = z1 - z0;
-    let nz = x0 - x1;
-    if (nx * mx + nz * mz < 0) {
-      nx = -nx;
-      nz = -nz;
-    }
-    const length = Math.hypot(x1 - x0, z1 - z0);
-    const facing = (nx + nz) / length;
-    if (facing > frontness) {
-      frontness = facing;
-      front = { x0, z0, x1, z1, nx, nz, length };
-    }
-  }
+  const front = edgesOf(polygon).reduce((best, edge) => (edge.nx + edge.nz > best.nx + best.nz ? edge : best));
   const { x0, z0, x1, z1, nx, nz, length } = front;
   const inset = Math.min(0.14, length * 0.15) / length;
   const ax = x0 + (x1 - x0) * inset;

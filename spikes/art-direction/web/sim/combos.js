@@ -13,20 +13,23 @@ export const COMBOS = [
   { podium: 'lobby', body: 'ell', roof: 'plant', floors: 7, tone: 3 },
 ];
 
-const QUADRANTS = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
+/** 大三角地块的四个朝向，每一项是直角边从直角顶点量出去的方向。 */
+export const QUADRANTS = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
+
 const STEPPED_SHARES = [0.45, 0.35, 0.2];
 const ROOF_OFFSET = { ell: [-0.35, -0.35], twin: [-0.33, 0] };
+const TRIANGLE_BODY_OFFSET = 0.66;
 
 /** 退台楼每一段的层数。三段的层数都取整，所以总层数不一定正好等于给定的层数。 */
 export function steppedTiers(floors) {
   return STEPPED_SHARES.map((share) => Math.max(1, Math.round(floors * share)));
 }
 
-/** 大三角地块上楼的中心相对物业中心的偏移。楼身压向直角一侧，斜边一侧留作绿化。 */
+/** 大三角地块上楼的中心相对物业中心的偏移。底座占满整块地，楼身站在三角形的内切圆上。 */
 export function bodyOffset(size, q) {
   if (size === '2x2') return [0, 0];
   const [sx, sz] = QUADRANTS[q];
-  return [-sx * 0.42, -sz * 0.42];
+  return [-sx * TRIANGLE_BODY_OFFSET, -sz * TRIANGLE_BODY_OFFSET];
 }
 
 /** 一栋楼由哪些模块组成。lift 是这个模块相对地面抬高的楼层数，dx、dy 是地面上的偏移。 */
