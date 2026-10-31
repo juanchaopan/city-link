@@ -4,7 +4,7 @@ import * as THREE from 'three';
 // 每个面只有一种颜色，非索引顶点保证硬边，这就是低多边形的外观。
 
 export function rng(seed) {
-  let s = (seed >>> 0) || 1;
+  let s = seed >>> 0 || 1;
   return () => {
     s ^= s << 13;
     s ^= s >>> 17;
@@ -111,17 +111,69 @@ export class Builder {
     const px = options.px ?? color;
     const pz = options.pz ?? color;
     const glow = options.glow ?? false;
-    this.poly([[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]], top, [0, 1, 0], glow);
-    this.poly([[x1, y, z0], [x1, y1, z0], [x1, y1, z1], [x1, y, z1]], px, [1, 0, 0], glow);
-    this.poly([[x0, y, z1], [x1, y, z1], [x1, y1, z1], [x0, y1, z1]], pz, [0, 0, 1], glow);
-    this.poly([[x0, y, z0], [x0, y1, z0], [x0, y1, z1], [x0, y, z1]], color, [-1, 0, 0], glow);
-    this.poly([[x0, y, z0], [x1, y, z0], [x1, y1, z0], [x0, y1, z0]], color, [0, 0, -1], glow);
+    this.poly(
+      [
+        [x0, y1, z0],
+        [x1, y1, z0],
+        [x1, y1, z1],
+        [x0, y1, z1],
+      ],
+      top,
+      [0, 1, 0],
+      glow,
+    );
+    this.poly(
+      [
+        [x1, y, z0],
+        [x1, y1, z0],
+        [x1, y1, z1],
+        [x1, y, z1],
+      ],
+      px,
+      [1, 0, 0],
+      glow,
+    );
+    this.poly(
+      [
+        [x0, y, z1],
+        [x1, y, z1],
+        [x1, y1, z1],
+        [x0, y1, z1],
+      ],
+      pz,
+      [0, 0, 1],
+      glow,
+    );
+    this.poly(
+      [
+        [x0, y, z0],
+        [x0, y1, z0],
+        [x0, y1, z1],
+        [x0, y, z1],
+      ],
+      color,
+      [-1, 0, 0],
+      glow,
+    );
+    this.poly(
+      [
+        [x0, y, z0],
+        [x1, y, z0],
+        [x1, y1, z0],
+        [x0, y1, z0],
+      ],
+      color,
+      [0, 0, -1],
+      glow,
+    );
   }
 
   /** 双坡屋顶，屋脊沿 x 方向；axis 为 'z' 时沿 z。 */
   gable(x, y, z, sx, sz, rise, roof, wall, axis = 'x', overhang = 0.02) {
     if (axis === 'z') {
-      this.at(x, y, z, Math.PI / 2, (b) => b.gable(0, 0, 0, sz, sx, rise, roof, wall, 'x', overhang));
+      this.at(x, y, z, Math.PI / 2, (b) =>
+        b.gable(0, 0, 0, sz, sx, rise, roof, wall, 'x', overhang),
+      );
       return;
     }
     const x0 = x - sx / 2 - overhang;
@@ -129,15 +181,58 @@ export class Builder {
     const z0 = z - sz / 2 - overhang;
     const z1 = z + sz / 2 + overhang;
     const y1 = y + rise;
-    this.poly([[x0, y, z1], [x1, y, z1], [x1, y1, z], [x0, y1, z]], roof, [0, 1, 1]);
-    this.poly([[x0, y, z0], [x1, y, z0], [x1, y1, z], [x0, y1, z]], shade(roof, 0.92), [0, 1, -1]);
+    this.poly(
+      [
+        [x0, y, z1],
+        [x1, y, z1],
+        [x1, y1, z],
+        [x0, y1, z],
+      ],
+      roof,
+      [0, 1, 1],
+    );
+    this.poly(
+      [
+        [x0, y, z0],
+        [x1, y, z0],
+        [x1, y1, z],
+        [x0, y1, z],
+      ],
+      shade(roof, 0.92),
+      [0, 1, -1],
+    );
     const gx0 = x - sx / 2;
     const gx1 = x + sx / 2;
     const gz0 = z - sz / 2;
     const gz1 = z + sz / 2;
-    this.poly([[gx1, y, gz0], [gx1, y, gz1], [gx1, y1, z]], wall, [1, 0, 0]);
-    this.poly([[gx0, y, gz0], [gx0, y, gz1], [gx0, y1, z]], wall, [-1, 0, 0]);
-    this.poly([[x0, y - 0.012, z1], [x1, y - 0.012, z1], [x1, y, z1], [x0, y, z1]], shade(roof, 0.75), [0, 0, 1]);
+    this.poly(
+      [
+        [gx1, y, gz0],
+        [gx1, y, gz1],
+        [gx1, y1, z],
+      ],
+      wall,
+      [1, 0, 0],
+    );
+    this.poly(
+      [
+        [gx0, y, gz0],
+        [gx0, y, gz1],
+        [gx0, y1, z],
+      ],
+      wall,
+      [-1, 0, 0],
+    );
+    this.poly(
+      [
+        [x0, y - 0.012, z1],
+        [x1, y - 0.012, z1],
+        [x1, y, z1],
+        [x0, y, z1],
+      ],
+      shade(roof, 0.75),
+      [0, 0, 1],
+    );
   }
 
   cylinder(x, y, z, r0, r1, h, sides, color, top = color) {
@@ -186,13 +281,21 @@ export class Builder {
       const key = `${position.getX(i).toFixed(3)},${position.getY(i).toFixed(3)},${position.getZ(i).toFixed(3)}`;
       if (!offsets.has(key)) offsets.set(key, 1 + (this.random() - 0.5) * 0.28);
       const k = offsets.get(key);
-      return [x + position.getX(i) * rx * k, y + position.getY(i) * ry * k, z + position.getZ(i) * rz * k];
+      return [
+        x + position.getX(i) * rx * k,
+        y + position.getY(i) * ry * k,
+        z + position.getZ(i) * rz * k,
+      ];
     };
     for (let i = 0; i < position.count; i += 3) {
       const a = jittered(i);
       const b = jittered(i + 1);
       const c = jittered(i + 2);
-      const center = [(a[0] + b[0] + c[0]) / 3 - x, (a[1] + b[1] + c[1]) / 3 - y, (a[2] + b[2] + c[2]) / 3 - z];
+      const center = [
+        (a[0] + b[0] + c[0]) / 3 - x,
+        (a[1] + b[1] + c[1]) / 3 - y,
+        (a[2] + b[2] + c[2]) / 3 - z,
+      ];
       const tone = 1 + (this.random() - 0.5) * variation * 2;
       this.poly([a, b, c], shade(color, tone), center);
     }

@@ -40,7 +40,11 @@ function cellLane(x, y, from, to, kind) {
   const reachTo = Math.hypot(...DIRECTIONS[to]) / 2;
   const start = [cx + fx * reachFrom + fy * offset, cy + fy * reachFrom - fx * offset];
   const end = [cx + tx * reachTo - ty * offset, cy + ty * reachTo + tx * offset];
-  if (Math.abs(fx * tx + fy * ty + 1) < 1e-6) return [[...start, 0], [...end, 0]];
+  if (Math.abs(fx * tx + fy * ty + 1) < 1e-6)
+    return [
+      [...start, 0],
+      [...end, 0],
+    ];
   const control = [cx + (fy - ty) * offset, cy + (tx - fx) * offset];
   const points = [];
   for (let i = 0; i <= TURNS; i += 1) {
@@ -48,7 +52,11 @@ function cellLane(x, y, from, to, kind) {
     const a = (1 - t) * (1 - t);
     const b = 2 * t * (1 - t);
     const c = t * t;
-    points.push([a * start[0] + b * control[0] + c * end[0], a * start[1] + b * control[1] + c * end[1], 0]);
+    points.push([
+      a * start[0] + b * control[0] + c * end[0],
+      a * start[1] + b * control[1] + c * end[1],
+      0,
+    ]);
   }
   return points;
 }
@@ -56,7 +64,9 @@ function cellLane(x, y, from, to, kind) {
 function measured(points) {
   const along = [0];
   for (let i = 1; i < points.length; i += 1) {
-    along.push(along[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
+    along.push(
+      along[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]),
+    );
   }
   return { points, along, length: along[along.length - 1] };
 }
@@ -69,7 +79,14 @@ function pointAt(path, s) {
   const t = Math.max(0, Math.min(1, (s - along[i]) / span));
   const [ax, ay, ah] = points[i];
   const [bx, by, bh] = points[i + 1];
-  return { x: ax + (bx - ax) * t, y: ay + (by - ay) * t, h: ah + (bh - ah) * t, hx: bx - ax, hy: by - ay, index: i };
+  return {
+    x: ax + (bx - ax) * t,
+    y: ay + (by - ay) * t,
+    h: ah + (bh - ah) * t,
+    hx: bx - ax,
+    hy: by - ay,
+    index: i,
+  };
 }
 
 /** 车身朝向的八个方向。精灵的第 r 张朝向是局部 +x 旋转 r×45°，屏幕上 y 向下。 */
@@ -102,7 +119,13 @@ function pool(atlas, count, area) {
   });
   const slots = [];
   for (let i = 0; i < count; i += 1) {
-    const particle = new Particle({ texture: atlas.textures[key], x: -1e5, y: -1e5, anchorX: frame.ax / frame.w, anchorY: frame.ay / frame.h });
+    const particle = new Particle({
+      texture: atlas.textures[key],
+      x: -1e5,
+      y: -1e5,
+      anchorX: frame.ax / frame.w,
+      anchorY: frame.ay / frame.h,
+    });
     particle.alpha = 0;
     container.addParticle(particle);
     slots.push(particle);
@@ -129,7 +152,9 @@ export function createVehicles(atlas, city, scene, { cap }) {
     load.set(`${String(edge.from)}:${String(edge.to)}`, edge.ratio);
     load.set(`${String(edge.to)}:${String(edge.from)}`, edge.ratio);
   }
-  const laneById = new Map(lanes.map((lane) => [lane.id, { ...lane, path: measured(lane.points) }]));
+  const laneById = new Map(
+    lanes.map((lane) => [lane.id, { ...lane, path: measured(lane.points) }]),
+  );
   const lanesFrom = new Map();
   for (const lane of laneById.values()) {
     if (lane.fromCell === undefined) continue;
@@ -174,10 +199,22 @@ export function createVehicles(atlas, city, scene, { cap }) {
   }
   const staticParticle = (key, sx, sy) => {
     const frame = atlas.frames[key];
-    return new Particle({ texture: atlas.textures[key], x: sx, y: sy, anchorX: frame.ax / frame.w, anchorY: frame.ay / frame.h });
+    return new Particle({
+      texture: atlas.textures[key],
+      x: sx,
+      y: sy,
+      anchorX: frame.ax / frame.w,
+      anchorY: frame.ay / frame.h,
+    });
   };
-  const poleLayer = new ParticleContainer({ texture: atlas.textures.pole, dynamicProperties: { position: false, rotation: false, uvs: false, vertex: false, color: true } });
-  const lampLayer = new ParticleContainer({ texture: atlas.textures.lamp, dynamicProperties: { position: false, rotation: false, uvs: false, vertex: false, color: true } });
+  const poleLayer = new ParticleContainer({
+    texture: atlas.textures.pole,
+    dynamicProperties: { position: false, rotation: false, uvs: false, vertex: false, color: true },
+  });
+  const lampLayer = new ParticleContainer({
+    texture: atlas.textures.lamp,
+    dynamicProperties: { position: false, rotation: false, uvs: false, vertex: false, color: true },
+  });
   poleLayer.boundsArea = area;
   lampLayer.boundsArea = area;
   const poleParticles = poles.map(({ sx, sy }) => {
@@ -280,7 +317,14 @@ export function createVehicles(atlas, city, scene, { cap }) {
     const slot = acquire(false);
     if (!slot) return;
     const color = Math.floor(Math.random() * 4);
-    const car = { slot, color, speed: 0, s: 0, top: 1 + Math.random() * 0.2, bus: Math.random() < 0.06 };
+    const car = {
+      slot,
+      color,
+      speed: 0,
+      s: 0,
+      top: 1 + Math.random() * 0.2,
+      bus: Math.random() < 0.06,
+    };
     if (!enterCell(car, cell, from)) {
       release(slot);
       return;
@@ -312,11 +356,15 @@ export function createVehicles(atlas, city, scene, { cap }) {
       const { sx, sy } = screenOf((edge.from % N) + 0.5, Math.floor(edge.from / N) + 0.5, 0);
       return sx > viewBox.left && sx < viewBox.right && sy > viewBox.top && sy < viewBox.bottom;
     });
-    visibleLanes = [...laneById.values()].filter((lane) => lane.points.some(([x, y, h]) => {
-      const { sx, sy } = screenOf(x, y, h);
-      return sx > viewBox.left && sx < viewBox.right && sy > viewBox.top && sy < viewBox.bottom;
-    }));
-    const demand = visibleEdges.reduce((sum, edge) => sum + 0.18 + edge.ratio * 1.6, 0) + visibleLanes.reduce((sum, lane) => sum + lane.path.length * 0.12, 0);
+    visibleLanes = [...laneById.values()].filter((lane) =>
+      lane.points.some(([x, y, h]) => {
+        const { sx, sy } = screenOf(x, y, h);
+        return sx > viewBox.left && sx < viewBox.right && sy > viewBox.top && sy < viewBox.bottom;
+      }),
+    );
+    const demand =
+      visibleEdges.reduce((sum, edge) => sum + 0.18 + edge.ratio * 1.6, 0) +
+      visibleLanes.reduce((sum, lane) => sum + lane.path.length * 0.12, 0);
     wanted = Math.min(cap, Math.round(demand));
   };
 
@@ -406,14 +454,20 @@ export function createVehicles(atlas, city, scene, { cap }) {
         const spot = pointAt(car.path, Math.min(car.s, car.path.length));
         const { sx, sy } = screenOf(spot.x, spot.y, spot.h);
         const margin = 240;
-        alive = sx > viewBox.left - margin && sx < viewBox.right + margin && sy > viewBox.top - margin && sy < viewBox.bottom + margin;
+        alive =
+          sx > viewBox.left - margin &&
+          sx < viewBox.right + margin &&
+          sy > viewBox.top - margin &&
+          sy < viewBox.bottom + margin;
         if (alive) {
           const onLane = car.mode === 'lane';
           if (!place(car, onLane)) alive = false;
         }
         if (alive) {
           const rotation = rotationOf(spot.hx, spot.hy);
-          const key = car.bus ? `bus-${String(rotation)}` : `car-${String(car.color)}-${String(rotation)}`;
+          const key = car.bus
+            ? `bus-${String(rotation)}`
+            : `car-${String(car.color)}-${String(rotation)}`;
           const { body, light } = car.slot;
           const frame = atlas.frames[key];
           body.texture = atlas.textures[key];
@@ -443,9 +497,11 @@ export function createVehicles(atlas, city, scene, { cap }) {
     for (let i = 0; i < 8 && cars.length < wanted; i += 1) {
       const fromLane = visibleLanes.length > 0 && Math.random() < 0.3;
       if (fromLane) spawnOnLane(visibleLanes[Math.floor(Math.random() * visibleLanes.length)]);
-      else if (visibleEdges.length > 0) spawnOnEdge(visibleEdges[Math.floor(Math.random() * visibleEdges.length)]);
+      else if (visibleEdges.length > 0)
+        spawnOnEdge(visibleEdges[Math.floor(Math.random() * visibleEdges.length)]);
     }
-    for (const lamp of signalLamps) lamp.particle.tint = LIGHTS[phaseOf(lamp.junction, lamp.axis, time)];
+    for (const lamp of signalLamps)
+      lamp.particle.tint = LIGHTS[phaseOf(lamp.junction, lamp.axis, time)];
   };
 
   return {

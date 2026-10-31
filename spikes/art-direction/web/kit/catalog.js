@@ -44,16 +44,32 @@ function propertyBox(key) {
   }
   const [w, h] = parts[2].split('x').map(Number);
   const unit = parts[3] === 'a' ? 1 : 0.72;
-  return { group: parts[3] === 'a' ? '直角物业' : '斜向物业', span: Math.max(w, h) * unit + 0.6, tall: 420 };
+  return {
+    group: parts[3] === 'a' ? '直角物业' : '斜向物业',
+    span: Math.max(w, h) * unit + 0.6,
+    tall: 420,
+  };
 }
 
-const ROAD_LAYERS = { r: LAYER.both, rw: LAYER.walk, rc: LAYER.curb, rd: LAYER.deck, srw: LAYER.walk, src: LAYER.curb, srd: LAYER.deck };
+const ROAD_LAYERS = {
+  r: LAYER.both,
+  rw: LAYER.walk,
+  rc: LAYER.curb,
+  rd: LAYER.deck,
+  srw: LAYER.walk,
+  src: LAYER.curb,
+  srd: LAYER.deck,
+};
 
 const gradeOf = (text) => text.split('_').map((value) => Number(value.replace('n', '-')) / 1000);
 
 function cellOf(parts) {
   const [road, arterial = '0'] = parts[1].split('_');
-  return { road: parseInt(road, 16), arterial: parseInt(arterial, 16), highway: parseInt(parts[2], 16) };
+  return {
+    road: parseInt(road, 16),
+    arterial: parseInt(arterial, 16),
+    highway: parseInt(parts[2], 16),
+  };
 }
 
 export function specFor(key, P) {
@@ -62,22 +78,64 @@ export function specFor(key, P) {
   const seed = hashString(key);
   if (kind === 'g') {
     const corners = [...parts[2]].map(Number);
-    return { group: '地表', w: 160, h: 170, anchorY: 110, lit: false, build: () => buildGround(corners, Number(parts[1]), P, seed) };
+    return {
+      group: '地表',
+      w: 160,
+      h: 170,
+      anchorY: 110,
+      lit: false,
+      build: () => buildGround(corners, Number(parts[1]), P, seed),
+    };
   }
   if (kind === 'w') {
-    return { group: '水面和河岸', w: 160, h: 130, anchorY: 60, lit: false, build: () => buildWater(P, seed) };
+    return {
+      group: '水面和河岸',
+      w: 160,
+      h: 130,
+      anchorY: 60,
+      lit: false,
+      build: () => buildWater(P, seed),
+    };
   }
   if (kind === 'b') {
-    return { group: '水面和河岸', w: 160, h: 150, anchorY: 60, lit: false, build: () => buildBank(flags(parts[1]), flags(parts[2]), P, seed) };
+    return {
+      group: '水面和河岸',
+      w: 160,
+      h: 150,
+      anchorY: 60,
+      lit: false,
+      build: () => buildBank(flags(parts[1]), flags(parts[2]), P, seed),
+    };
   }
   if (kind === 'sk') {
-    return { group: '沙盘底座', w: 160, h: 170, anchorY: 60, lit: false, build: () => buildSkirt(parts[1], parts[2] === '1', P) };
+    return {
+      group: '沙盘底座',
+      w: 160,
+      h: 170,
+      anchorY: 60,
+      lit: false,
+      build: () => buildSkirt(parts[1], parts[2] === '1', P),
+    };
   }
   if (kind === 'm') {
-    return { group: '地表', w: 160, h: 120, anchorY: 60, lit: false, build: () => buildMeadow(P, seed) };
+    return {
+      group: '地表',
+      w: 160,
+      h: 120,
+      anchorY: 60,
+      lit: false,
+      build: () => buildMeadow(P, seed),
+    };
   }
   if (kind === 'f') {
-    return { group: '农田', w: 160, h: 120, anchorY: 60, lit: false, build: () => buildField(Number(parts[1]), parts[2], P, seed) };
+    return {
+      group: '农田',
+      w: 160,
+      h: 120,
+      anchorY: 60,
+      lit: false,
+      build: () => buildField(Number(parts[1]), parts[2], P, seed),
+    };
   }
   if (kind === 'r' || kind === 'rw' || kind === 'rc' || kind === 'rd') {
     const { build, extra } = buildRoad(cellOf(parts), P, ROAD_LAYERS[kind]);
@@ -91,10 +149,25 @@ export function specFor(key, P) {
   }
   if (kind === 'br') {
     const { build, extra } = buildBridge(cellOf(parts), P);
-    return { group: '桥', w: 320, h: 240, anchorY: 110, shadow: true, groundY: waterLevel, reach: 2, build, extra };
+    return {
+      group: '桥',
+      w: 320,
+      h: 240,
+      anchorY: 110,
+      shadow: true,
+      groundY: waterLevel,
+      reach: 2,
+      build,
+      extra,
+    };
   }
   if (kind === 'ev') {
-    const { build, extra } = buildViaduct(parts[1], Number(parts[2]) / 100, Number(parts[3]) / 100, P);
+    const { build, extra } = buildViaduct(
+      parts[1],
+      Number(parts[2]) / 100,
+      Number(parts[3]) / 100,
+      P,
+    );
     return { group: '高架', w: 320, h: 300, anchorY: 190, shadow: true, reach: 2.4, build, extra };
   }
   if (kind === 'ix') {
@@ -103,15 +176,44 @@ export function specFor(key, P) {
   }
   if (kind === 'Mp' || kind === 'Mb' || kind === 'Mr') {
     const group = { Mp: '模块·底座', Mb: '模块·楼身', Mr: '模块·屋顶' }[kind];
-    const size = kind === 'Mp' ? { w: 760, h: 520, anchorY: 240 } : kind === 'Mb' ? { w: 300, h: 420, anchorY: 340 } : { w: 160, h: 140, anchorY: 100 };
-    return { group, ...size, shadow: kind === 'Mp', reach: 3, lit: kind !== 'Mb' ? undefined : false, build: () => buildModule(key, P) };
+    const size =
+      kind === 'Mp'
+        ? { w: 760, h: 520, anchorY: 240 }
+        : kind === 'Mb'
+          ? { w: 300, h: 420, anchorY: 340 }
+          : { w: 160, h: 140, anchorY: 100 };
+    return {
+      group,
+      ...size,
+      shadow: kind === 'Mp',
+      reach: 3,
+      lit: kind !== 'Mb' ? undefined : false,
+      build: () => buildModule(key, P),
+    };
   }
   if (kind === 'gate') {
-    return { group: '道路收尾', w: 240, h: 200, anchorY: 110, shadow: true, reach: 1.2, build: () => buildPlannedEnd(parts[1], Number(parts[2]), P) };
+    return {
+      group: '道路收尾',
+      w: 240,
+      h: 200,
+      anchorY: 110,
+      shadow: true,
+      reach: 1.2,
+      build: () => buildPlannedEnd(parts[1], Number(parts[2]), P),
+    };
   }
   if (kind === 'nb') {
     const { build, extra } = buildNeighbor(parts[1], parts[2], P);
-    return { group: '邻城', w: 1100, h: 800, anchorY: 340, lit: false, build, extra, fade: (sprite) => fadeNeighbor(sprite, parts[1]) };
+    return {
+      group: '邻城',
+      w: 1100,
+      h: 800,
+      anchorY: 340,
+      lit: false,
+      build,
+      extra,
+      fade: (sprite) => fadeNeighbor(sprite, parts[1]),
+    };
   }
   if (kind === 'car' || kind === 'bus') {
     const rotation = Number(parts[kind === 'car' ? 2 : 1] ?? 0);
@@ -123,16 +225,49 @@ export function specFor(key, P) {
     return { group: '车船', w: 160, h: 110, anchorY: 60, lit: false, build };
   }
   if (kind === 'pole' || kind === 'lamp') {
-    return { group: '信号灯', w: 60, h: 80, anchorY: 60, lit: false, build: () => buildObject(key, P) };
+    return {
+      group: '信号灯',
+      w: 60,
+      h: 80,
+      anchorY: 60,
+      lit: false,
+      build: () => buildObject(key, P),
+    };
   }
   if (kind === 'boat') {
-    return { group: '车船', w: 220, h: 160, anchorY: 80, shadow: true, groundY: waterLevel, reach: 1.5, build: () => buildObject(key, P) };
+    return {
+      group: '车船',
+      w: 220,
+      h: 160,
+      anchorY: 80,
+      shadow: true,
+      groundY: waterLevel,
+      reach: 1.5,
+      build: () => buildObject(key, P),
+    };
   }
   if (kind === 'dock') {
-    return { group: '码头', w: 320, h: 260, anchorY: 170, shadow: true, groundY: waterLevel, reach: 2, build: () => buildObject(key, P) };
+    return {
+      group: '码头',
+      w: 320,
+      h: 260,
+      anchorY: 170,
+      shadow: true,
+      groundY: waterLevel,
+      reach: 2,
+      build: () => buildObject(key, P),
+    };
   }
   if (kind === 'forest') {
-    return { group: '树', w: 340, h: 330, anchorY: 220, shadow: true, reach: 2, build: () => buildObject(key, P) };
+    return {
+      group: '树',
+      w: 340,
+      h: 330,
+      anchorY: 220,
+      shadow: true,
+      reach: 2,
+      build: () => buildObject(key, P),
+    };
   }
   if (kind === 'fx') {
     const footprint = key.slice(3);
@@ -142,10 +277,24 @@ export function specFor(key, P) {
     return { group: '节日层', ...size, lit: false, build: () => buildFestival(footprint, P) };
   }
   if (kind === 't' || kind === 'farmhouse') {
-    return { group: kind === 't' ? '小三角' : '农舍', w: 340, h: 400, anchorY: 280, shadow: true, reach: 2, build: () => buildObject(key, P) };
+    return {
+      group: kind === 't' ? '小三角' : '农舍',
+      w: 340,
+      h: 400,
+      anchorY: 280,
+      shadow: true,
+      reach: 2,
+      build: () => buildObject(key, P),
+    };
   }
   const { group, span, tall } = propertyBox(key);
-  return { group, ...box(span, tall), shadow: true, reach: 2.2 + span * 0.8, build: () => buildObject(key, P) };
+  return {
+    group,
+    ...box(span, tall),
+    shadow: true,
+    reach: 2.2 + span * 0.8,
+    build: () => buildObject(key, P),
+  };
 }
 
 /** 烘焙一张精灵，包含只有裁好之后才能做的后处理。 */
@@ -165,6 +314,8 @@ export const EXTRA_KEYS = [
   'br-11-0',
   'pole',
   'lamp',
-  ...[0, 1, 2, 3].flatMap((color) => ROTATIONS.map((rotation) => `car-${String(color)}-${String(rotation)}`)),
+  ...[0, 1, 2, 3].flatMap((color) =>
+    ROTATIONS.map((rotation) => `car-${String(color)}-${String(rotation)}`),
+  ),
   ...ROTATIONS.map((rotation) => `bus-${String(rotation)}`),
 ];

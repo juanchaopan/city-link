@@ -17,9 +17,20 @@ const ELEVATION = Math.PI / 6;
 
 const city = generateCity(N, 11);
 const { roads, cornersOf, isFlat, levelOf, isWater } = city;
-const sprites = roadSprites({ N, roads, cornersOf, isFlat, levelOf, isWater, gates: city.plan.gates });
+const sprites = roadSprites({
+  N,
+  roads,
+  cornersOf,
+  isFlat,
+  levelOf,
+  isWater,
+  gates: city.plan.gates,
+});
 
-const project = (x, y, z) => [Math.round((x - z) * 64), Math.round((x + z) * 32 - y * SCALE * Math.cos(ELEVATION))];
+const project = (x, y, z) => [
+  Math.round((x - z) * 64),
+  Math.round((x + z) * 32 - y * SCALE * Math.cos(ELEVATION)),
+];
 
 /** 一条连续坡段上所有路基三角形的投影，按列记录被覆盖的像素。 */
 function columnsOf(cells) {
@@ -29,10 +40,22 @@ function columnsOf(cells) {
     const y = Math.floor(id / N);
     const level = levelOf(x, y);
     const corners = cornersOf(x, y).map((value) => value - level);
-    const b = buildSlopeRoad(roads.get(id), corners, sprites.grades.get(id), palettes.sunny, LAYER.walk).build();
+    const b = buildSlopeRoad(
+      roads.get(id),
+      corners,
+      sprites.grades.get(id),
+      palettes.sunny,
+      LAYER.walk,
+    ).build();
     const { positions } = b;
     for (let i = 0; i < positions.length; i += 9) {
-      const points = [0, 3, 6].map((k) => project(positions[i + k] + x, positions[i + k + 1] + level * LEVEL, positions[i + k + 2] + y));
+      const points = [0, 3, 6].map((k) =>
+        project(
+          positions[i + k] + x,
+          positions[i + k + 1] + level * LEVEL,
+          positions[i + k + 2] + y,
+        ),
+      );
       const minX = Math.min(...points.map((p) => p[0]));
       const maxX = Math.max(...points.map((p) => p[0]));
       const minY = Math.min(...points.map((p) => p[1]));
@@ -43,7 +66,10 @@ function columnsOf(cells) {
       const sign = Math.sign(area);
       for (let px = minX; px <= maxX; px += 1) {
         for (let py = minY; py <= maxY; py += 1) {
-          const inside = edge(points[0], points[1], px, py) * sign >= 0 && edge(points[1], points[2], px, py) * sign >= 0 && edge(points[2], points[0], px, py) * sign >= 0;
+          const inside =
+            edge(points[0], points[1], px, py) * sign >= 0 &&
+            edge(points[1], points[2], px, py) * sign >= 0 &&
+            edge(points[2], points[0], px, py) * sign >= 0;
           if (!inside) continue;
           if (!columns.has(px)) columns.set(px, new Set());
           columns.get(px).add(py);
@@ -69,7 +95,16 @@ function runsOf() {
       run.push(id);
       const x = id % N;
       const y = Math.floor(id / N);
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+        [1, 1],
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+      ]) {
         const next = (y + dy) * N + x + dx;
         if (sprites.grades.has(next) && !seen.has(next)) {
           seen.add(next);
@@ -99,13 +134,26 @@ for (const run of runsOf()) {
   const ends = Math.max(heights[0], heights[heights.length - 1]);
   worstJump = Math.max(worstJump, jump);
   worstEnd = Math.max(worstEnd, ends);
-  report.push({ cells: run.length, columns: keys.length, tallest: Math.max(...heights), jump: Math.round(jump * 10) / 10, ends });
+  report.push({
+    cells: run.length,
+    columns: keys.length,
+    tallest: Math.max(...heights),
+    jump: Math.round(jump * 10) / 10,
+    ends,
+  });
   canvasRows.push({ keys, heights });
 }
 
 mkdirSync('out', { recursive: true });
 const pass = worstJump <= MAX_JUMP && worstEnd <= MAX_END_HEIGHT;
-writeFileSync('out/slope-report.json', JSON.stringify({ pass, maxJump: MAX_JUMP, maxEndHeight: MAX_END_HEIGHT, worstJump, worstEnd, runs: report }, null, 2));
+writeFileSync(
+  'out/slope-report.json',
+  JSON.stringify(
+    { pass, maxJump: MAX_JUMP, maxEndHeight: MAX_END_HEIGHT, worstJump, worstEnd, runs: report },
+    null,
+    2,
+  ),
+);
 
 const width = 1000;
 const rowHeight = 90;
@@ -119,6 +167,16 @@ canvasRows.forEach(({ keys, heights }, row) => {
 });
 writeFileSync('out/r7-slope-profile.png', chart.png());
 
-console.log(pass ? '通过' : '不通过', '最大相邻列突变', worstJump.toFixed(1), '像素/列，上限', MAX_JUMP, '；两端高度', worstEnd, '像素，上限', MAX_END_HEIGHT);
+console.log(
+  pass ? '通过' : '不通过',
+  '最大相邻列突变',
+  worstJump.toFixed(1),
+  '像素/列，上限',
+  MAX_JUMP,
+  '；两端高度',
+  worstEnd,
+  '像素，上限',
+  MAX_END_HEIGHT,
+);
 for (const row of report) console.log(JSON.stringify(row));
 if (!pass) process.exitCode = 1;

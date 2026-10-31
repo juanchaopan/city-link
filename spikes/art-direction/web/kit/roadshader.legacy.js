@@ -125,7 +125,9 @@ function uniformsFor(paths, P) {
       const [ax, az] = entry.points[i];
       const [bx, bz] = entry.points[i + 1];
       segment.push(new THREE.Vector4(ax, az, bx, bz));
-      widths.push(new THREE.Vector4(spec.walk / 2, spec.deck / 2, entry.kind === 'highway' ? 1 : 0, 0));
+      widths.push(
+        new THREE.Vector4(spec.walk / 2, spec.deck / 2, entry.kind === 'highway' ? 1 : 0, 0),
+      );
       path.push(new THREE.Vector4(start, total, entry.cross, 0));
       flags.push(
         new THREE.Vector4(

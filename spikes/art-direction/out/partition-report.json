@@ -13,13 +13,7 @@
     "blocksChecked": 5,
     "failures": 0,
     "maxPieces": 4,
-    "shapes": [
-      "rect+triangle+triangle",
-      "rect",
-      "rect+rect",
-      "rect+triangle+triangle",
-      "rect+rect"
-    ]
+    "shapes": ["rect+triangle+triangle", "rect", "rect+rect", "rect+triangle+triangle", "rect+rect"]
   },
   "shapeCounts": {
     "rect 1x3": 17,
@@ -51,12 +45,7 @@
   },
   "detail": {
     "blockAtoms": 50,
-    "box": [
-      22,
-      16,
-      31,
-      25
-    ],
+    "box": [22, 16, 31, 25],
     "before": [
       {
         "shape": "diagonal",

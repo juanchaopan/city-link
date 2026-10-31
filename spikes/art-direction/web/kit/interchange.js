@@ -19,7 +19,9 @@ function pierAt(b, x, z, top, wide, P) {
 function along(points) {
   const out = [0];
   for (let i = 1; i < points.length; i += 1) {
-    out.push(out[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
+    out.push(
+      out[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]),
+    );
   }
   return out;
 }
@@ -60,7 +62,16 @@ function beam(b, points, halfWidth, P) {
       const pz = nz * side * halfWidth;
       const ay = ah * LEVEL;
       const by = bh * LEVEL;
-      b.poly([[ax + px, ay - 0.05, az + pz], [bx + px, by - 0.05, bz + pz], [bx + px, by, bz + pz], [ax + px, ay, az + pz]], color, [nx * side, 0, nz * side]);
+      b.poly(
+        [
+          [ax + px, ay - 0.05, az + pz],
+          [bx + px, by - 0.05, bz + pz],
+          [bx + px, by, bz + pz],
+          [ax + px, ay, az + pz],
+        ],
+        color,
+        [nx * side, 0, nz * side],
+      );
     }
   }
 }
@@ -73,9 +84,23 @@ function deckMesh(points, kind, P, span) {
   const flat = points.map(([x, z]) => [x, z]);
   const paths = [];
   for (let i = 0; i < flat.length - 1; i += CHUNK_SEGMENTS) {
-    paths.push({ points: flat.slice(i, Math.min(flat.length, i + CHUNK_SEGMENTS + 1)), kind, clipStart: true, clipEnd: true, cross: -1, chained: true });
+    paths.push({
+      points: flat.slice(i, Math.min(flat.length, i + CHUNK_SEGMENTS + 1)),
+      kind,
+      clipStart: true,
+      clipEnd: true,
+      cross: -1,
+      chained: true,
+    });
   }
-  return roadMesh(paths, P, (x, z) => heightOnLine(points, x, z), LAYER.both, span, RAMP_RESOLUTION);
+  return roadMesh(
+    paths,
+    P,
+    (x, z) => heightOnLine(points, x, z),
+    LAYER.both,
+    span,
+    RAMP_RESOLUTION,
+  );
 }
 
 function piersAlong(b, points, wide, P, spacing = 1.3) {
@@ -94,7 +119,16 @@ function piersAlong(b, points, wide, P, spacing = 1.3) {
 
 /** 一格高架。h0、h1 是这一格两端的路面高度（层），可以是坡。axis 是走向，下方的地面可以通路。 */
 export function buildViaduct(axis, h0, h1, P) {
-  const points = axis === 'x' ? [[-0.5, 0, h0], [0.5, 0, h1]] : [[0, -0.5, h0], [0, 0.5, h1]];
+  const points =
+    axis === 'x'
+      ? [
+          [-0.5, 0, h0],
+          [0.5, 0, h1],
+        ]
+      : [
+          [0, -0.5, h0],
+          [0, 0.5, h1],
+        ];
   const halfWidth = ROAD_SPEC.express.walk / 2;
   const build = () => {
     const b = new Builder(hashString(`viaduct${axis}${String(h0)}${String(h1)}`));
@@ -103,7 +137,15 @@ export function buildViaduct(axis, h0, h1, P) {
     if (middle > 0.24) {
       const concrete = linear(P.road.wall);
       b.box(0, 0, 0, 0.12, middle - 0.05, 0.12, shade(concrete, 0.92));
-      b.box(0, middle - 0.09, 0, axis === 'x' ? 0.14 : 0.8, 0.05, axis === 'x' ? 0.8 : 0.14, concrete);
+      b.box(
+        0,
+        middle - 0.09,
+        0,
+        axis === 'x' ? 0.14 : 0.8,
+        0.05,
+        axis === 'x' ? 0.8 : 0.14,
+        concrete,
+      );
     }
     return b;
   };
@@ -143,6 +185,16 @@ export function buildInterchange(name, P) {
 export function addHeadlightBeam(b, rotation, reach, P) {
   const lamp = linear(P.window.lit);
   b.at(0, 0.004, 0, (rotation * Math.PI) / 4, (c) => {
-    c.poly([[reach, 0, -0.05], [reach + 0.17, 0, -0.1], [reach + 0.17, 0, 0.1], [reach, 0, 0.05]], shade(lamp, 0.55), [0, 1, 0], true);
+    c.poly(
+      [
+        [reach, 0, -0.05],
+        [reach + 0.17, 0, -0.1],
+        [reach + 0.17, 0, 0.1],
+        [reach, 0, 0.05],
+      ],
+      shade(lamp, 0.55),
+      [0, 1, 0],
+      true,
+    );
   });
 }

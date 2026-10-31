@@ -39,7 +39,9 @@ export function intersectionRule(a, b, endsHere = false) {
 function lengths(points) {
   const out = [0];
   for (let i = 1; i < points.length; i += 1) {
-    out.push(out[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
+    out.push(
+      out[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]),
+    );
   }
   return out;
 }
@@ -74,7 +76,8 @@ function graded(points, h0, h1) {
 /** 两点之间等分成几段，高度曲线才有足够的点。 */
 function straight([ax, az], [bx, bz], steps = 8) {
   const points = [];
-  for (let i = 0; i <= steps; i += 1) points.push([ax + ((bx - ax) * i) / steps, az + ((bz - az) * i) / steps]);
+  for (let i = 0; i <= steps; i += 1)
+    points.push([ax + ((bx - ax) * i) / steps, az + ((bz - az) * i) / steps]);
   return points;
 }
 
@@ -110,7 +113,19 @@ function turned(points, quarter) {
 /** 外侧斜匝道：向东的高速右转向南上快速路。 */
 function outerRamp(quarter, extent) {
   const inner = extent - 1;
-  return turned(graded(rounded([[-extent, LANE], [-inner, LANE + 0.5], [-1.5, inner], [-LANE, extent - 0.2]]), 0, ELEVATED), quarter);
+  return turned(
+    graded(
+      rounded([
+        [-extent, LANE],
+        [-inner, LANE + 0.5],
+        [-1.5, inner],
+        [-LANE, extent - 0.2],
+      ]),
+      0,
+      ELEVATED,
+    ),
+    quarter,
+  );
 }
 
 /** 环形匝道：向东的高速过了桥，右转绕一圈，向北上快速路。 */
@@ -122,25 +137,60 @@ function cloverleafLoop(quarter) {
 /** 向西的高速绕环到高架，跨过高速，落回地面并入向南的四车道。 */
 function teeLoopSouth() {
   const c = -2 - LANE;
-  const climb = graded([[-1.51, -LANE], ...arc(c, c, 2, Math.PI / 2, 2 * Math.PI, 22), [-LANE, -TEE_BRIDGE]], 0, ELEVATED);
-  const bridge = straight([-LANE, -TEE_BRIDGE], [-LANE, TEE_BRIDGE], 4).map(([x, z]) => [x, z, ELEVATED]);
+  const climb = graded(
+    [[-1.51, -LANE], ...arc(c, c, 2, Math.PI / 2, 2 * Math.PI, 22), [-LANE, -TEE_BRIDGE]],
+    0,
+    ELEVATED,
+  );
+  const bridge = straight([-LANE, -TEE_BRIDGE], [-LANE, TEE_BRIDGE], 4).map(([x, z]) => [
+    x,
+    z,
+    ELEVATED,
+  ]);
   const landing = graded(straight([-LANE, TEE_BRIDGE], [-ARTERIAL_LANE, TEE_LAND]), ELEVATED, 0);
-  return joined(climb, bridge, landing, [[-ARTERIAL_LANE, TEE_LAND, 0], [-ARTERIAL_LANE, TEE_FOOT, 0]]);
+  return joined(climb, bridge, landing, [
+    [-ARTERIAL_LANE, TEE_LAND, 0],
+    [-ARTERIAL_LANE, TEE_FOOT, 0],
+  ]);
 }
 
 /** 向北的四车道爬上高架，跨过高速，绕到环的外面，落回地面并入向西的高速。 */
 function teeLoopWest() {
   const rise = graded(straight([ARTERIAL_LANE, TEE_LAND], [LANE, TEE_BRIDGE]), 0, ELEVATED);
   const bridge = straight([LANE, TEE_BRIDGE], [LANE, -2.6], 6).map(([x, z]) => [x, z, ELEVATED]);
-  const around = graded(rounded([...arc(-2.4, -2.6, 2.62, 0, -Math.PI, 16), [-5.02, -1.4], [-5.6, -0.5], [-6.6, -LANE], [-7.51, -LANE]], 1), ELEVATED, 0);
-  return joined([[ARTERIAL_LANE, TEE_FOOT - 0.01, 0], [ARTERIAL_LANE, TEE_LAND, 0]], rise, bridge, around);
+  const around = graded(
+    rounded(
+      [
+        ...arc(-2.4, -2.6, 2.62, 0, -Math.PI, 16),
+        [-5.02, -1.4],
+        [-5.6, -0.5],
+        [-6.6, -LANE],
+        [-7.51, -LANE],
+      ],
+      1,
+    ),
+    ELEVATED,
+    0,
+  );
+  return joined(
+    [
+      [ARTERIAL_LANE, TEE_FOOT - 0.01, 0],
+      [ARTERIAL_LANE, TEE_LAND, 0],
+    ],
+    rise,
+    bridge,
+    around,
+  );
 }
 
 const TEMPLATES = {
   /** 快速路在高架上，干道从下面穿过。四条匝道落到两条短街上，短街也是四车道，在干道上做成两个信号路口。 */
   diamond: {
     footprint: [-4, -7, 4, 7],
-    mainline: [[0, -7.5], [0, 7.5]],
+    mainline: [
+      [0, -7.5],
+      [0, 7.5],
+    ],
     stubs: [-3, 3],
     ramps() {
       const descend = (sign, zSign, down) => {
@@ -162,7 +212,10 @@ const TEMPLATES = {
   /** 高速在地面，快速路在高架。四条外侧匝道管右转，四个环管左转。 */
   cloverleaf: {
     footprint: [-8, -8, 8, 8],
-    mainline: [[0, -8.5], [0, 8.5]],
+    mainline: [
+      [0, -8.5],
+      [0, 8.5],
+    ],
     stubs: [],
     ramps() {
       const extent = 7.8;
@@ -181,19 +234,32 @@ const TEMPLATES = {
   /** 快速路到头接高速。环形匝道和包在外面的匝道组成喇叭口，南边两条斜匝道管右转。 */
   trumpet: {
     footprint: [-8, -6, 8, 8],
-    mainline: [[0, 1], [0, 8.5]],
+    mainline: [
+      [0, 1],
+      [0, 8.5],
+    ],
     stubs: [],
     ramps() {
       const extent = 7.8;
       const loopX = -2 - LANE;
       const loopZ = -2.4;
       const westToSouth = graded(
-        [...arc(loopX, loopZ, 2, Math.PI / 2, Math.PI, 8), ...arc(loopX, loopZ, 2, Math.PI, 2 * Math.PI, 14).slice(1), [-LANE, 1]],
+        [
+          ...arc(loopX, loopZ, 2, Math.PI / 2, Math.PI, 8),
+          ...arc(loopX, loopZ, 2, Math.PI, 2 * Math.PI, 14).slice(1),
+          [-LANE, 1],
+        ],
         0,
         ELEVATED,
       );
       const northToWest = graded(
-        [[LANE, 1], [LANE, -3], ...arc(-2.4, -3, 2.62, 0, -Math.PI, 16), [-7.6, -2.2], [-extent, -LANE]],
+        [
+          [LANE, 1],
+          [LANE, -3],
+          ...arc(-2.4, -3, 2.62, 0, -Math.PI, 16),
+          [-7.6, -2.2],
+          [-extent, -LANE],
+        ],
         ELEVATED,
         0,
       );
@@ -216,8 +282,22 @@ const TEMPLATES = {
     stubs: [],
     ramps() {
       const side = ARTERIAL_LANE;
-      const eastToSouth = rounded([[-8.49, LANE], [-7, 0.24], [-3, 1.6], [-1, 3.1], [-side, 4], [-side, TEE_FOOT]]);
-      const northToEast = rounded([[side, TEE_FOOT - 0.01], [side, 4], [1, 3.1], [3, 1.6], [7, 0.24], [8.5, LANE]]);
+      const eastToSouth = rounded([
+        [-8.49, LANE],
+        [-7, 0.24],
+        [-3, 1.6],
+        [-1, 3.1],
+        [-side, 4],
+        [-side, TEE_FOOT],
+      ]);
+      const northToEast = rounded([
+        [side, TEE_FOOT - 0.01],
+        [side, 4],
+        [1, 3.1],
+        [3, 1.6],
+        [7, 0.24],
+        [8.5, LANE],
+      ]);
       return [
         { name: '东转南', points: eastToSouth.map(([x, z]) => [x, z, 0]) },
         { name: '北转东', points: northToEast.map(([x, z]) => [x, z, 0]) },
@@ -264,7 +344,12 @@ export function templateObject(name, cx, cy) {
     px: cx + 0.5,
     py: cy + 0.5,
     level: 0,
-    footprint: [[cx + x0, cy + z0], [cx + x1 + 1, cy + z0], [cx + x1 + 1, cy + z1 + 1], [cx + x0, cy + z1 + 1]],
+    footprint: [
+      [cx + x0, cy + z0],
+      [cx + x1 + 1, cy + z0],
+      [cx + x1 + 1, cy + z1 + 1],
+      [cx + x0, cy + z1 + 1],
+    ],
   };
 }
 
@@ -287,29 +372,35 @@ function station(lane, x, y) {
  */
 export function connectRamps({ name, cx, cy, N, main, lanes }) {
   const cellOf = ([x, y]) => Math.floor(y) * N + Math.floor(x);
-  template(name).ramps().forEach((ramp, index) => {
-    const points = ramp.points.map(([x, z, h]) => [x + cx + 0.5, z + cy + 0.5, h]);
-    const first = points[0];
-    const last = points[points.length - 1];
-    const mainOf = ([x]) => (x < cx + 0.5 ? main.south : main.north);
-    const lane = { id: `${name}${String(cx)}-${String(index)}`, kind: 'ramp', points, exits: [] };
-    if (first[2] < 0.5) lane.fromCell = cellOf(first);
-    else {
-      const line = mainOf(first);
-      line.exits.push({ at: station(line, first[0], first[1]), lane: lane.id });
-    }
-    if (last[2] < 0.5) lane.toCell = cellOf(last);
-    else {
-      const line = mainOf(last);
-      lane.merge = { lane: line.id, at: station(line, last[0], last[1]) };
-    }
-    lanes.push(lane);
-  });
+  template(name)
+    .ramps()
+    .forEach((ramp, index) => {
+      const points = ramp.points.map(([x, z, h]) => [x + cx + 0.5, z + cy + 0.5, h]);
+      const first = points[0];
+      const last = points[points.length - 1];
+      const mainOf = ([x]) => (x < cx + 0.5 ? main.south : main.north);
+      const lane = { id: `${name}${String(cx)}-${String(index)}`, kind: 'ramp', points, exits: [] };
+      if (first[2] < 0.5) lane.fromCell = cellOf(first);
+      else {
+        const line = mainOf(first);
+        line.exits.push({ at: station(line, first[0], first[1]), lane: lane.id });
+      }
+      if (last[2] < 0.5) lane.toCell = cellOf(last);
+      else {
+        const line = mainOf(last);
+        lane.merge = { lane: line.id, at: station(line, last[0], last[1]) };
+      }
+      lanes.push(lane);
+    });
 }
 
 /** 两头都在地面路网上的匝道，在路网图里是一条边，路网就靠它连起来。 */
 export function rampLinks(lanes) {
   return lanes
     .filter(({ fromCell, toCell }) => fromCell !== undefined && toCell !== undefined)
-    .map(({ fromCell, toCell, points }) => ({ from: fromCell, to: toCell, length: lengths(points).pop() }));
+    .map(({ fromCell, toCell, points }) => ({
+      from: fromCell,
+      to: toCell,
+      length: lengths(points).pop(),
+    }));
 }

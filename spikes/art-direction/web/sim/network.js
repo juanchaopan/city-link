@@ -66,7 +66,10 @@ function taperPath(start, end, fromKind, toKind) {
   for (let i = 0; i < steps; i += 1) {
     const t = (i + 0.5) / steps;
     const eased = t * t * (3 - 2 * t);
-    widths.push({ walk: from.walk + (to.walk - from.walk) * eased, deck: from.deck + (to.deck - from.deck) * eased });
+    widths.push({
+      walk: from.walk + (to.walk - from.walk) * eased,
+      deck: from.deck + (to.deck - from.deck) * eased,
+    });
   }
   return { points, kind: fromKind, widths, clipStart: true, clipEnd: true, cross: -1 };
 }
@@ -91,7 +94,15 @@ export function cellPaths(roadMask, highwayMask, arterialMask = 0) {
     const end = spokeEnd(c);
     const straight = (a + 4) % 8 === c;
     if (kindOf(a) === kindOf(c)) {
-      return [{ points: straight ? [start, end] : bezier(start, end), kind: kindOf(a), clipStart: true, clipEnd: true, cross: -1 }];
+      return [
+        {
+          points: straight ? [start, end] : bezier(start, end),
+          kind: kindOf(a),
+          clipStart: true,
+          clipEnd: true,
+          cross: -1,
+        },
+      ];
     }
     const local = (dir) => kindOf(dir) !== 'highway';
     if (straight && local(a) && local(c)) return [taperPath(start, end, kindOf(a), kindOf(c))];
@@ -99,7 +110,13 @@ export function cellPaths(roadMask, highwayMask, arterialMask = 0) {
   return spokes.map((dir) => {
     const kind = kindOf(dir);
     const cross = spokes.length > 1 ? crossDistance(dir, spokes, ROAD_SPEC[kind].walk) : -1;
-    return { points: [[0, 0], spokeEnd(dir)], kind, clipStart: spokes.length === 1, clipEnd: true, cross };
+    return {
+      points: [[0, 0], spokeEnd(dir)],
+      kind,
+      clipStart: spokes.length === 1,
+      clipEnd: true,
+      cross,
+    };
   });
 }
 

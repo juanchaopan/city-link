@@ -58,7 +58,12 @@ export function createCanvas(width, height, [r, g, b]) {
         for (let x = minX; x <= maxX; x += 1) {
           const px = x + 0.5;
           const py = y + 0.5;
-          if (edge(a, b2, px, py) * sign >= 0 && edge(b2, c, px, py) * sign >= 0 && edge(c, a, px, py) * sign >= 0) put(x, y, color);
+          if (
+            edge(a, b2, px, py) * sign >= 0 &&
+            edge(b2, c, px, py) * sign >= 0 &&
+            edge(c, a, px, py) * sign >= 0
+          )
+            put(x, y, color);
         }
       }
     },
@@ -82,7 +87,12 @@ export function createCanvas(width, height, [r, g, b]) {
       header.writeUInt32BE(height, 4);
       header[8] = 8;
       header[9] = 2;
-      return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+      return Buffer.concat([
+        Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+        chunk('IHDR', header),
+        chunk('IDAT', deflateSync(raw)),
+        chunk('IEND', Buffer.alloc(0)),
+      ]);
     },
   };
 }

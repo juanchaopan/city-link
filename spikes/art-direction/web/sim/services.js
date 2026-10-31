@@ -7,12 +7,67 @@ import { ZONE } from './zones.js';
 // 两处都没有时记一条"缺少用地"，由界面提示玩家。
 
 export const SERVICES = [
-  { id: 'hospital', name: '医院', radius: 18, specs: [[3, 3], [2, 3], [3, 2]] },
-  { id: 'school', name: '学校', radius: 13, specs: [[3, 3], [2, 3], [3, 2], [2, 2]] },
-  { id: 'police', name: '警察局', radius: 14, specs: [[2, 2], [1, 2], [2, 1]] },
-  { id: 'fire', name: '消防站', radius: 14, specs: [[2, 2], [1, 2], [2, 1]] },
-  { id: 'water', name: '水厂', radius: 60, specs: [[3, 3], [2, 3], [3, 2]] },
-  { id: 'power', name: '电厂', radius: 60, specs: [[3, 3], [2, 3], [3, 2]] },
+  {
+    id: 'hospital',
+    name: '医院',
+    radius: 18,
+    specs: [
+      [3, 3],
+      [2, 3],
+      [3, 2],
+    ],
+  },
+  {
+    id: 'school',
+    name: '学校',
+    radius: 13,
+    specs: [
+      [3, 3],
+      [2, 3],
+      [3, 2],
+      [2, 2],
+    ],
+  },
+  {
+    id: 'police',
+    name: '警察局',
+    radius: 14,
+    specs: [
+      [2, 2],
+      [1, 2],
+      [2, 1],
+    ],
+  },
+  {
+    id: 'fire',
+    name: '消防站',
+    radius: 14,
+    specs: [
+      [2, 2],
+      [1, 2],
+      [2, 1],
+    ],
+  },
+  {
+    id: 'water',
+    name: '水厂',
+    radius: 60,
+    specs: [
+      [3, 3],
+      [2, 3],
+      [3, 2],
+    ],
+  },
+  {
+    id: 'power',
+    name: '电厂',
+    radius: 60,
+    specs: [
+      [3, 3],
+      [2, 3],
+      [3, 2],
+    ],
+  },
 ];
 
 const MAX_INSTANCES = 8;
@@ -60,7 +115,10 @@ function nearestSite(sites, fromWorst, graph, N) {
     if (node < 0) continue;
     const distance = fromWorst[node];
     const area = site.w * site.h;
-    if (distance < bestDistance - 1e-9 || (best && Math.abs(distance - bestDistance) < 1e-9 && area > best.w * best.h)) {
+    if (
+      distance < bestDistance - 1e-9 ||
+      (best && Math.abs(distance - bestDistance) < 1e-9 && area > best.w * best.h)
+    ) {
       best = { ...site, node };
       bestDistance = distance;
     }
@@ -125,8 +183,13 @@ export function coverageOf(parcels, placed, roads, N) {
   const graph = buildGraph(roads, N);
   const reachByService = new Map();
   for (const service of SERVICES) {
-    const sources = placed.filter((entry) => entry.service === service.id).map((entry) => entry.node);
-    reachByService.set(service.id, sources.length > 0 ? shortestPaths(graph, sources, true).distance : null);
+    const sources = placed
+      .filter((entry) => entry.service === service.id)
+      .map((entry) => entry.node);
+    reachByService.set(
+      service.id,
+      sources.length > 0 ? shortestPaths(graph, sources, true).distance : null,
+    );
   }
   const rows = [];
   let population = 0;
@@ -144,5 +207,11 @@ export function coverageOf(parcels, placed, roads, N) {
     for (const id of missing) missingByService[id] += parcel.capacity;
     rows.push({ parcel: parcel.id, missing });
   }
-  return { rows, population, blind, blindShare: population > 0 ? blind / population : 0, missingByService };
+  return {
+    rows,
+    population,
+    blind,
+    blindShare: population > 0 ? blind / population : 0,
+    missingByService,
+  };
 }

@@ -138,7 +138,9 @@ async function seamCheck() {
   for (const hour of [12, 22]) {
     for (const bare of [true, false]) {
       for (const zoom of [0.078, 0.25, 0.5, 1, 2]) {
-        await open(`n=32&controls=0&cars=0&zoom=${String(zoom)}&x=15&y=14&seam=1&t=${String(hour)}&bare=${bare ? '1' : '0'}`);
+        await open(
+          `n=32&controls=0&cars=0&zoom=${String(zoom)}&x=15&y=14&seam=1&t=${String(hour)}&bare=${bare ? '1' : '0'}`,
+        );
         const result = await pixelStats(zoom, [15.5, 14.5], COUNT_MAGENTA);
         rows.push({ hour, bare, zoom, ...result });
         console.log(hour, bare ? '不垫底' : '垫底', 'zoom', zoom, JSON.stringify(result));
@@ -174,13 +176,41 @@ if (process.env.SEAM) {
     { name: '游戏视角，600 辆', query: `${game}&cars=600&warm=300`, cycle: false },
     { name: '夜间车灯，300 辆', query: `${game}&cars=300&warm=300&t=22`, cycle: false },
     { name: '夜间车灯，600 辆', query: `${game}&cars=600&warm=300&t=22`, cycle: false },
-    { name: '全图缩小，600 辆', query: 'n=64&controls=0&zoom=0.078&cars=600&warm=300', cycle: false },
-    { name: '满城模块拼装（每物业 3 张），全图', query: 'n=64&controls=0&zoom=0.078&cars=0&stress=3', cycle: false },
-    { name: '满城模块拼装（每物业 3 张），游戏视角 300 辆', query: `${game}&cars=300&warm=300&stress=3`, cycle: false },
-    { name: '立交场景，300 辆', query: 'scene=interchange&controls=0&zoom=0.2&x=22&y=20&cars=300&warm=300', cycle: false },
-    { name: '普通城市的丁字立交，300 辆', query: 'n=64&controls=0&zoom=0.26&x=33&y=8&cars=300&warm=300', cycle: false },
-    { name: '单图集加亮窗层，连续变换时间', query: 'n=64&controls=0&zoom=0.3&x=31&y=30&t=20&cars=300', cycle: true },
-    { name: '节日叠加层', query: 'n=64&controls=0&zoom=0.3&x=31&y=30&festival=1&cars=300', cycle: false },
+    {
+      name: '全图缩小，600 辆',
+      query: 'n=64&controls=0&zoom=0.078&cars=600&warm=300',
+      cycle: false,
+    },
+    {
+      name: '满城模块拼装（每物业 3 张），全图',
+      query: 'n=64&controls=0&zoom=0.078&cars=0&stress=3',
+      cycle: false,
+    },
+    {
+      name: '满城模块拼装（每物业 3 张），游戏视角 300 辆',
+      query: `${game}&cars=300&warm=300&stress=3`,
+      cycle: false,
+    },
+    {
+      name: '立交场景，300 辆',
+      query: 'scene=interchange&controls=0&zoom=0.2&x=22&y=20&cars=300&warm=300',
+      cycle: false,
+    },
+    {
+      name: '普通城市的丁字立交，300 辆',
+      query: 'n=64&controls=0&zoom=0.26&x=33&y=8&cars=300&warm=300',
+      cycle: false,
+    },
+    {
+      name: '单图集加亮窗层，连续变换时间',
+      query: 'n=64&controls=0&zoom=0.3&x=31&y=30&t=20&cars=300',
+      cycle: true,
+    },
+    {
+      name: '节日叠加层',
+      query: 'n=64&controls=0&zoom=0.3&x=31&y=30&festival=1&cars=300',
+      cycle: false,
+    },
   ];
   for (const { name, query, cycle } of cases) {
     await open(query);
@@ -190,7 +220,10 @@ if (process.env.SEAM) {
     report[name] = { sprites: stats.sprites, atlas: stats.atlas, ...fps, cars };
     console.log(name, JSON.stringify(report[name]));
   }
-  writeFileSync(process.env.SOFT ? 'out/fps-soft-report.json' : 'out/fps-report.json', JSON.stringify(report, null, 2));
+  writeFileSync(
+    process.env.SOFT ? 'out/fps-soft-report.json' : 'out/fps-report.json',
+    JSON.stringify(report, null, 2),
+  );
 } else {
   for (const view of views) {
     await open(view.query);

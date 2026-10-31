@@ -38,7 +38,8 @@ export function buildGraph(roads, N, links = []) {
       addEdge({ from: id, to: other, dir, kind, length, load: 0, cost: length * SPEED[kind] });
     }
   });
-  for (const { from, to, length } of links) addEdge({ from, to, kind: 'ramp', length, load: 0, cost: length * SPEED.ramp });
+  for (const { from, to, length } of links)
+    addEdge({ from, to, kind: 'ramp', length, load: 0, cost: length * SPEED.ramp });
   return { nodes, index, edges, adjacency };
 }
 

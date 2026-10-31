@@ -31,7 +31,8 @@ export function chooseLooks(parcels, seed, looksOf = (parcel) => LOOKS[parcel.sh
       const taken = new Set();
       for (let i = 0; i < index; i += 1) {
         const other = members[i];
-        if (Math.hypot(other.px - parcel.px, other.py - parcel.py) <= NEIGHBOR_DISTANCE) taken.add(chosen.get(other.id));
+        if (Math.hypot(other.px - parcel.px, other.py - parcel.py) <= NEIGHBOR_DISTANCE)
+          taken.add(chosen.get(other.id));
       }
       const start = hash(seed, Math.round(parcel.px * 2), Math.round(parcel.py * 2)) % total;
       let look = start;

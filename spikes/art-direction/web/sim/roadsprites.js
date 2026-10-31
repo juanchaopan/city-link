@@ -43,8 +43,18 @@ function gradeRuns({ N, cells, cornersOf, isFlat, levelOf }) {
     const spokes = spokesOf(road | highway);
     if (!straightAlong(id, spokes)) continue;
     const run = [id];
-    for (let next = step(id, spokes[0]); next >= 0 && sloped(next) && straightAlong(next, spokes); next = step(next, spokes[0])) run.unshift(next);
-    for (let next = step(id, spokes[1]); next >= 0 && sloped(next) && straightAlong(next, spokes); next = step(next, spokes[1])) run.push(next);
+    for (
+      let next = step(id, spokes[0]);
+      next >= 0 && sloped(next) && straightAlong(next, spokes);
+      next = step(next, spokes[0])
+    )
+      run.unshift(next);
+    for (
+      let next = step(id, spokes[1]);
+      next >= 0 && sloped(next) && straightAlong(next, spokes);
+      next = step(next, spokes[1])
+    )
+      run.push(next);
     const heightAtEnd = (cell, dir) => {
       const x = cell % N;
       const y = Math.floor(cell / N);
@@ -74,7 +84,16 @@ export function roadTag({ road, highway, arterial = 0 }) {
 }
 
 /** 输入路网，输出三层路面、桥和地形信息之外的一切路面精灵。gates 是地图边界上的连接点。 */
-export function roadSprites({ N, roads, cornersOf, isFlat, levelOf, isWater, gates = [], linked = false }) {
+export function roadSprites({
+  N,
+  roads,
+  cornersOf,
+  isFlat,
+  levelOf,
+  isWater,
+  gates = [],
+  linked = false,
+}) {
   const cells = new Map([...roads.entries()].map(([id, entry]) => [id, { ...entry }]));
   const planned = [];
   const neighbors = [];
@@ -85,7 +104,12 @@ export function roadSprites({ N, roads, cornersOf, isFlat, levelOf, isWater, gat
       entry[gate.kind === 'highway' ? 'highway' : 'road'] |= 1 << ((gate.inward + 4) % 8);
       neighbors.push({ key: `nb-${gate.axis}-${gate.kind}`, x: gate.x, y: gate.y, level: 0 });
     } else {
-      planned.push({ key: `gate-${gate.kind}-${String(gate.inward)}`, x: gate.x, y: gate.y, level: 0 });
+      planned.push({
+        key: `gate-${gate.kind}-${String(gate.inward)}`,
+        x: gate.x,
+        y: gate.y,
+        level: 0,
+      });
     }
   }
   const grades = gradeRuns({ N, cells, cornersOf, isFlat, levelOf });
@@ -99,7 +123,8 @@ export function roadSprites({ N, roads, cornersOf, isFlat, levelOf, isWater, gat
     const y = Math.floor(id / N);
     const tag = roadTag(entry);
     if (isWater(x, y)) {
-      if (spokesOf(entry.road | entry.highway).length === 2) bridges.push({ key: `br-${tag}`, x, y });
+      if (spokesOf(entry.road | entry.highway).length === 2)
+        bridges.push({ key: `br-${tag}`, x, y });
       continue;
     }
     const level = levelOf(x, y);
@@ -108,7 +133,9 @@ export function roadSprites({ N, roads, cornersOf, isFlat, levelOf, isWater, gat
       curbs.push({ key: `rc-${tag}`, x, y, level });
       decks.push({ key: `rd-${tag}`, x, y, level });
     } else {
-      const shape = cornersOf(x, y).map((v) => v - level).join('');
+      const shape = cornersOf(x, y)
+        .map((v) => v - level)
+        .join('');
       const grade = grades.get(id);
       const suffix = grade ? `-${grade.map(number).join('_')}` : '';
       walks.push({ key: `srw-${tag}-${shape}${suffix}`, x, y, level });

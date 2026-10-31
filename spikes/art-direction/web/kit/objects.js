@@ -32,7 +32,15 @@ export function edgesOf(points) {
     const [x1, z1] = points[(i + 1) % points.length];
     const length = Math.hypot(x1 - x0, z1 - z0);
     const flip = (x0 - cx) * (z1 - z0) + (z0 - cz) * (x0 - x1) < 0 ? -1 : 1;
-    return { x0, z0, x1, z1, nx: (flip * (z1 - z0)) / length, nz: (flip * (x0 - x1)) / length, length };
+    return {
+      x0,
+      z0,
+      x1,
+      z1,
+      nx: (flip * (z1 - z0)) / length,
+      nz: (flip * (x0 - x1)) / length,
+      length,
+    };
   });
 }
 
@@ -49,9 +57,21 @@ export function scaled(points, k) {
 }
 
 export function plate(b, points, color) {
-  b.poly(points.map(([x, z]) => [x, LOT_Y, z]), color);
+  b.poly(
+    points.map(([x, z]) => [x, LOT_Y, z]),
+    color,
+  );
   for (const { x0, z0, x1, z1, nx, nz } of edgesOf(points)) {
-    b.poly([[x0, 0, z0], [x1, 0, z1], [x1, LOT_Y, z1], [x0, LOT_Y, z0]], shade(color, 0.86), [nx, 0, nz]);
+    b.poly(
+      [
+        [x0, 0, z0],
+        [x1, 0, z1],
+        [x1, LOT_Y, z1],
+        [x0, LOT_Y, z0],
+      ],
+      shade(color, 0.86),
+      [nx, 0, nz],
+    );
   }
 }
 
@@ -65,7 +85,10 @@ export function rectangle(cx, cz, sx, sz) {
 }
 
 function flat(b, points, y, color) {
-  b.poly(points.map(([x, z]) => [x, y, z]), color);
+  b.poly(
+    points.map(([x, z]) => [x, y, z]),
+    color,
+  );
 }
 
 function visibleX(b, sign) {
@@ -96,7 +119,17 @@ export function windows(b, sx, sz, y0, floors, P, spacing = FLOOR, size = 0.52, 
         for (let c = 0; c < columns; c += 1) {
           const z = -sz / 2 + (sz / columns) * (c + 0.5);
           const y = y0 + spacing * (f + 0.3);
-          pane(b, [[px, y, z - w / 2], [px, y, z + w / 2], [px, y + paneH, z + w / 2], [px, y + paneH, z - w / 2]], [sign, 0, 0], P);
+          pane(
+            b,
+            [
+              [px, y, z - w / 2],
+              [px, y, z + w / 2],
+              [px, y + paneH, z + w / 2],
+              [px, y + paneH, z - w / 2],
+            ],
+            [sign, 0, 0],
+            P,
+          );
         }
       }
     }
@@ -108,7 +141,17 @@ export function windows(b, sx, sz, y0, floors, P, spacing = FLOOR, size = 0.52, 
         for (let c = 0; c < columns; c += 1) {
           const x = -sx / 2 + (sx / columns) * (c + 0.5);
           const y = y0 + spacing * (f + 0.3);
-          pane(b, [[x - w / 2, y, pz], [x + w / 2, y, pz], [x + w / 2, y + paneH, pz], [x - w / 2, y + paneH, pz]], [0, 0, sign], P);
+          pane(
+            b,
+            [
+              [x - w / 2, y, pz],
+              [x + w / 2, y, pz],
+              [x + w / 2, y + paneH, pz],
+              [x - w / 2, y + paneH, pz],
+            ],
+            [0, 0, sign],
+            P,
+          );
         }
       }
     }
@@ -126,7 +169,12 @@ function edgeWindows(b, edge, y0, floors, P, spacing, skip) {
     const top = y + spacing * 0.5;
     for (let c = 0; c < columns; c += 1) {
       const t = (c + 0.5) / columns;
-      pane(b, [at(t - half, y), at(t + half, y), at(t + half, top), at(t - half, top)], [nx, 0, nz], P);
+      pane(
+        b,
+        [at(t - half, y), at(t + half, y), at(t + half, top), at(t - half, top)],
+        [nx, 0, nz],
+        P,
+      );
     }
   }
 }
@@ -134,10 +182,22 @@ function edgeWindows(b, edge, y0, floors, P, spacing, skip) {
 /** 凸多边形的楼身，地块是什么形状楼就是什么形状。朝相机的墙按楼层开窗，斜墙也一样。 */
 export function prism(b, points, y0, floors, wall, roof, P, { spacing = FLOOR, skip = 0 } = {}) {
   const y1 = y0 + floors * spacing;
-  b.poly(points.map(([x, z]) => [x, y1, z]), roof);
+  b.poly(
+    points.map(([x, z]) => [x, y1, z]),
+    roof,
+  );
   for (const edge of edgesOf(points)) {
     const { x0, z0, x1, z1, nx, nz } = edge;
-    b.poly([[x0, y0, z0], [x1, y0, z1], [x1, y1, z1], [x0, y1, z0]], wall, [nx, 0, nz]);
+    b.poly(
+      [
+        [x0, y0, z0],
+        [x1, y0, z1],
+        [x1, y1, z1],
+        [x0, y1, z0],
+      ],
+      wall,
+      [nx, 0, nz],
+    );
     if (facesCamera(edge)) edgeWindows(b, edge, y0, floors, P, spacing, skip);
   }
 }
@@ -150,12 +210,30 @@ export function shopFront(b, points, y0, P, accent) {
     const { x0, z0, x1, z1, nx, nz, length } = edge;
     const at = (t, y, out) => [x0 + (x1 - x0) * t + nx * out, y, z0 + (z1 - z0) * t + nz * out];
     const inset = Math.min(0.03 / length, 0.2);
-    b.poly([at(inset, y0 + 0.012, 0.004), at(1 - inset, y0 + 0.012, 0.004), at(1 - inset, y0 + 0.1, 0.004), at(inset, y0 + 0.1, 0.004)], glass, [nx, 0, nz]);
+    b.poly(
+      [
+        at(inset, y0 + 0.012, 0.004),
+        at(1 - inset, y0 + 0.012, 0.004),
+        at(1 - inset, y0 + 0.1, 0.004),
+        at(inset, y0 + 0.1, 0.004),
+      ],
+      glass,
+      [nx, 0, nz],
+    );
     const stripes = Math.max(4, Math.round(length / 0.09));
     for (let i = 0; i < stripes; i += 1) {
       const t0 = i / stripes;
       const t1 = (i + 1) / stripes;
-      b.poly([at(t0, y0 + 0.13, 0), at(t1, y0 + 0.13, 0), at(t1, y0 + 0.098, 0.07), at(t0, y0 + 0.098, 0.07)], i % 2 === 0 ? accent : white, [nx, 1, nz]);
+      b.poly(
+        [
+          at(t0, y0 + 0.13, 0),
+          at(t1, y0 + 0.13, 0),
+          at(t1, y0 + 0.098, 0.07),
+          at(t0, y0 + 0.098, 0.07),
+        ],
+        i % 2 === 0 ? accent : white,
+        [nx, 1, nz],
+      );
     }
   }
 }
@@ -167,7 +245,16 @@ export function tree(b, x, z, P, scale = 1, y = LOT_Y) {
   b.cylinder(x, y, z, 0.018 * scale, 0.012 * scale, h, 5, trunk);
   const r = (0.09 + b.random() * 0.04) * scale;
   b.blob(x, y + h + r * 0.7, z, r, r * 1.1, r, leaf);
-  if (b.random() < 0.6) b.blob(x + r * 0.5, y + h + r * 0.3, z + r * 0.4, r * 0.65, r * 0.65, r * 0.65, shade(leaf, 1.08));
+  if (b.random() < 0.6)
+    b.blob(
+      x + r * 0.5,
+      y + h + r * 0.3,
+      z + r * 0.4,
+      r * 0.65,
+      r * 0.65,
+      r * 0.65,
+      shade(leaf, 1.08),
+    );
 }
 
 function pine(b, x, z, P, scale = 1) {
@@ -185,7 +272,15 @@ function roofClutter(b, y, sx, sz, P) {
   for (let i = 0; i < 3; i += 1) {
     const x = (b.random() - 0.5) * sx * 0.6;
     const z = (b.random() - 0.5) * sz * 0.6;
-    b.box(x, y, z, 0.06 + b.random() * 0.06, 0.03 + b.random() * 0.04, 0.06 + b.random() * 0.06, shade(concrete, 0.9 + b.random() * 0.15));
+    b.box(
+      x,
+      y,
+      z,
+      0.06 + b.random() * 0.06,
+      0.03 + b.random() * 0.04,
+      0.06 + b.random() * 0.06,
+      shade(concrete, 0.9 + b.random() * 0.15),
+    );
   }
 }
 
@@ -203,13 +298,17 @@ function parking(b, cx, cz, sx, sz, P, along = 'x') {
     for (let i = 0; i <= bays; i += 1) {
       const t = -across / 2 + i * pitch;
       const u = row * (other / 2 - deep / 2);
-      const [x, z, w, d] = along === 'x' ? [cx + t, cz + u, 0.007, deep] : [cx + u, cz + t, deep, 0.007];
+      const [x, z, w, d] =
+        along === 'x' ? [cx + t, cz + u, 0.007, deep] : [cx + u, cz + t, deep, 0.007];
       flat(b, rectangle(x, z, w, d), LOT_Y + 0.005, line);
       if (i < bays && b.random() < 0.4) {
         const color = linear(pick(P.cars, b.random));
-        const [px, pz, carX, carZ] = along === 'x' ? [x + pitch / 2, z, 0.052, 0.098] : [x, z + pitch / 2, 0.098, 0.052];
+        const [px, pz, carX, carZ] =
+          along === 'x' ? [x + pitch / 2, z, 0.052, 0.098] : [x, z + pitch / 2, 0.098, 0.052];
         b.box(px, LOT_Y + 0.006, pz, carX, 0.022, carZ, color);
-        b.box(px, LOT_Y + 0.028, pz, carX * 0.8, 0.014, carZ * 0.55, linear(P.window.day), { top: color });
+        b.box(px, LOT_Y + 0.028, pz, carX * 0.8, 0.014, carZ * 0.55, linear(P.window.day), {
+          top: color,
+        });
       }
     }
   }
@@ -220,7 +319,13 @@ function garden(b, cx, cz, sx, sz, P, trees = 3) {
   flat(b, rectangle(cx, cz, sx, sz), LOT_Y + 0.002, lawn);
   flat(b, rectangle(cx, cz, sx * 0.08, sz), LOT_Y + 0.004, linear(P.road.walk));
   for (let i = 0; i < trees; i += 1) {
-    tree(b, cx + (b.random() - 0.5) * sx * 0.8, cz + (b.random() - 0.5) * sz * 0.8, P, 0.75 + b.random() * 0.3);
+    tree(
+      b,
+      cx + (b.random() - 0.5) * sx * 0.8,
+      cz + (b.random() - 0.5) * sz * 0.8,
+      P,
+      0.75 + b.random() * 0.3,
+    );
   }
 }
 
@@ -246,7 +351,9 @@ function houseAt(b, px, pz, index, P) {
   const wall = linear([P.wall.warm, P.wall.cool, P.wall.brick][index % 3]);
   const roof = linear(P.zones.residential[index % P.zones.residential.length]);
   const h = FLOOR * (index % 3 === 2 ? 2 : 1.35);
-  b.at(px, LOT_Y, pz, 0, (c) => cottage(c, P, wall, roof, 0.46, 0.4, h, index % 2 === 0 ? 'x' : 'z'));
+  b.at(px, LOT_Y, pz, 0, (c) =>
+    cottage(c, P, wall, roof, 0.46, 0.4, h, index % 2 === 0 ? 'x' : 'z'),
+  );
 }
 
 function houseGroup(b, sx, sz, P, seed) {
@@ -267,7 +374,8 @@ export function slab(b, cx, cz, sx, sz, floors, wall, accent, P) {
   b.at(cx, LOT_Y, cz, 0, (c) => {
     c.box(0, 0, 0, sx, h, sz, wall, { top: shade(wall, 0.9) });
     windows(c, sx, sz, 0, floors, P);
-    for (let f = 1; f < floors; f += 2) c.box(0, f * FLOOR - 0.008, 0, sx + 0.02, 0.012, sz + 0.02, accent);
+    for (let f = 1; f < floors; f += 2)
+      c.box(0, f * FLOOR - 0.008, 0, sx + 0.02, 0.012, sz + 0.02, accent);
     c.box(0, h, 0, sx + 0.024, 0.018, sz + 0.024, accent);
     roofClutter(c, h + 0.018, sx, sz, P);
   });
@@ -280,14 +388,22 @@ export function glassTower(b, cx, cz, sx, sz, floors, seed, P) {
   const accent = linear(P.zones.commercial[seed % P.zones.commercial.length]);
   b.at(cx, LOT_Y, cz, 0, (c) => {
     let y = 0;
-    const tiers = seed % 2 === 0 ? [[1, 0.35], [0.8, 0.45], [0.58, 0.2]] : [[1, 1]];
+    const tiers =
+      seed % 2 === 0
+        ? [
+            [1, 0.35],
+            [0.8, 0.45],
+            [0.58, 0.2],
+          ]
+        : [[1, 1]];
     for (const [scale, share] of tiers) {
       const w = sx * scale;
       const d = sz * scale;
       const count = Math.max(2, Math.round(floors * share));
       const h = count * FLOOR * 0.82;
       c.box(0, y, 0, w, h, d, glass, { top: frame, px: dark, pz: glass });
-      for (let f = 0; f <= count; f += 1) c.box(0, y + f * FLOOR * 0.82 - 0.005, 0, w + 0.006, 0.01, d + 0.006, frame);
+      for (let f = 0; f <= count; f += 1)
+        c.box(0, y + f * FLOOR * 0.82 - 0.005, 0, w + 0.006, 0.01, d + 0.006, frame);
       const pillars = 4;
       for (let i = 1; i < pillars; i += 1) {
         const t = -0.5 + i / pillars;
@@ -334,14 +450,32 @@ export function shopHall(b, cx, cz, sx, sz, floors, seed, P) {
       const color = i % 2 === 0 ? accent : white;
       const x0 = -sx / 2 + (sx / stripes) * i;
       const x1 = x0 + sx / stripes;
-      c.poly([[x0, 0.135, sz / 2], [x1, 0.135, sz / 2], [x1, 0.098, sz / 2 + 0.07], [x0, 0.098, sz / 2 + 0.07]], color, [0, 1, 1]);
+      c.poly(
+        [
+          [x0, 0.135, sz / 2],
+          [x1, 0.135, sz / 2],
+          [x1, 0.098, sz / 2 + 0.07],
+          [x0, 0.098, sz / 2 + 0.07],
+        ],
+        color,
+        [0, 1, 1],
+      );
     }
     const rows = Math.max(4, Math.round(sz / 0.09));
     for (let i = 0; i < rows; i += 1) {
       const color = i % 2 === 0 ? accent : white;
       const z0 = -sz / 2 + (sz / rows) * i;
       const z1 = z0 + sz / rows;
-      c.poly([[sx / 2, 0.135, z0], [sx / 2, 0.135, z1], [sx / 2 + 0.07, 0.098, z1], [sx / 2 + 0.07, 0.098, z0]], color, [1, 1, 0]);
+      c.poly(
+        [
+          [sx / 2, 0.135, z0],
+          [sx / 2, 0.135, z1],
+          [sx / 2 + 0.07, 0.098, z1],
+          [sx / 2 + 0.07, 0.098, z0],
+        ],
+        color,
+        [1, 1, 0],
+      );
     }
     if (floors > 1) windows(c, sx, sz, 0.17, floors - 1, P, FLOOR, 0.6, 0.15);
     c.box(0, h, 0, sx + 0.02, 0.02, sz + 0.02, shade(wall, 0.9));
@@ -354,7 +488,16 @@ function chimney(b, x, z, y, P) {
   const red = linear(P.road.rail);
   const white = linear('#f2f0ea');
   for (let i = 0; i < 4; i += 1) {
-    b.cylinder(x, y + i * 0.13, z, 0.055 - i * 0.005, 0.05 - i * 0.005, 0.13, 7, i % 2 === 0 ? red : white);
+    b.cylinder(
+      x,
+      y + i * 0.13,
+      z,
+      0.055 - i * 0.005,
+      0.05 - i * 0.005,
+      0.13,
+      7,
+      i % 2 === 0 ? red : white,
+    );
   }
 }
 
@@ -370,9 +513,35 @@ function sawtooth(b, cx, cz, sx, sz, seed, P) {
       const x0 = -sx / 2 + width * i;
       const x1 = x0 + width;
       const rise = 0.09;
-      c.poly([[x0, h, -sz / 2], [x1, h + rise, -sz / 2], [x1, h + rise, sz / 2], [x0, h, sz / 2]], roof, [-1, 2, 0]);
-      c.poly([[x1, h, -sz / 2], [x1, h + rise, -sz / 2], [x1, h + rise, sz / 2], [x1, h, sz / 2]], linear(P.wall.glass), [1, 0, 0]);
-      c.poly([[x0, h, sz / 2], [x1, h, sz / 2], [x1, h + rise, sz / 2]], wall, [0, 0, 1]);
+      c.poly(
+        [
+          [x0, h, -sz / 2],
+          [x1, h + rise, -sz / 2],
+          [x1, h + rise, sz / 2],
+          [x0, h, sz / 2],
+        ],
+        roof,
+        [-1, 2, 0],
+      );
+      c.poly(
+        [
+          [x1, h, -sz / 2],
+          [x1, h + rise, -sz / 2],
+          [x1, h + rise, sz / 2],
+          [x1, h, sz / 2],
+        ],
+        linear(P.wall.glass),
+        [1, 0, 0],
+      );
+      c.poly(
+        [
+          [x0, h, sz / 2],
+          [x1, h, sz / 2],
+          [x1, h + rise, sz / 2],
+        ],
+        wall,
+        [0, 0, 1],
+      );
     }
     windows(c, sx, sz, 0.04, 1, P, 0.18, 0.6, 0.18);
   });
@@ -408,11 +577,22 @@ function composeRect(b, sx, sz, zone, level, seed, P) {
     if (level === 1) houseGroup(b, sx, sz, P, seed);
     else {
       const accent = linear(P.zones.residential[seed % P.zones.residential.length]);
-      slab(b, offsetX, offsetZ, Math.max(0.4, w * 0.86), Math.max(0.4, d * 0.86), level === 2 ? 4 + seed % 3 : 9 + (seed % 3) * 2, wallOf(seed, P), accent, P);
+      slab(
+        b,
+        offsetX,
+        offsetZ,
+        Math.max(0.4, w * 0.86),
+        Math.max(0.4, d * 0.86),
+        level === 2 ? 4 + (seed % 3) : 9 + (seed % 3) * 2,
+        wallOf(seed, P),
+        accent,
+        P,
+      );
     }
   } else if (zone === 'c') {
     if (level === 3) {
-      if (seed % 3 === 2) roundTower(b, offsetX, offsetZ, Math.min(w, d) * 0.42, 12 + seed % 4, seed, P);
+      if (seed % 3 === 2)
+        roundTower(b, offsetX, offsetZ, Math.min(w, d) * 0.42, 12 + (seed % 4), seed, P);
       else glassTower(b, offsetX, offsetZ, w * 0.8, d * 0.8, 12 + (seed % 3) * 3, seed, P);
     } else shopHall(b, offsetX, offsetZ, w, d, level === 1 ? 2 : 3, seed, P);
   } else sawtooth(b, offsetX, offsetZ, w, d, seed, P);
@@ -469,15 +649,31 @@ export function triangleLot(b, legs, q, color) {
 export function triangleBlock(legs) {
   const wing = Math.max(0.5, legs * 0.2);
   const slope = legs - EDGE * Math.SQRT2;
-  const outer = [[EDGE, EDGE], [slope - EDGE, EDGE], [EDGE, slope - EDGE]];
+  const outer = [
+    [EDGE, EDGE],
+    [slope - EDGE, EDGE],
+    [EDGE, slope - EDGE],
+  ];
   const near = EDGE + wing;
   const far = slope - wing * Math.SQRT2 - near;
   const inradius = (slope - 2 * EDGE) * (1 - Math.SQRT1_2);
   const shape = { wing, slope, outer, inradius, incenter: EDGE + inradius };
   if (far - near < MIN_COURT) return { ...shape, court: null, wings: [outer] };
-  const [ca, cb, cc] = [[near, near], [far, near], [near, far]];
+  const [ca, cb, cc] = [
+    [near, near],
+    [far, near],
+    [near, far],
+  ];
   const [oa, ob, oc] = outer;
-  return { ...shape, court: [ca, cb, cc], wings: [[oa, ob, cb, ca], [oa, ca, cc, oc], [ob, oc, cc, cb]] };
+  return {
+    ...shape,
+    court: [ca, cb, cc],
+    wings: [
+      [oa, ob, cb, ca],
+      [oa, ca, cc, oc],
+      [ob, oc, cc, cb],
+    ],
+  };
 }
 
 /** 多边形里随机取几个点，先按扇形分块再取，三角形和四边形都能用。 */
@@ -490,7 +686,10 @@ function scatter(b, points, count) {
     const [dx, dz] = points[fan + 1];
     const r0 = Math.sqrt(b.random());
     const r1 = b.random();
-    spots.push([ax * (1 - r0) + cx * r0 * (1 - r1) + dx * r0 * r1, az * (1 - r0) + cz * r0 * (1 - r1) + dz * r0 * r1]);
+    spots.push([
+      ax * (1 - r0) + cx * r0 * (1 - r1) + dx * r0 * r1,
+      az * (1 - r0) + cz * r0 * (1 - r1) + dz * r0 * r1,
+    ]);
   }
   return spots;
 }
@@ -501,8 +700,25 @@ function parapet(b, points, y, accent) {
   const top = y + 0.016;
   edgesOf(points).forEach(({ x0, z0, x1, z1, nx, nz }, i) => {
     const j = (i + 1) % points.length;
-    b.poly([[x0, top, z0], [x1, top, z1], [inner[j][0], top, inner[j][1]], [inner[i][0], top, inner[i][1]]], accent);
-    b.poly([[x0, y, z0], [x1, y, z1], [x1, top, z1], [x0, top, z0]], shade(accent, 0.9), [nx, 0, nz]);
+    b.poly(
+      [
+        [x0, top, z0],
+        [x1, top, z1],
+        [inner[j][0], top, inner[j][1]],
+        [inner[i][0], top, inner[i][1]],
+      ],
+      accent,
+    );
+    b.poly(
+      [
+        [x0, y, z0],
+        [x1, y, z1],
+        [x1, top, z1],
+        [x0, top, z0],
+      ],
+      shade(accent, 0.9),
+      [nx, 0, nz],
+    );
   });
 }
 
@@ -514,10 +730,19 @@ function roofTop(b, points, y, P) {
   if (area >= GREEN_ROOF_AREA) {
     const patch = scaled(points, 0.5);
     flat(b, patch, y + 0.004, linear(P.ground.lawn));
-    for (const [x, z] of scatter(b, patch, 2 + Math.floor(area / 3))) tree(b, x, z, P, 0.6, y + 0.004);
+    for (const [x, z] of scatter(b, patch, 2 + Math.floor(area / 3)))
+      tree(b, x, z, P, 0.6, y + 0.004);
   }
   for (const [x, z] of scatter(b, inner, Math.min(10, 2 + Math.floor(area)))) {
-    b.box(x, y, z, 0.06 + b.random() * 0.06, 0.03 + b.random() * 0.04, 0.06 + b.random() * 0.06, shade(concrete, 0.9 + b.random() * 0.15));
+    b.box(
+      x,
+      y,
+      z,
+      0.06 + b.random() * 0.06,
+      0.03 + b.random() * 0.04,
+      0.06 + b.random() * 0.06,
+      shade(concrete, 0.9 + b.random() * 0.15),
+    );
   }
 }
 
@@ -543,7 +768,11 @@ function terraced(b, points, low, high, wall, accent, P, skip = 0) {
 function courtyard(b, points, zone, P) {
   flat(b, points, LOT_Y + 0.003, linear(zone === 'r' ? P.ground.lawn : P.road.yard));
   const colors = [P.road.rail, P.zones.commercial[0], P.zones.commercial[3], P.zones.farm[2]];
-  for (const [x, z] of scatter(b, scaled(points, 0.72), Math.max(2, Math.floor(polygonArea(points) * 3)))) {
+  for (const [x, z] of scatter(
+    b,
+    scaled(points, 0.72),
+    Math.max(2, Math.floor(polygonArea(points) * 3)),
+  )) {
     if (zone === 'r') tree(b, x, z, P, 0.8);
     else if (zone === 'c') {
       const color = linear(pick(P.cars, b.random));
@@ -564,7 +793,9 @@ function terraceRows(lot) {
   const house = (x, z, index, turn) => {
     const wall = linear([P.wall.warm, P.wall.cool, P.wall.brick][index % 3]);
     const roof = linear(P.zones.residential[index % P.zones.residential.length]);
-    b.at(x, LOT_Y, z, turn, (c) => cottage(c, P, wall, roof, ROW_HOUSE, ROW_HOUSE * 0.96, FLOOR * 1.6, 'z'));
+    b.at(x, LOT_Y, z, turn, (c) =>
+      cottage(c, P, wall, roof, ROW_HOUSE, ROW_HOUSE * 0.96, FLOOR * 1.6, 'z'),
+    );
   };
   let line = plan.slope - (ROW_HOUSE / 2) * Math.SQRT2;
   let row = 0;
@@ -596,7 +827,7 @@ function residentialBlock(lot) {
     terraceRows(lot);
     return;
   }
-  const low = [2, 4 + seed % 2, 6 + seed % 3][level - 1];
+  const low = [2, 4 + (seed % 2), 6 + (seed % 3)][level - 1];
   const high = low + [0, 2, 5][level - 1];
   const wall = wallOf(seed, P);
   const accent = linear(P.zones.residential[seed % 4]);
@@ -611,7 +842,12 @@ function residentialBlock(lot) {
   courtyard(b, place(plan.court), 'r', P);
   if (variant === 1 && high > low) {
     const near = EDGE + plan.wing;
-    const corner = [[EDGE, EDGE], [near, EDGE], [near, near], [EDGE, near]];
+    const corner = [
+      [EDGE, EDGE],
+      [near, EDGE],
+      [near, near],
+      [EDGE, near],
+    ];
     wingBlock(b, place(corner), LOT_Y + low * FLOOR, high - low + 3, shade(wall, 0.96), accent, P);
   }
 }
@@ -624,7 +860,7 @@ function towersOn(lot, y) {
   const shift = legs * 0.12;
   for (const sign of twin ? [-1, 1] : [0]) {
     const [x, z] = toLocal(plan.incenter + sign * shift, plan.incenter - sign * shift);
-    const floors = 11 + (seed + sign + 1) % 6;
+    const floors = 11 + ((seed + sign + 1) % 6);
     b.at(0, y, 0, 0, (c) => {
       if (variant === 1 && !twin) roundTower(c, x, z, side * 0.46, floors, seed, P);
       else glassTower(c, x, z, side, side, floors, seed, P);
@@ -668,8 +904,25 @@ function sawRoof(lot, y) {
     const end = plan.slope - v - pitch - 0.03;
     if (end - start < 0.2) return;
     const [ridge, valley] = sz > 0 ? [v + pitch, v] : [v, v + pitch];
-    b.poly([point(start, ridge, y + rise), point(end, ridge, y + rise), point(end, valley, y), point(start, valley, y)], roof);
-    b.poly([point(start, ridge, y), point(end, ridge, y), point(end, ridge, y + rise), point(start, ridge, y + rise)], glass, [0, 0, 1]);
+    b.poly(
+      [
+        point(start, ridge, y + rise),
+        point(end, ridge, y + rise),
+        point(end, valley, y),
+        point(start, valley, y),
+      ],
+      roof,
+    );
+    b.poly(
+      [
+        point(start, ridge, y),
+        point(end, ridge, y),
+        point(end, ridge, y + rise),
+        point(start, ridge, y + rise),
+      ],
+      glass,
+      [0, 0, 1],
+    );
   }
 }
 
@@ -700,7 +953,12 @@ function propertyQ(b, name, P) {
   const legs = Number(legsText);
   const variant = Number(variantText);
   const { sx, sz, toLocal } = triangleFrame(legs, Number(orient));
-  triangleLot(b, legs, Number(orient), linear(zone === 'r' ? P.ground.lawn : zone === 'c' ? P.road.walk : P.road.yard));
+  triangleLot(
+    b,
+    legs,
+    Number(orient),
+    linear(zone === 'r' ? P.ground.lawn : zone === 'c' ? P.road.walk : P.road.yard),
+  );
   TRIANGLE_MASSES[zone]({
     b,
     P,
@@ -791,7 +1049,16 @@ function serviceFire(b, sx, sz, P) {
     const doors = Math.max(2, Math.round(bx / 0.2));
     for (let i = 0; i < doors; i += 1) {
       const x = -bx / 2 + (bx / doors) * (i + 0.5);
-      c.poly([[x - 0.07, 0.002, bz / 2 + 0.003], [x + 0.07, 0.002, bz / 2 + 0.003], [x + 0.07, 0.17, bz / 2 + 0.003], [x - 0.07, 0.17, bz / 2 + 0.003]], red, [0, 0, 1]);
+      c.poly(
+        [
+          [x - 0.07, 0.002, bz / 2 + 0.003],
+          [x + 0.07, 0.002, bz / 2 + 0.003],
+          [x + 0.07, 0.17, bz / 2 + 0.003],
+          [x - 0.07, 0.17, bz / 2 + 0.003],
+        ],
+        red,
+        [0, 0, 1],
+      );
     }
     windows(c, bx, bz, 0.2, 1, P, FLOOR, 0.5, 0.2);
   });
@@ -807,7 +1074,11 @@ function serviceWater(b, sx, sz, P) {
   const concrete = linear(P.wall.concrete);
   const water = linear(P.water.mid);
   const r = Math.min(sx, sz) * 0.2;
-  for (const [x, z] of [[-0.27, -0.25], [0.2, -0.25], [-0.27, 0.22]]) {
+  for (const [x, z] of [
+    [-0.27, -0.25],
+    [0.2, -0.25],
+    [-0.27, 0.22],
+  ]) {
     b.cylinder(x * sx, LOT_Y, z * sz, r, r, 0.07, 12, concrete, water);
     b.box(x * sx, LOT_Y + 0.072, z * sz, r * 1.7, 0.012, 0.014, linear(P.wall.cool));
   }
@@ -822,9 +1093,22 @@ function servicePower(b, sx, sz, P) {
   lotFor(b, sx, sz, linear(P.road.yard));
   const concrete = linear(P.wall.concrete);
   const r = Math.min(sx, sz) * 0.21;
-  for (const [x, z] of [[-0.25, -0.26], [0.2, -0.26]]) {
+  for (const [x, z] of [
+    [-0.25, -0.26],
+    [0.2, -0.26],
+  ]) {
     b.cylinder(x * sx, LOT_Y, z * sz, r, r * 0.68, 0.34, 12, concrete, shade(concrete, 0.5));
-    b.cylinder(x * sx, LOT_Y + 0.34, z * sz, r * 0.68, r * 0.8, 0.12, 12, shade(concrete, 1.04), shade(concrete, 0.5));
+    b.cylinder(
+      x * sx,
+      LOT_Y + 0.34,
+      z * sz,
+      r * 0.68,
+      r * 0.8,
+      0.12,
+      12,
+      shade(concrete, 1.04),
+      shade(concrete, 0.5),
+    );
   }
   b.at(-sx * 0.1, LOT_Y, sz * 0.26, 0, (c) => {
     c.box(0, 0, 0, sx * 0.6, FLOOR * 2, sz * 0.3, linear(P.wall.cool));
@@ -833,7 +1117,16 @@ function servicePower(b, sx, sz, P) {
   });
   const red = linear(P.road.rail);
   for (let i = 0; i < 4; i += 1) {
-    b.cylinder(sx * 0.38, LOT_Y + i * 0.14, sz * 0.3, 0.045, 0.04, 0.14, 7, i % 2 === 0 ? red : linear('#f2f0ea'));
+    b.cylinder(
+      sx * 0.38,
+      LOT_Y + i * 0.14,
+      sz * 0.3,
+      0.045,
+      0.04,
+      0.14,
+      7,
+      i % 2 === 0 ? red : linear('#f2f0ea'),
+    );
   }
 }
 
@@ -850,11 +1143,19 @@ function publicLand(b, use, sx, sz, P) {
   if (use === 'plaza') {
     lotFor(b, sx, sz, linear(P.road.walk));
     const step = 0.2;
-    for (let x = -sx / 2 + step; x < sx / 2; x += step) flat(b, rectangle(x, 0, 0.006, sz), LOT_Y + 0.002, linear(P.wall.concrete));
-    for (let z = -sz / 2 + step; z < sz / 2; z += step) flat(b, rectangle(0, z, sx, 0.006), LOT_Y + 0.002, linear(P.wall.concrete));
+    for (let x = -sx / 2 + step; x < sx / 2; x += step)
+      flat(b, rectangle(x, 0, 0.006, sz), LOT_Y + 0.002, linear(P.wall.concrete));
+    for (let z = -sz / 2 + step; z < sz / 2; z += step)
+      flat(b, rectangle(0, z, sx, 0.006), LOT_Y + 0.002, linear(P.wall.concrete));
     b.cylinder(0, LOT_Y, 0, 0.16, 0.16, 0.035, 10, linear(P.wall.concrete), linear(P.water.mid));
     b.cylinder(0, LOT_Y + 0.03, 0, 0.02, 0.012, 0.11, 6, linear(P.wall.cool));
-    for (const [x, z] of [[-0.32, -0.32], [0.32, -0.32], [-0.32, 0.32], [0.32, 0.32]]) tree(b, x * sx, z * sz, P, 0.7);
+    for (const [x, z] of [
+      [-0.32, -0.32],
+      [0.32, -0.32],
+      [-0.32, 0.32],
+      [0.32, 0.32],
+    ])
+      tree(b, x * sx, z * sz, P, 0.7);
   } else {
     lotFor(b, sx, sz, linear(P.ground.lawn));
     flat(b, rectangle(0, 0, sx, 0.07), LOT_Y + 0.003, linear(P.road.walk));
@@ -907,7 +1208,12 @@ const SMALL_FEATURES = {
   },
   pavilion(b, x, z, P) {
     const wood = linear(P.wood);
-    for (const [dx, dz] of [[-0.09, -0.09], [0.09, -0.09], [0.09, 0.09], [-0.09, 0.09]]) {
+    for (const [dx, dz] of [
+      [-0.09, -0.09],
+      [0.09, -0.09],
+      [0.09, 0.09],
+      [-0.09, 0.09],
+    ]) {
       b.box(x + dx, LOT_Y, z + dz, 0.014, 0.12, 0.014, wood);
     }
     b.cylinder(x, LOT_Y + 0.12, z, 0.17, 0, 0.09, 6, linear(P.zones.residential[0]));
@@ -918,7 +1224,12 @@ const SMALL_FEATURES = {
 function smallTriangle(b, name, P) {
   const [, use, orient] = name.split('-');
   const q = Number(orient);
-  const corners = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
+  const corners = [
+    [-0.5, -0.5],
+    [0.5, -0.5],
+    [0.5, 0.5],
+    [-0.5, 0.5],
+  ];
   const points = [corners[q], corners[(q + 1) % 4], corners[(q + 2) % 4]];
   const cx = (points[0][0] + points[1][0] + points[2][0]) / 3;
   const cz = (points[0][1] + points[1][1] + points[2][1]) / 3;
@@ -926,7 +1237,9 @@ function smallTriangle(b, name, P) {
   if (use === 'shop') {
     plate(b, inner, linear(P.road.walk));
     b.at(cx * 0.95, LOT_Y, cz * 0.95, 0, (c) => {
-      c.box(0, 0, 0, 0.22, 0.13, 0.2, linear(P.wall.warm), { top: linear(P.zones.commercial[q % 4]) });
+      c.box(0, 0, 0, 0.22, 0.13, 0.2, linear(P.wall.warm), {
+        top: linear(P.zones.commercial[q % 4]),
+      });
       windows(c, 0.22, 0.2, 0.02, 1, P, 0.13, 0.6, 0.11);
     });
     return;
@@ -941,7 +1254,16 @@ function farmhouse(b, P, seed) {
     const red = linear(P.zones.farm[0]);
     c.box(0, 0, 0, 0.42, 0.13, 0.26, red);
     c.gable(0, 0.13, 0, 0.42, 0.26, 0.1, linear(P.wall.warm), red, 'x', 0.015);
-    c.poly([[0.213, 0.002, -0.05], [0.213, 0.002, 0.05], [0.213, 0.1, 0.05], [0.213, 0.1, -0.05]], linear(P.wall.warm), [1, 0, 0]);
+    c.poly(
+      [
+        [0.213, 0.002, -0.05],
+        [0.213, 0.002, 0.05],
+        [0.213, 0.1, 0.05],
+        [0.213, 0.1, -0.05],
+      ],
+      linear(P.wall.warm),
+      [1, 0, 0],
+    );
   });
   b.cylinder(0.28, LOT_Y, -0.22, 0.07, 0.07, 0.24, 8, linear(P.wall.cool), linear(P.wall.concrete));
   b.cylinder(0.28, LOT_Y + 0.24, -0.22, 0.075, 0, 0.07, 8, linear(P.zones.farm[0]));
@@ -966,7 +1288,12 @@ function car(b, P, seed, rotation) {
   b.at(0, 0.002, 0, rotation, (c) => {
     c.box(0, 0.018, 0, 0.2, 0.04, 0.1, body);
     c.box(-0.012, 0.058, 0, 0.11, 0.032, 0.088, glass, { top: body });
-    for (const [x, z] of [[0.06, 0.05], [-0.06, 0.05], [0.06, -0.05], [-0.06, -0.05]]) {
+    for (const [x, z] of [
+      [0.06, 0.05],
+      [-0.06, 0.05],
+      [0.06, -0.05],
+      [-0.06, -0.05],
+    ]) {
       c.box(x, 0, z, 0.038, 0.024, 0.012, wheel);
     }
     const lamp = linear(P.window.lit);
@@ -985,7 +1312,8 @@ function bus(b, P, rotation) {
     c.box(0, 0.02, 0, 0.36, 0.09, 0.11, body, { top: linear('#ffffff') });
     c.box(0, 0.052, 0.056, 0.32, 0.032, 0.002, glass);
     c.box(0.181, 0.052, 0, 0.002, 0.032, 0.09, glass);
-    for (const z of [-0.036, 0.036]) c.box(0.183, 0.026, z, 0.006, 0.016, 0.02, linear(P.window.lit), { glow: true });
+    for (const z of [-0.036, 0.036])
+      c.box(0.183, 0.026, z, 0.006, 0.016, 0.02, linear(P.window.lit), { glow: true });
   });
 }
 
@@ -993,9 +1321,36 @@ function boat(b, P, rotation) {
   const hull = linear(P.wall.cool);
   const stripe = linear(P.road.rail);
   b.at(0, waterLevel, 0, rotation, (c) => {
-    c.poly([[-0.3, 0.05, -0.08], [0.2, 0.05, -0.08], [0.32, 0.05, 0], [0.2, 0.05, 0.08], [-0.3, 0.05, 0.08]], linear(P.wood));
-    c.poly([[-0.3, 0, 0.08], [0.2, 0, 0.08], [0.2, 0.05, 0.08], [-0.3, 0.05, 0.08]], stripe, [0, 0, 1]);
-    c.poly([[0.2, 0, 0.08], [0.32, 0, 0], [0.32, 0.05, 0], [0.2, 0.05, 0.08]], stripe, [1, 0, 1]);
+    c.poly(
+      [
+        [-0.3, 0.05, -0.08],
+        [0.2, 0.05, -0.08],
+        [0.32, 0.05, 0],
+        [0.2, 0.05, 0.08],
+        [-0.3, 0.05, 0.08],
+      ],
+      linear(P.wood),
+    );
+    c.poly(
+      [
+        [-0.3, 0, 0.08],
+        [0.2, 0, 0.08],
+        [0.2, 0.05, 0.08],
+        [-0.3, 0.05, 0.08],
+      ],
+      stripe,
+      [0, 0, 1],
+    );
+    c.poly(
+      [
+        [0.2, 0, 0.08],
+        [0.32, 0, 0],
+        [0.32, 0.05, 0],
+        [0.2, 0.05, 0.08],
+      ],
+      stripe,
+      [1, 0, 1],
+    );
     c.box(-0.16, 0.05, 0, 0.14, 0.09, 0.11, hull);
     c.box(0.06, 0.05, 0, 0.2, 0.07, 0.12, linear(P.zones.commercial[3]));
   });
@@ -1067,7 +1422,12 @@ function polygonOfFootprint(footprint) {
     const v = second * HALF_DIAGONAL - inset * 2;
     const axisU = [HALF_DIAGONAL, HALF_DIAGONAL];
     const axisV = [HALF_DIAGONAL, -HALF_DIAGONAL];
-    return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([s, t]) => [
+    return [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ].map(([s, t]) => [
       (s * u * axisU[0] + t * v * axisV[0]) / 2,
       (s * u * axisU[1] + t * v * axisV[1]) / 2,
     ]);
@@ -1085,20 +1445,34 @@ export function buildFestival(footprint, P) {
   const red = linear(P.festival.red);
   const gold = linear(P.festival.gold);
   const poleHeight = 0.34;
-  const front = edgesOf(polygon).reduce((best, edge) => (edge.nx + edge.nz > best.nx + best.nz ? edge : best));
+  const front = edgesOf(polygon).reduce((best, edge) =>
+    edge.nx + edge.nz > best.nx + best.nz ? edge : best,
+  );
   const { x0, z0, x1, z1, nx, nz, length } = front;
   const inset = Math.min(0.14, length * 0.15) / length;
   const ax = x0 + (x1 - x0) * inset;
   const az = z0 + (z1 - z0) * inset;
   const cx = x1 - (x1 - x0) * inset;
   const cz = z1 - (z1 - z0) * inset;
-  for (const [px, pz] of [[ax, az], [cx, cz]]) {
+  for (const [px, pz] of [
+    [ax, az],
+    [cx, cz],
+  ]) {
     b.cylinder(px, LOT_Y, pz, 0.01, 0.008, poleHeight, 5, gold);
     b.blob(px, LOT_Y + poleHeight - 0.03, pz, 0.052, 0.064, 0.052, red, 0.02);
     b.box(px, LOT_Y + poleHeight - 0.11, pz, 0.016, 0.022, 0.016, gold);
   }
   const low = LOT_Y + poleHeight - 0.15;
   const high = LOT_Y + poleHeight - 0.09;
-  b.poly([[ax, low, az], [cx, low, cz], [cx, high, cz], [ax, high, az]], red, [nx, 0, nz]);
+  b.poly(
+    [
+      [ax, low, az],
+      [cx, low, cz],
+      [cx, high, cz],
+      [ax, high, az],
+    ],
+    red,
+    [nx, 0, nz],
+  );
   return b;
 }

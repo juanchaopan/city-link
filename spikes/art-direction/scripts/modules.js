@@ -6,7 +6,11 @@ import { startServer } from './serve.js';
 
 const PORT = 4187;
 const server = await startServer(PORT);
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({
+  channel: 'chrome',
+  headless: true,
+  args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'],
+});
 const page = await browser.newPage();
 page.on('pageerror', (error) => console.error('页面错误', error));
 await page.goto(`http://localhost:${String(PORT)}/web/bake.html`);
@@ -35,7 +39,11 @@ const url = await page.evaluate(async () => {
   };
   const cellW = 420;
   const cellH = 460;
-  const rows = [['2x2', 0], ['Q3', 0], ['Q3', 1]];
+  const rows = [
+    ['2x2', 0],
+    ['Q3', 0],
+    ['Q3', 1],
+  ];
   const sheet = new OffscreenCanvas(cellW * COMBOS.length, cellH * rows.length * 2);
   const context = sheet.getContext('2d');
   context.fillStyle = '#8fc070';
@@ -54,7 +62,8 @@ const url = await page.evaluate(async () => {
           context.filter = night ? 'brightness(0.32) saturate(0.8)' : 'none';
           context.drawImage(body.canvas, Math.round(sx - body.ax), Math.round(sy - body.ay));
           context.filter = 'none';
-          if (night && glow) context.drawImage(glow.canvas, Math.round(sx - glow.ax), Math.round(sy - glow.ay));
+          if (night && glow)
+            context.drawImage(glow.canvas, Math.round(sx - glow.ax), Math.round(sy - glow.ay));
         }
       }
     });

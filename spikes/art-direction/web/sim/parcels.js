@@ -48,7 +48,12 @@ export function atomPolygon(id, N) {
   const x = cell % N;
   const y = Math.floor(cell / N);
   const center = [x + 0.5, y + 0.5];
-  const corners = [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]];
+  const corners = [
+    [x, y],
+    [x + 1, y],
+    [x + 1, y + 1],
+    [x, y + 1],
+  ];
   return [corners[q], corners[(q + 1) % 4], center];
 }
 
@@ -88,7 +93,9 @@ function freeAtoms({ N, roads, water, slopes, reserved }) {
       for (let q = 0; q < 4; q += 1) {
         const id = cell * 4 + q;
         const polygon = atomPolygon(id, N);
-        if (nearby.every((line) => polygonDistance(polygon, line.points) >= line.half + CLEARANCE)) {
+        if (
+          nearby.every((line) => polygonDistance(polygon, line.points) >= line.half + CLEARANCE)
+        ) {
           free[id] = 1;
         }
       }
@@ -190,7 +197,11 @@ function triangleLands(N, isOpen, zoneAt) {
 
 function trianglePolygon(x, y, q, legs) {
   const [sx, sy] = QUADRANTS[q];
-  const points = [[x, y], [x + sx * legs, y], [x, y + sy * legs]];
+  const points = [
+    [x, y],
+    [x + sx * legs, y],
+    [x, y + sy * legs],
+  ];
   const hypotenuse = legs * Math.SQRT2;
   const perimeter = legs * 2 + hypotenuse;
   const incenter = [
@@ -287,8 +298,15 @@ function frontageOf({ N, roads }, isLand, table) {
     for (const { from, to, across, length } of edges) {
       if (across >= 0 && isLand(across)) continue;
       const middle = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
-      const square = [[middle[0] - 0.01, middle[1] - 0.01], [middle[0] + 0.01, middle[1] - 0.01], [middle[0] + 0.01, middle[1] + 0.01], [middle[0] - 0.01, middle[1] + 0.01]];
-      const touching = nearby.some((line) => polygonDistance(square, line.points) <= line.half + FRONT_REACH);
+      const square = [
+        [middle[0] - 0.01, middle[1] - 0.01],
+        [middle[0] + 0.01, middle[1] - 0.01],
+        [middle[0] + 0.01, middle[1] + 0.01],
+        [middle[0] - 0.01, middle[1] + 0.01],
+      ];
+      const touching = nearby.some(
+        (line) => polygonDistance(square, line.points) <= line.half + FRONT_REACH,
+      );
       if (!touching) continue;
       front[id] += length;
       if (length < 1) diagonalFront[id] += length;
@@ -328,7 +346,11 @@ function placeBlocks(input, tools) {
   const land = [];
   for (let id = 0; id < N * N * 4; id += 1) {
     const zone = zoneAt(id);
-    if (open(id) && (zone === ZONE.residential || zone === ZONE.commercial || zone === ZONE.industrial)) land.push(id);
+    if (
+      open(id) &&
+      (zone === ZONE.residential || zone === ZONE.commercial || zone === ZONE.industrial)
+    )
+      land.push(id);
   }
   const member = new Set(land);
   const { front, diagonalFront } = frontageOf(input, (id) => member.has(id), table);
@@ -339,7 +361,13 @@ function placeBlocks(input, tools) {
     const zone = majorityZone(atoms, zoneAt);
     const level = levelAt(atoms[Math.floor(atoms.length / 2)]);
     const frontPoints = atoms.filter((id) => front[id] > 0).map((id) => atomCentroid(id, N));
-    const common = { zone, level, accessFrom: frontPoints, front: piece.front, diagonalFront: piece.diagonalFront };
+    const common = {
+      zone,
+      level,
+      accessFrom: frontPoints,
+      front: piece.front,
+      diagonalFront: piece.diagonalFront,
+    };
     if (spec.shape === 'rect') {
       const { x, y, w, h } = spec;
       claim(atoms, {
@@ -450,7 +478,12 @@ function placeFarmland({ N, zones, seed }, tools) {
       cells.push(cell);
       const x = cell % N;
       const y = Math.floor(cell / N);
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
         const next = (y + dy) * N + x + dx;
         if (x + dx >= 0 && x + dx < N && fieldCells.has(next) && !seen.has(next)) {
           seen.add(next);
@@ -473,7 +506,8 @@ function placeFarmland({ N, zones, seed }, tools) {
       variant: 0,
       px: (middle % N) + 0.5,
       py: Math.floor(middle / N) + 0.5,
-      accessFrom: roadside.length > 0 ? roadside.map((c) => [(c % N) + 0.5, Math.floor(c / N) + 0.5]) : null,
+      accessFrom:
+        roadside.length > 0 ? roadside.map((c) => [(c % N) + 0.5, Math.floor(c / N) + 0.5]) : null,
       polygon: null,
       cells,
       capacity: roadside.length > 0 ? capacityOf(atoms.length, ZONE.farm, 1) : 0,
@@ -550,7 +584,12 @@ function placeGreen({ N, zones, seed }, tools, residual) {
         const a = base + q;
         const b = base + ((q + 1) % 4);
         if (!open(a) || !open(b)) continue;
-        const corners = [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]];
+        const corners = [
+          [x, y],
+          [x + 1, y],
+          [x + 1, y + 1],
+          [x, y + 1],
+        ];
         const polygon = [corners[q], corners[(q + 1) % 4], corners[(q + 2) % 4]];
         const center = [
           (polygon[0][0] + polygon[1][0] + polygon[2][0]) / 3,
@@ -613,7 +652,8 @@ export function generateParcels(input) {
       const id = parcels.length;
       for (const atom of atoms) used[atom] = id;
       const { accessFrom, ...rest } = parcel;
-      const access = accessFrom === null ? -1 : nearestRoad(roads, N, accessFrom ?? [[parcel.px, parcel.py]]);
+      const access =
+        accessFrom === null ? -1 : nearestRoad(roads, N, accessFrom ?? [[parcel.px, parcel.py]]);
       parcels.push({ id, atoms: atoms.length, area: atoms.length / 4, access, ...rest });
     },
     placeService(service, { x, y, w, h }) {
@@ -650,8 +690,18 @@ export function generateParcels(input) {
  */
 export function triangleLandReport(result, N, zones) {
   const { free, atomOwner, parcels } = result;
-  const lands = triangleLands(N, (atom) => free[atom] === 1, (atom) => zones[atom >> 2]);
-  const summary = { lands: lands.length, complete: 0, fragmented: 0, squarePlusTriangles: 0, bySize: {} };
+  const lands = triangleLands(
+    N,
+    (atom) => free[atom] === 1,
+    (atom) => zones[atom >> 2],
+  );
+  const summary = {
+    lands: lands.length,
+    complete: 0,
+    fragmented: 0,
+    squarePlusTriangles: 0,
+    bySize: {},
+  };
   for (const land of lands) {
     const owners = new Set(land.atoms.map((atom) => atomOwner[atom]));
     const complete = owners.size === 1 && !owners.has(-1);

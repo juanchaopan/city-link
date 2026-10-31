@@ -4,7 +4,13 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { polygonArea, polygonDistance, ROAD_SPEC, worldPolylines } from '../web/sim/network.js';
-import { atomPolygon, capacityTable, generateParcels, publicLandReport, RATE } from '../web/sim/parcels.js';
+import {
+  atomPolygon,
+  capacityTable,
+  generateParcels,
+  publicLandReport,
+  RATE,
+} from '../web/sim/parcels.js';
 import { atomTable, specOf } from '../web/sim/partition.js';
 import { generateCity } from '../web/sim/city.js';
 import { intersectionRule, templateFootprint, templateNames } from '../web/sim/interchange.js';
@@ -23,7 +29,10 @@ function digest(value) {
 }
 
 function parcelsOf(city) {
-  return city.parcels.parcels.map(({ cells, ...parcel }) => ({ ...parcel, cells: cells?.length ?? 0 }));
+  return city.parcels.parcels.map(({ cells, ...parcel }) => ({
+    ...parcel,
+    cells: cells?.length ?? 0,
+  }));
 }
 
 function roadClearance(city) {
@@ -67,7 +76,12 @@ function areaCheck(city) {
 function capacityCheck(table) {
   let wrong = 0;
   for (const row of table) {
-    if (row.use === 'fallow' || row.shape === 'green' || row.shape === 'service' || row.shape === 'public') {
+    if (
+      row.use === 'fallow' ||
+      row.shape === 'green' ||
+      row.shape === 'service' ||
+      row.shape === 'public'
+    ) {
       if (row.capacity !== 0) wrong += 1;
       continue;
     }
@@ -93,10 +107,18 @@ function accessCheck(city) {
     if (!atomsOf.has(owner)) atomsOf.set(owner, []);
     atomsOf.get(owner).push(atom);
   });
-  const result = { properties: 0, noEntrance: 0, notTouchingRoad: 0, onExpressOrHighway: 0, unreachable: 0, greenWithCapacity: 0 };
+  const result = {
+    properties: 0,
+    noEntrance: 0,
+    notTouchingRoad: 0,
+    onExpressOrHighway: 0,
+    unreachable: 0,
+    greenWithCapacity: 0,
+  };
   let farthest = 0;
   for (const parcel of parcels) {
-    if (parcel.shape === 'green' && (parcel.capacity !== 0 || parcel.access >= 0)) result.greenWithCapacity += 1;
+    if (parcel.shape === 'green' && (parcel.capacity !== 0 || parcel.access >= 0))
+      result.greenWithCapacity += 1;
     if (parcel.capacity === 0 && parcel.shape !== 'service') continue;
     result.properties += 1;
     if (parcel.access < 0) {
@@ -113,7 +135,8 @@ function accessCheck(city) {
     const y = Math.floor(parcel.access / N) + 0.5;
     let nearest = Infinity;
     for (const atom of atomsOf.get(parcel.id) ?? []) {
-      for (const [px, py] of atomPolygon(atom, N)) nearest = Math.min(nearest, Math.hypot(px - x, py - y));
+      for (const [px, py] of atomPolygon(atom, N))
+        nearest = Math.min(nearest, Math.hypot(px - x, py - y));
     }
     farthest = Math.max(farthest, nearest);
     if (nearest > 1.3) result.notTouchingRoad += 1;
@@ -128,13 +151,24 @@ function reservedCheck(city) {
   city.parcels.atomOwner.forEach((owner, atom) => {
     if (owner >= 0 && reserved.has(atom >> 2)) parcelsOnReserved += 1;
   });
-  const forestsOnReserved = objects.filter(({ key, px, py }) => key.startsWith('forest') && reserved.has(Math.floor(py) * N + Math.floor(px))).length;
-  const rampEnds = lanes.flatMap((lane) => [lane.fromCell, lane.toCell]).filter((cell) => cell !== undefined);
+  const forestsOnReserved = objects.filter(
+    ({ key, px, py }) =>
+      key.startsWith('forest') && reserved.has(Math.floor(py) * N + Math.floor(px)),
+  ).length;
+  const rampEnds = lanes
+    .flatMap((lane) => [lane.fromCell, lane.toCell])
+    .filter((cell) => cell !== undefined);
   const rampsOnStreet = rampEnds.filter((cell) => {
     const entry = roads.get(cell);
     return !entry || !(entry.highway || entry.arterial);
   }).length;
-  return { reservedCells: reserved.size, parcelsOnReserved, forestsOnReserved, rampEnds: rampEnds.length, rampsOnStreet };
+  return {
+    reservedCells: reserved.size,
+    parcelsOnReserved,
+    forestsOnReserved,
+    rampEnds: rampEnds.length,
+    rampsOnStreet,
+  };
 }
 
 /** 普通城市的路网要靠匝道连成一张：去掉匝道，高速和城市路网就是分开的两块。 */
@@ -143,7 +177,8 @@ function connectionCheck(city) {
   const road = [...roads.entries()];
   const graph = buildGraph(roads, N, links);
   const { component } = componentsOf(graph);
-  const labelsOf = (test) => new Set(road.filter(([, entry]) => test(entry)).map(([id]) => component[graph.index.get(id)]));
+  const labelsOf = (test) =>
+    new Set(road.filter(([, entry]) => test(entry)).map(([id]) => component[graph.index.get(id)]));
   const highway = labelsOf((entry) => entry.highway);
   const arterial = labelsOf((entry) => entry.arterial);
   return {
@@ -161,8 +196,13 @@ function partitionCheck(city) {
   const table = atomTable(city.N);
   const properties = parcels.filter((parcel) => parcel.front !== undefined);
   const diagonalTotal = properties.reduce((sum, parcel) => sum + parcel.diagonalFront, 0);
-  const onDiagonal = (shape) => properties.filter((parcel) => parcel.shape === shape).reduce((sum, parcel) => sum + parcel.diagonalFront, 0);
-  const triangleBlocks = partition.details.filter(({ atoms }) => specOf(atoms, table)?.shape === 'triangle');
+  const onDiagonal = (shape) =>
+    properties
+      .filter((parcel) => parcel.shape === shape)
+      .reduce((sum, parcel) => sum + parcel.diagonalFront, 0);
+  const triangleBlocks = partition.details.filter(
+    ({ atoms }) => specOf(atoms, table)?.shape === 'triangle',
+  );
   return {
     ...partition.stats,
     blockAtoms: partition.blockAtoms,
@@ -171,20 +211,37 @@ function partitionCheck(city) {
     piecesWithoutRoad: properties.filter((parcel) => parcel.front < 0.7).length,
     piecesWithoutSpec: partition.pieces.filter((piece) => !specOf(piece.atoms, table)).length,
     triangleBlocks: triangleBlocks.length,
-    triangleBlocksWhole: triangleBlocks.filter(({ candidates }) => candidates[0].pieces.length === 1).length,
+    triangleBlocksWhole: triangleBlocks.filter(
+      ({ candidates }) => candidates[0].pieces.length === 1,
+    ).length,
     diagonalFrontage: diagonalTotal,
     diagonalFrontageOnBands: onDiagonal('diagonal'),
     diagonalFrontageOnTriangles: onDiagonal('bigTriangle'),
-    bandSizes: [...new Set(properties.filter((parcel) => parcel.shape === 'diagonal').map((parcel) => `${String(parcel.spanU)}x${String(parcel.spanV)}`))].sort(),
+    bandSizes: [
+      ...new Set(
+        properties
+          .filter((parcel) => parcel.shape === 'diagonal')
+          .map((parcel) => `${String(parcel.spanU)}x${String(parcel.spanV)}`),
+      ),
+    ].sort(),
   };
 }
 
 function screenBox(item) {
   const sx = (item.px - item.py) * 64;
   const sy = (item.px + item.py - 1) * 32 - item.level * 32;
-  const halfW = Math.max(...item.footprint.map(([x, y]) => Math.abs((x - y) * 64 - (item.px - item.py) * 64))) + 8;
-  const halfH = Math.max(...item.footprint.map(([x, y]) => Math.abs((x + y - item.px - item.py) * 32))) + 8;
-  const tall = /^[BQS]-/.test(item.key) ? 460 : /^(ix|ev)-/.test(item.key) ? 120 : item.key.startsWith('forest') ? 90 : 60;
+  const halfW =
+    Math.max(...item.footprint.map(([x, y]) => Math.abs((x - y) * 64 - (item.px - item.py) * 64))) +
+    8;
+  const halfH =
+    Math.max(...item.footprint.map(([x, y]) => Math.abs((x + y - item.px - item.py) * 32))) + 8;
+  const tall = /^[BQS]-/.test(item.key)
+    ? 460
+    : /^(ix|ev)-/.test(item.key)
+      ? 120
+      : item.key.startsWith('forest')
+        ? 90
+        : 60;
   return { left: sx - halfW, right: sx + halfW, top: sy - halfH - tall, bottom: sy + halfH };
 }
 
@@ -259,19 +316,34 @@ function roadDemoCheck() {
     capacity: capacityCheck(capacityTable(city.parcels.parcels)),
     rules,
     templates: Object.fromEntries(templateNames().map((name) => [name, templateFootprint(name)])),
-    kinds: Object.fromEntries(Object.entries(ROAD_SPEC).map(([name, spec]) => [name, { lanes: spec.lanes, access: spec.access }])),
+    kinds: Object.fromEntries(
+      Object.entries(ROAD_SPEC).map(([name, spec]) => [
+        name,
+        { lanes: spec.lanes, access: spec.access },
+      ]),
+    ),
   };
 }
 
 /** 这一组检查里不该出现的数。label 写进失败清单，排查时直接看到是哪一项。 */
 function expectZero(label, values) {
-  for (const [name, value] of Object.entries(values)) if (value !== 0) problems.push(`${label}.${name}=${String(value)}`);
+  for (const [name, value] of Object.entries(values))
+    if (value !== 0) problems.push(`${label}.${name}=${String(value)}`);
 }
 
 function judge(label, { capacity, access, reserved }) {
   expectZero(`${label}.capacity`, { rowsNotProportional: capacity.rowsNotProportional });
-  expectZero(`${label}.access`, { noEntrance: access.noEntrance, notTouchingRoad: access.notTouchingRoad, onExpressOrHighway: access.onExpressOrHighway, unreachable: access.unreachable });
-  expectZero(`${label}.reserved`, { parcelsOnReserved: reserved.parcelsOnReserved, forestsOnReserved: reserved.forestsOnReserved, rampsOnStreet: reserved.rampsOnStreet });
+  expectZero(`${label}.access`, {
+    noEntrance: access.noEntrance,
+    notTouchingRoad: access.notTouchingRoad,
+    onExpressOrHighway: access.onExpressOrHighway,
+    unreachable: access.unreachable,
+  });
+  expectZero(`${label}.reserved`, {
+    parcelsOnReserved: reserved.parcelsOnReserved,
+    forestsOnReserved: reserved.forestsOnReserved,
+    rampsOnStreet: reserved.rampsOnStreet,
+  });
 }
 
 for (const N of SIZES) {
@@ -293,13 +365,15 @@ for (const N of SIZES) {
   const table = capacityTable(city.parcels.parcels);
   const { traffic } = city;
   const repeat = computeTraffic(city.parcels.parcels, city.roads, N, city.links);
-  const shape = (list) => list.filter((p) => p.shape !== 'x').map((p) => [p.shape, p.px, p.py, p.capacity, p.access]);
+  const shape = (list) =>
+    list.filter((p) => p.shape !== 'x').map((p) => [p.shape, p.px, p.py, p.capacity, p.access]);
   report[N] = {
     generateMs: Math.round(elapsed),
     parcels: city.parcels.parcels.length,
     hash: digest(parcelsOf(city)),
     sameOnSecondRun: digest(parcelsOf(city)) === digest(parcelsOf(again)),
-    sameWithShuffledInput: digest(shape(city.parcels.parcels)) === digest(shape(reshuffled.parcels)),
+    sameWithShuffledInput:
+      digest(shape(city.parcels.parcels)) === digest(shape(reshuffled.parcels)),
     area: areaCheck(city),
     capacity: capacityCheck(table),
     capacityTable: table,
@@ -311,8 +385,16 @@ for (const N of SIZES) {
     properties: propertyCheck(city),
     publicLand: publicLandReport(city.parcels, N, city.zones),
     coverage: {
-      spread: { population: city.coverage.population, blindShare: city.coverage.blindShare, missing: city.coverage.missingByService },
-      concentrated: { population: concentrated.coverage.population, blindShare: concentrated.coverage.blindShare, missing: concentrated.coverage.missingByService },
+      spread: {
+        population: city.coverage.population,
+        blindShare: city.coverage.blindShare,
+        missing: city.coverage.missingByService,
+      },
+      concentrated: {
+        population: concentrated.coverage.population,
+        blindShare: concentrated.coverage.blindShare,
+        missing: concentrated.coverage.missingByService,
+      },
     },
     metro: metroCheck(city.metro),
     roads: roadClearance(city),
@@ -330,7 +412,8 @@ for (const N of SIZES) {
   judge(String(N), report[N]);
   if (N > 32) {
     const { connection } = report[N];
-    if (connection.partsWithRamps !== 1 || !connection.highwayMeetsArterial) problems.push(`${String(N)}.connection=${JSON.stringify(connection)}`);
+    if (connection.partsWithRamps !== 1 || !connection.highwayMeetsArterial)
+      problems.push(`${String(N)}.connection=${JSON.stringify(connection)}`);
   }
   console.log(N, JSON.stringify({ ...report[N], capacityTable: undefined }));
 }

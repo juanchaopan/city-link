@@ -23,7 +23,13 @@ const ELEVATION = Math.PI / 6;
 const LIFT = 16;
 const SKY = [143, 192, 112];
 const SUN = [0.5, 0.75, 0.42];
-const ROAD_COLOR = { road: '#8b909a', arterial: '#6f747e', highway: '#4f545e', express: '#4f545e', ramp: '#4a4f58' };
+const ROAD_COLOR = {
+  road: '#8b909a',
+  arterial: '#6f747e',
+  highway: '#4f545e',
+  express: '#4f545e',
+  ramp: '#4a4f58',
+};
 
 const gamma = (value) => Math.round(255 * Math.min(1, Math.max(0, value)) ** (1 / 2.2));
 
@@ -62,7 +68,11 @@ function stamp({ draw }, builder, ox, oy, [wx, wy, wz] = [0, 0, 0]) {
     const x = positions[i] + wx;
     const y = positions[i + 1] + wy;
     const z = positions[i + 2] + wz;
-    return [ox + (x - z) * 64, oy + (x + z) * 32 - y * SCALE * Math.cos(ELEVATION), (x + z) * 0.61 + y * 0.5];
+    return [
+      ox + (x - z) * 64,
+      oy + (x + z) * 32 - y * SCALE * Math.cos(ELEVATION),
+      (x + z) * 0.61 + y * 0.5,
+    ];
   };
   for (let i = 0; i < positions.length; i += 9) {
     const ux = positions[i + 3] - positions[i];
@@ -76,7 +86,10 @@ function stamp({ draw }, builder, ox, oy, [wx, wy, wz] = [0, 0, 0]) {
     const nz = ux * vy - uy * vx;
     const length = Math.hypot(nx, ny, nz) || 1;
     const light = 0.62 + 0.5 * Math.max(0, (nx * SUN[0] + ny * SUN[1] + nz * SUN[2]) / length);
-    draw([view(i), view(i + 3), view(i + 6)], [gamma(colors[i] * light), gamma(colors[i + 1] * light), gamma(colors[i + 2] * light)]);
+    draw(
+      [view(i), view(i + 3), view(i + 6)],
+      [gamma(colors[i] * light), gamma(colors[i + 1] * light), gamma(colors[i + 2] * light)],
+    );
   }
 }
 
@@ -95,7 +108,12 @@ function lots() {
         const [zoneLevel, legs] = spec.split('-');
         const q = (column + rowIndex + variant) % 4;
         const object = buildObject(`Q-${zoneLevel}-${legs}-${String(q)}-${String(variant)}`, P);
-        stamp(sheet, object, column * cellW + cellW / 2, (rowIndex * 2 + variant) * cellH + cellH * 0.62);
+        stamp(
+          sheet,
+          object,
+          column * cellW + cellW / 2,
+          (rowIndex * 2 + variant) * cellH + cellH * 0.62,
+        );
       }
     });
   });
@@ -128,7 +146,15 @@ function ribbon(b, points, half, color) {
     const nz = ((cx - ax) / length) * half;
     const lift = 0.004 + ah * LEVEL;
     const next = 0.004 + ch * LEVEL;
-    b.poly([[ax + nx, lift, az + nz], [cx + nx, next, cz + nz], [cx - nx, next, cz - nz], [ax - nx, lift, az - nz]], color);
+    b.poly(
+      [
+        [ax + nx, lift, az + nz],
+        [cx + nx, next, cz + nz],
+        [cx - nx, next, cz - nz],
+        [ax - nx, lift, az - nz],
+      ],
+      color,
+    );
   }
 }
 
@@ -137,11 +163,14 @@ function cityView(name, [fx, fy], width, height) {
   const sheet = surface(width, height);
   const ox = width / 2 - (fx - fy) * 64;
   const oy = height / 2 - (fx + fy) * 32;
-  const inView = (px, py) => Math.abs((px - py - (fx - fy)) * 64) < width / 2 + 300 && Math.abs((px + py - (fx + fy)) * 32) < height / 2 + 300;
+  const inView = (px, py) =>
+    Math.abs((px - py - (fx - fy)) * 64) < width / 2 + 300 &&
+    Math.abs((px + py - (fx + fy)) * 32) < height / 2 + 300;
 
   const roads = new Builder(1);
   for (const { points, half, kind, cell } of worldPolylines(city.roads, N)) {
-    if (inView(cell % N, Math.floor(cell / N))) ribbon(roads, points, half, linear(ROAD_COLOR[kind]));
+    if (inView(cell % N, Math.floor(cell / N)))
+      ribbon(roads, points, half, linear(ROAD_COLOR[kind]));
   }
   stamp(sheet, roads, ox, oy);
 
@@ -157,9 +186,14 @@ function cityView(name, [fx, fy], width, height) {
   const { interchange } = city.plan;
   if (interchange) {
     const decks = new Builder(2);
-    for (const { points } of city.lanes) ribbon(decks, points, ROAD_SPEC.ramp.deck / 2, linear(ROAD_COLOR.ramp));
+    for (const { points } of city.lanes)
+      ribbon(decks, points, ROAD_SPEC.ramp.deck / 2, linear(ROAD_COLOR.ramp));
     stamp(sheet, decks, ox, oy);
-    stamp(sheet, interchangeFrame(interchange.name, P), ox, oy, [interchange.cx + 0.5, 0, interchange.cy + 0.5]);
+    stamp(sheet, interchangeFrame(interchange.name, P), ox, oy, [
+      interchange.cx + 0.5,
+      0,
+      interchange.cy + 0.5,
+    ]);
   }
   return { path: `out/r7-${name}-preview.png`, canvas: sheet.canvas };
 }

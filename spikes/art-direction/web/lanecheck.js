@@ -42,12 +42,16 @@ function compose(city, palette, withGround, within = () => true) {
     const [sx, sy] = place.at(px, py, level);
     context.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - sprite.ay));
   };
-  if (withGround) for (const { key, x, y, level } of city.ground) stamp(key, x + 0.5, y + 0.5, level);
+  if (withGround)
+    for (const { key, x, y, level } of city.ground) stamp(key, x + 0.5, y + 0.5, level);
   for (const list of [city.walks, city.curbs, city.decks]) {
     for (const { key, x, y, level } of list) if (within(x, y)) stamp(key, x + 0.5, y + 0.5, level);
   }
-  const lifted = city.objects.filter(({ key }) => withGround || key.startsWith('ix-') || key.startsWith('ev-'));
-  for (const { key, px, py, level } of [...lifted].sort((a, b) => a.px + a.py - b.px - b.py)) stamp(key, px, py, level);
+  const lifted = city.objects.filter(
+    ({ key }) => withGround || key.startsWith('ix-') || key.startsWith('ev-'),
+  );
+  for (const { key, px, py, level } of [...lifted].sort((a, b) => a.px + a.py - b.px - b.py))
+    stamp(key, px, py, level);
   return { canvas, context, place };
 }
 
@@ -56,7 +60,8 @@ function pixelClass(data, width, x, y) {
   if (data[i + 3] < 128) return 'empty';
   const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
   if (r > 60 && b < r * 0.35 && g < r * 1.25) return 'deck';
-  if ((g > 60 && r < g * 0.35 && b < g * 0.35) || (b > 60 && r < b * 0.35 && g < b * 0.35)) return 'side';
+  if ((g > 60 && r < g * 0.35 && b < g * 0.35) || (b > 60 && r < b * 0.35 && g < b * 0.35))
+    return 'side';
   return 'other';
 }
 
@@ -64,7 +69,8 @@ function inspectLane(lane, read, place, offsets, sideCounts) {
   const result = { samples: 0, holes: 0, side: 0, examples: [] };
   const { points } = lane;
   let total = 0;
-  for (let i = 0; i < points.length - 1; i += 1) total += Math.hypot(points[i + 1][0] - points[i][0], points[i + 1][1] - points[i][1]);
+  for (let i = 0; i < points.length - 1; i += 1)
+    total += Math.hypot(points[i + 1][0] - points[i][0], points[i + 1][1] - points[i][1]);
   let walked = 0;
   for (let i = 0; i < points.length - 1; i += 1) {
     const [ax, ay, ah] = points[i];
@@ -86,10 +92,22 @@ function inspectLane(lane, read, place, offsets, sideCounts) {
         result.samples += 1;
         if (found === 'empty') {
           result.holes += 1;
-          if (result.examples.length < 4) result.examples.push([Math.round(px * 10) / 10, Math.round(py * 10) / 10, Math.round(h * 10) / 10, found]);
+          if (result.examples.length < 4)
+            result.examples.push([
+              Math.round(px * 10) / 10,
+              Math.round(py * 10) / 10,
+              Math.round(h * 10) / 10,
+              found,
+            ]);
         } else if (found === 'side' && sideCounts && !inEndZone) {
           result.side += 1;
-          if (result.examples.length < 4) result.examples.push([Math.round(px * 10) / 10, Math.round(py * 10) / 10, Math.round(h * 10) / 10, found]);
+          if (result.examples.length < 4)
+            result.examples.push([
+              Math.round(px * 10) / 10,
+              Math.round(py * 10) / 10,
+              Math.round(h * 10) / 10,
+              found,
+            ]);
         }
       }
     }
@@ -114,26 +132,68 @@ window.runLaneChecks = () => {
     const examples = [];
     for (const lane of lanes) {
       const half = ROAD_SPEC[lane.kind].deck / 2 - EDGE_MARGIN;
-      const result = inspectLane(lane, scene.read, scene.place, lane.kind === 'ramp' ? [0, -half, half] : [0], sideCounts);
+      const result = inspectLane(
+        lane,
+        scene.read,
+        scene.place,
+        lane.kind === 'ramp' ? [0, -half, half] : [0],
+        sideCounts,
+      );
       for (const key of Object.keys(sum)) sum[key] += result[key];
       examples.push(...result.examples);
     }
-    rows.push({ name, lanes: lanes.length, ...sum, pass: sum.holes === 0 && sum.side === 0, examples: examples.slice(0, 6) });
+    rows.push({
+      name,
+      lanes: lanes.length,
+      ...sum,
+      pass: sum.holes === 0 && sum.side === 0,
+      examples: examples.slice(0, 6),
+    });
   };
-  total('快速路主线', city.lanes.filter((lane) => lane.kind === 'express'), demo);
+  total(
+    '快速路主线',
+    city.lanes.filter((lane) => lane.kind === 'express'),
+    demo,
+  );
   for (const name of templateNames()) {
     const lanes = city.lanes.filter((lane) => lane.id.startsWith(name));
     if (lanes.length > 0) total(`立交·${name}`, lanes, demo);
   }
-  const under = [[[26, 19.5, 0], [34, 19.5, 0]], [[10, 28.5, 0], [18, 28.5, 0]], [[26, 38.5, 0], [34, 38.5, 0]]];
-  total('高架下方的地面路', under.map((points) => ({ kind: 'road', points })), demo, false);
+  const under = [
+    [
+      [26, 19.5, 0],
+      [34, 19.5, 0],
+    ],
+    [
+      [10, 28.5, 0],
+      [18, 28.5, 0],
+    ],
+    [
+      [26, 38.5, 0],
+      [34, 38.5, 0],
+    ],
+  ];
+  total(
+    '高架下方的地面路',
+    under.map((points) => ({ kind: 'road', points })),
+    demo,
+    false,
+  );
 
   const town = generateCity(TOWN_SIZE);
   const { cx, cy } = town.plan.interchange;
   const near = (x, y) => Math.abs(x - cx) <= TOWN_MARGIN && Math.abs(y - cy) <= TOWN_MARGIN;
-  total(`普通城市·${town.plan.interchange.name}`, town.lanes, sceneOf(compose(town, MASK, false, near)));
+  total(
+    `普通城市·${town.plan.interchange.name}`,
+    town.lanes,
+    sceneOf(compose(town, MASK, false, near)),
+  );
 
-  const footprints = templateNames().map((name) => ({ name, ...templateFootprint(name), bbox: template(name).footprint }));
+  const footprints = templateNames().map((name) => ({
+    name,
+    ...templateFootprint(name),
+    bbox: template(name).footprint,
+  }));
   return { rows, footprints };
 };
 
@@ -158,14 +218,27 @@ window.renderLaneSheet = (rows) => {
     const [sx, sy] = place.at(center[0] + 0.5, center[1] + 0.5, 0);
     const height = (span * panelH) / panelW;
     const dx = 12 + index * (panelW + 12);
-    context.drawImage(canvas, sx - span / 2, sy - height / 2, span, height, dx, 12 + labelH, panelW, panelH);
+    context.drawImage(
+      canvas,
+      sx - span / 2,
+      sy - height / 2,
+      span,
+      height,
+      dx,
+      12 + labelH,
+      panelW,
+      panelH,
+    );
     context.fillStyle = rows.every((row) => row.pass) ? '#7fe0a0' : '#ff8a70';
     context.font = '700 26px "Microsoft YaHei"';
     context.fillText(name, dx + 4, 44);
   });
-  return sheet.convertToBlob({ type: 'image/png' }).then((blob) => new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.readAsDataURL(blob);
-  }));
+  return sheet.convertToBlob({ type: 'image/png' }).then(
+    (blob) =>
+      new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      }),
+  );
 };

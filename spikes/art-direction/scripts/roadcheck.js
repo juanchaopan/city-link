@@ -20,11 +20,26 @@ page.on('console', (message) => {
   if (message.type() === 'error' && !message.text().includes('404')) console.error(message.text());
 });
 await page.goto(`http://localhost:${String(PORT)}/web/roadcheck.html`);
-await page.waitForFunction(() => window.checkReady === true && window.runLaneChecks !== undefined, null, { timeout: 60000 });
+await page.waitForFunction(
+  () => window.checkReady === true && window.runLaneChecks !== undefined,
+  null,
+  { timeout: 60000 },
+);
 
 const write = (file, dataUrl) => writeFileSync(file, Buffer.from(dataUrl.split(',')[1], 'base64'));
 const report = {};
-const columns = ['walkInDeck', 'deckHole', 'deckOutside', 'walkHole', 'overshoot', 'capOvershoot', 'sharpCorners', 'corners', 'wobblePixels', 'samples'];
+const columns = [
+  'walkInDeck',
+  'deckHole',
+  'deckOutside',
+  'walkHole',
+  'overshoot',
+  'capOvershoot',
+  'sharpCorners',
+  'corners',
+  'wobblePixels',
+  'samples',
+];
 const sheets = {};
 for (const mode of ['current', 'legacy']) {
   const started = Date.now();
@@ -33,10 +48,18 @@ for (const mode of ['current', 'legacy']) {
   console.log(mode, `${String(Math.round((Date.now() - started) / 1000))} 秒`);
   console.log(['类型', '变体', ...columns, '结果'].join('\t'));
   for (const row of rows) {
-    console.log([row.name, row.variants, ...columns.map((key) => row[key]), row.pass ? '通过' : '不通过'].join('\t'));
+    console.log(
+      [
+        row.name,
+        row.variants,
+        ...columns.map((key) => row[key]),
+        row.pass ? '通过' : '不通过',
+      ].join('\t'),
+    );
   }
   if (mode === 'current') {
-    for (const row of rows.filter((entry) => !entry.pass)) console.log(row.name, JSON.stringify(row.examples));
+    for (const row of rows.filter((entry) => !entry.pass))
+      console.log(row.name, JSON.stringify(row.examples));
   }
   sheets[mode] = await page.evaluate(([m, r]) => window.renderSheet(m, r), [mode, rows]);
 }
@@ -44,27 +67,35 @@ for (const mode of ['current', 'legacy']) {
 const lanes = await page.evaluate(() => window.runLaneChecks());
 report.lanes = lanes;
 console.log('高架和立交');
-for (const row of lanes.rows) console.log([row.name, row.lanes, row.samples, row.holes, row.side, row.pass ? '通过' : '不通过'].join('\t'));
+for (const row of lanes.rows)
+  console.log(
+    [row.name, row.lanes, row.samples, row.holes, row.side, row.pass ? '通过' : '不通过'].join(
+      '\t',
+    ),
+  );
 console.log(JSON.stringify(lanes.footprints));
 const laneSheet = await page.evaluate((rows) => window.renderLaneSheet(rows), lanes.rows);
 
 /** 路面分类样张下面接上立交样张，拼成一张。 */
-const stitched = await page.evaluate(async ([top, bottom]) => {
-  const load = async (url) => {
-    const image = new Image();
-    image.src = url;
-    await image.decode();
-    return image;
-  };
-  const [a, b] = await Promise.all([load(top), load(bottom)]);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(a.width, b.width);
-  canvas.height = a.height + b.height;
-  const context = canvas.getContext('2d');
-  context.drawImage(a, 0, 0);
-  context.drawImage(b, 0, a.height);
-  return canvas.toDataURL('image/png');
-}, [sheets.current, laneSheet]);
+const stitched = await page.evaluate(
+  async ([top, bottom]) => {
+    const load = async (url) => {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      return image;
+    };
+    const [a, b] = await Promise.all([load(top), load(bottom)]);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(a.width, b.width);
+    canvas.height = a.height + b.height;
+    const context = canvas.getContext('2d');
+    context.drawImage(a, 0, 0);
+    context.drawImage(b, 0, a.height);
+    return canvas.toDataURL('image/png');
+  },
+  [sheets.current, laneSheet],
+);
 write('out/r6-road-sheet.png', stitched);
 write('out/r6-road-sheet-legacy.png', sheets.legacy);
 

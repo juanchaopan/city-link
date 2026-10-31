@@ -30,21 +30,45 @@ const write = (file, data) => {
   return statSync(file).size;
 };
 for (const id of palettes) {
-  const { png, frames, stats } = await page.evaluate(([paletteId, list]) => window.bakeAtlas(paletteId, list), [id, keys]);
+  const { png, frames, stats } = await page.evaluate(
+    ([paletteId, list]) => window.bakeAtlas(paletteId, list),
+    [id, keys],
+  );
   const pngBytes = write(`out/atlas-${id}.png`, png);
   writeFileSync(`out/atlas-${id}.json`, JSON.stringify(frames));
   report[id] = { ...stats, pngBytes };
-  console.log(id, stats.count, '张，', stats.frames, '帧', Math.round(stats.bakeMs), '毫秒', pngBytes, '字节', `${String(stats.width)}×${String(stats.height)}`);
+  console.log(
+    id,
+    stats.count,
+    '张，',
+    stats.frames,
+    '帧',
+    Math.round(stats.bakeMs),
+    '毫秒',
+    pngBytes,
+    '字节',
+    `${String(stats.width)}×${String(stats.height)}`,
+  );
   for (const [name, { count, ms }] of Object.entries(stats.groups)) {
     console.log(`  ${name}：${String(count)} 张，每张 ${String(Math.round(ms / count))} 毫秒`);
   }
 }
 
-const festival = await page.evaluate(([paletteId, list]) => window.bakeFestival(paletteId, list), ['sunny', footprints]);
+const festival = await page.evaluate(
+  ([paletteId, list]) => window.bakeFestival(paletteId, list),
+  ['sunny', footprints],
+);
 const festivalBytes = write('out/festival-national-day.png', festival.png);
 writeFileSync('out/festival-national-day.json', JSON.stringify(festival.frames));
 report.festival = { ...festival.stats, pngBytes: festivalBytes };
-console.log('节日层', festival.stats.count, '张', festivalBytes, '字节', `${String(festival.stats.width)}×${String(festival.stats.height)}`);
+console.log(
+  '节日层',
+  festival.stats.count,
+  '张',
+  festivalBytes,
+  '字节',
+  `${String(festival.stats.width)}×${String(festival.stats.height)}`,
+);
 
 // 风格包的规格约定：specs 是整张烘焙的规格；parts 是模块，combos 是模块的组合，同一规格可以有很多组合。
 // 风格包可以只提供一部分：缺的规格退回标准风格。节日层只认占地规格，不认外观，所以两种做法都能叠加。
@@ -77,7 +101,11 @@ writeFileSync(
       from: 1001,
       to: 1007,
       timezone: 'country',
-      generic: { image: 'festival-national-day.png', frames: 'festival-national-day.json', footprints },
+      generic: {
+        image: 'festival-national-day.png',
+        frames: 'festival-national-day.json',
+        footprints,
+      },
       styles: {},
     },
     null,

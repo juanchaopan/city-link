@@ -199,9 +199,20 @@ function uniformsFor(paths, P, layer) {
       segment.push(new THREE.Vector4(ax, az, bx, bz));
       widths.push(new THREE.Vector4(walk / 2, deck / 2, fast ? 1 : 0, MARKING[entry.kind] ?? 0));
       path.push(new THREE.Vector4(start, total, entry.cross, 0));
-      flags.push(new THREE.Vector4(index, entry.clipStart && i === 0 ? 1 : 0, entry.clipEnd && i === points.length - 2 ? 1 : 0, 0));
-      clipA.push(entry.clipStart ? new THREE.Vector4(first[0], first[1], startDir[0], startDir[1]) : blank());
-      clipB.push(entry.clipEnd ? new THREE.Vector4(last[0], last[1], endDir[0], endDir[1]) : blank());
+      flags.push(
+        new THREE.Vector4(
+          index,
+          entry.clipStart && i === 0 ? 1 : 0,
+          entry.clipEnd && i === points.length - 2 ? 1 : 0,
+          0,
+        ),
+      );
+      clipA.push(
+        entry.clipStart ? new THREE.Vector4(first[0], first[1], startDir[0], startDir[1]) : blank(),
+      );
+      clipB.push(
+        entry.clipEnd ? new THREE.Vector4(last[0], last[1], endDir[0], endDir[1]) : blank(),
+      );
       start += Math.hypot(bx - ax, bz - az);
     }
   });

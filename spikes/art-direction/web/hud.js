@@ -6,7 +6,18 @@ CanvasTextMetrics.METRICS_STRING = '|ÉqÅ国';
 CanvasTextMetrics.BASELINE_SYMBOL = '国';
 
 export const hudThemes = {
-  sunny: { paper: '#f3f7f4', paperLine: '#d5e2df', ink: '#1f3a4d', muted: '#5f7683', seal: '#c8372d', mark: '#f2c230', markInk: '#1f3a4d', ruler: '#e6d3a6', rulerInk: '#4a3a1e', good: '#2d8f62' },
+  sunny: {
+    paper: '#f3f7f4',
+    paperLine: '#d5e2df',
+    ink: '#1f3a4d',
+    muted: '#5f7683',
+    seal: '#c8372d',
+    mark: '#f2c230',
+    markInk: '#1f3a4d',
+    ruler: '#e6d3a6',
+    rulerInk: '#4a3a1e',
+    good: '#2d8f62',
+  },
 };
 
 const FONT = '"PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif';
@@ -76,7 +87,9 @@ function statusCard(theme, width) {
   g.roundRect(space.l, safeTop, nameWidth, nameHeight + 6, radius.sheet).fill(theme.paper);
   g.roundRect(space.l, statsY, statsWidth, statsHeight, radius.sheet).fill(theme.paper);
   const divider = space.l + statsWidth * 0.5;
-  g.moveTo(divider, statsY + 9).lineTo(divider, statsY + statsHeight - 9).stroke({ color: theme.paperLine, width: 1 });
+  g.moveTo(divider, statsY + 9)
+    .lineTo(divider, statsY + statsHeight - 9)
+    .stroke({ color: theme.paperLine, width: 1 });
   root.addChild(g);
 
   const name = text('青禾市', fontSize.title, theme.ink, { fontWeight: '700' });
@@ -171,18 +184,43 @@ function glyph(kind, cx, cy, color) {
   const g = new Graphics();
   const stroke = { color, width: 2, cap: 'round', join: 'round' };
   if (kind === 'road') {
-    g.moveTo(cx - 11, cy + 8).lineTo(cx - 5, cy - 8).moveTo(cx + 11, cy + 8).lineTo(cx + 5, cy - 8).stroke(stroke);
-    g.moveTo(cx, cy + 7).lineTo(cx, cy + 3).moveTo(cx, cy - 2).lineTo(cx, cy - 6).stroke(stroke);
+    g.moveTo(cx - 11, cy + 8)
+      .lineTo(cx - 5, cy - 8)
+      .moveTo(cx + 11, cy + 8)
+      .lineTo(cx + 5, cy - 8)
+      .stroke(stroke);
+    g.moveTo(cx, cy + 7)
+      .lineTo(cx, cy + 3)
+      .moveTo(cx, cy - 2)
+      .lineTo(cx, cy - 6)
+      .stroke(stroke);
   } else if (kind === 'zone') {
-    g.rect(cx - 9, cy - 8, 7, 7).rect(cx + 2, cy - 8, 7, 7).rect(cx - 9, cy + 2, 7, 7).stroke(stroke);
+    g.rect(cx - 9, cy - 8, 7, 7)
+      .rect(cx + 2, cy - 8, 7, 7)
+      .rect(cx - 9, cy + 2, 7, 7)
+      .stroke(stroke);
     g.rect(cx + 2, cy + 2, 7, 7).fill(color);
   } else if (kind === 'bus') {
     g.roundRect(cx - 10, cy - 8, 20, 13, 3).stroke(stroke);
-    g.moveTo(cx - 10, cy - 2).lineTo(cx + 10, cy - 2).stroke(stroke);
-    g.circle(cx - 5, cy + 7, 2).circle(cx + 5, cy + 7, 2).fill(color);
+    g.moveTo(cx - 10, cy - 2)
+      .lineTo(cx + 10, cy - 2)
+      .stroke(stroke);
+    g.circle(cx - 5, cy + 7, 2)
+      .circle(cx + 5, cy + 7, 2)
+      .fill(color);
   } else {
-    g.moveTo(cx - 10, cy - 4).lineTo(cx + 8, cy - 4).moveTo(cx + 4, cy - 8).lineTo(cx + 9, cy - 4).lineTo(cx + 4, cy).stroke(stroke);
-    g.moveTo(cx + 10, cy + 4).lineTo(cx - 8, cy + 4).moveTo(cx - 4, cy).lineTo(cx - 9, cy + 4).lineTo(cx - 4, cy + 8).stroke(stroke);
+    g.moveTo(cx - 10, cy - 4)
+      .lineTo(cx + 8, cy - 4)
+      .moveTo(cx + 4, cy - 8)
+      .lineTo(cx + 9, cy - 4)
+      .lineTo(cx + 4, cy)
+      .stroke(stroke);
+    g.moveTo(cx + 10, cy + 4)
+      .lineTo(cx - 8, cy + 4)
+      .moveTo(cx - 4, cy)
+      .lineTo(cx - 9, cy + 4)
+      .lineTo(cx - 4, cy + 8)
+      .stroke(stroke);
   }
   return g;
 }
@@ -223,7 +261,9 @@ function ruler(theme, width, height) {
     }
     const color = tool.active ? theme.ink : theme.rulerInk;
     root.addChild(glyph(tool.glyph, cx, y + 20, color));
-    const label = text(tool.name, fontSize.label, color, { fontWeight: tool.active ? '700' : '500' });
+    const label = text(tool.name, fontSize.label, color, {
+      fontWeight: tool.active ? '700' : '500',
+    });
     label.anchor.set(0.5, 0);
     label.position.set(cx, y + 31);
     root.addChild(label);

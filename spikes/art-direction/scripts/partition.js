@@ -33,7 +33,15 @@ const COLORS = {
 };
 
 const city = generateCity(N, 11);
-const input = { N, roads: city.roads, water: city.water, slopes: city.slopes, zones: city.zones, density: city.density, seed: 11 };
+const input = {
+  N,
+  roads: city.roads,
+  water: city.water,
+  slopes: city.slopes,
+  zones: city.zones,
+  density: city.density,
+  seed: 11,
+};
 const before = legacyParcels(input);
 const { partition, parcels, atomOwner } = city.parcels;
 const table = atomTable(N);
@@ -60,7 +68,8 @@ function diagonalEdge(atoms) {
   const member = new Set(atoms);
   let length = 0;
   for (const atom of atoms) {
-    for (const other of table.neighbors(atom).slice(0, 2)) if (!member.has(other)) length += Math.SQRT1_2;
+    for (const other of table.neighbors(atom).slice(0, 2))
+      if (!member.has(other)) length += Math.SQRT1_2;
   }
   return length;
 }
@@ -80,19 +89,23 @@ const failures = cutBlocks.filter((entry) => {
   return pieces.length > MAX_PIECES || pieces.some((piece) => piece.spec.shape === 'diagonal');
 });
 
-const detail = [...cutBlocks].sort((a, b) => diagonalEdge(b.atoms) - diagonalEdge(a.atoms) || a.atoms[0] - b.atoms[0])[0];
+const detail = [...cutBlocks].sort(
+  (a, b) => diagonalEdge(b.atoms) - diagonalEdge(a.atoms) || a.atoms[0] - b.atoms[0],
+)[0];
 const [cx0, cy0, cx1, cy1] = boundsOf(detail.atoms);
 const box = [cx0 - 2, cy0 - 2, cx1 + 3, cy1 + 3];
 
 const parcelsOfBlock = (owner, list) => {
   const ids = new Set(detail.atoms.map((atom) => owner[atom]).filter((id) => id >= 0));
-  return [...ids].sort((a, b) => a - b).map((id) => {
-    const atoms = [];
-    owner.forEach((value, atom) => {
-      if (value === id) atoms.push(atomPolygon(atom, N));
+  return [...ids]
+    .sort((a, b) => a - b)
+    .map((id) => {
+      const atoms = [];
+      owner.forEach((value, atom) => {
+        if (value === id) atoms.push(atomPolygon(atom, N));
+      });
+      return { shape: list[id].shape, use: list[id].use ?? '', area: list[id].area, atoms };
     });
-    return { shape: list[id].shape, use: list[id].use ?? '', area: list[id].area, atoms };
-  });
 };
 const oldBlock = parcelsOfBlock(before.atomOwner, before.parcels);
 const newBlock = parcelsOfBlock(atomOwner, parcels);
@@ -108,19 +121,46 @@ const reportDetail = {
     cuts: candidate.cuts,
     residual: candidate.residual,
     score: candidate.score,
-    pieces: candidate.pieces.map((piece) => ({ shape: piece.spec.shape, area: piece.atoms.length / 4, front: Math.round(piece.front * 10) / 10 })),
+    pieces: candidate.pieces.map((piece) => ({
+      shape: piece.spec.shape,
+      area: piece.atoms.length / 4,
+      front: Math.round(piece.front * 10) / 10,
+    })),
   })),
 };
 
-const shapeNames = (entry) => entry.candidates[0].pieces.map((piece) => piece.spec.shape).sort().join('+');
-const check = { blocksChecked: cutBlocks.length, failures: failures.length, maxPieces: MAX_PIECES, shapes: cutBlocks.map(shapeNames) };
+const shapeNames = (entry) =>
+  entry.candidates[0].pieces
+    .map((piece) => piece.spec.shape)
+    .sort()
+    .join('+');
+const check = {
+  blocksChecked: cutBlocks.length,
+  failures: failures.length,
+  maxPieces: MAX_PIECES,
+  shapes: cutBlocks.map(shapeNames),
+};
 const shapeCounts = {};
 for (const parcel of parcels) {
   const key = `${parcel.shape} ${String(parcel.spanU)}x${String(parcel.spanV)}`;
   shapeCounts[key] = (shapeCounts[key] ?? 0) + 1;
 }
 mkdirSync('out', { recursive: true });
-writeFileSync('out/partition-report.json', JSON.stringify({ stats: partition.stats, blockAtoms: partition.blockAtoms, residualAtoms: partition.residual.length, check, shapeCounts, detail: reportDetail }, null, 2));
+writeFileSync(
+  'out/partition-report.json',
+  JSON.stringify(
+    {
+      stats: partition.stats,
+      blockAtoms: partition.blockAtoms,
+      residualAtoms: partition.residual.length,
+      check,
+      shapeCounts,
+      detail: reportDetail,
+    },
+    null,
+    2,
+  ),
+);
 
 function drawAtoms(canvas, atoms, color, scale, ox, oy) {
   const at = ([x, y]) => [ox + x * scale, oy + y * scale];
@@ -138,7 +178,12 @@ function outline(canvas, atoms, scale, ox, oy) {
     }
   }
   for (const edge of edges.values()) {
-    if (edge) canvas.line([ox + edge[0][0] * scale, oy + edge[0][1] * scale], [ox + edge[1][0] * scale, oy + edge[1][1] * scale], LINE);
+    if (edge)
+      canvas.line(
+        [ox + edge[0][0] * scale, oy + edge[0][1] * scale],
+        [ox + edge[1][0] * scale, oy + edge[1][1] * scale],
+        LINE,
+      );
   }
 }
 
@@ -172,9 +217,19 @@ panel(sheet, newBlock, 40 + (bx1 - bx0) * big, 20, big, box);
 detail.candidates.forEach((candidate, index) => {
   const px = 20 + index * ((bx1 - bx0) * small + 12);
   const py = 40 + (by1 - by0) * big;
-  const pieces = candidate.pieces.map((piece) => ({ shape: piece.spec.shape, atoms: piece.atoms.map((atom) => atomPolygon(atom, N)) }));
+  const pieces = candidate.pieces.map((piece) => ({
+    shape: piece.spec.shape,
+    atoms: piece.atoms.map((atom) => atomPolygon(atom, N)),
+  }));
   panel(sheet, pieces, px, py, small, box);
-  drawAtoms(sheet, candidate.residualAtoms.map((atom) => atomPolygon(atom, N)), LEFTOVER, small, px - bx0 * small, py - by0 * small);
+  drawAtoms(
+    sheet,
+    candidate.residualAtoms.map((atom) => atomPolygon(atom, N)),
+    LEFTOVER,
+    small,
+    px - bx0 * small,
+    py - by0 * small,
+  );
 });
 writeFileSync('out/r6-partition-before-after.png', sheet.png());
 
@@ -185,10 +240,25 @@ panel(map, groupsOf(before.atomOwner, before.parcels), 20, 20, scale, whole);
 panel(map, groupsOf(atomOwner, parcels), 40 + N * scale, 20, scale, whole);
 writeFileSync('out/r6-partition-map.png', map.png());
 
-console.log(JSON.stringify(partition.stats), '兜底占比', partition.residual.length / partition.blockAtoms);
+console.log(
+  JSON.stringify(partition.stats),
+  '兜底占比',
+  partition.residual.length / partition.blockAtoms,
+);
 console.log('被斜路切过的方正街区', cutBlocks.length, '不合格', failures.length);
 console.log(check.shapes.join(' | '));
-console.log('修复前', JSON.stringify(reportDetail.before.map((p) => `${p.shape}${String(p.area)}`)));
+console.log(
+  '修复前',
+  JSON.stringify(reportDetail.before.map((p) => `${p.shape}${String(p.area)}`)),
+);
 console.log('修复后', JSON.stringify(reportDetail.after.map((p) => `${p.shape}${String(p.area)}`)));
-console.log('候选', reportDetail.candidates.map((c) => `${String(c.rank)}:${c.score.total.toFixed(3)}/${String(c.pieces.length)}块/${c.pieces.map((p) => p.shape).join(',')}`).join(' '));
+console.log(
+  '候选',
+  reportDetail.candidates
+    .map(
+      (c) =>
+        `${String(c.rank)}:${c.score.total.toFixed(3)}/${String(c.pieces.length)}块/${c.pieces.map((p) => p.shape).join(',')}`,
+    )
+    .join(' '),
+);
 if (failures.length > 0) process.exitCode = 1;

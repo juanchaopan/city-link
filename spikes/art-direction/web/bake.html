@@ -52,7 +52,14 @@
         const frames = {};
         for (const sprite of sprites) {
           context.putImageData(new ImageData(sprite.data, sprite.w, sprite.h), sprite.x, sprite.y);
-          frames[sprite.key] = { x: sprite.x, y: sprite.y, w: sprite.w, h: sprite.h, ax: sprite.ax, ay: sprite.ay };
+          frames[sprite.key] = {
+            x: sprite.x,
+            y: sprite.y,
+            w: sprite.w,
+            h: sprite.h,
+            ax: sprite.ax,
+            ay: sprite.ay,
+          };
         }
         return { png: canvas.toDataURL('image/png'), frames };
       }
@@ -62,10 +69,16 @@
         const footprints = new Set();
         const collect = (city) => {
           for (const key of keysOf(city)) keys.add(key);
-          for (const object of city.objects) if (object.footprintKey) footprints.add(object.footprintKey);
+          for (const object of city.objects)
+            if (object.footprintKey) footprints.add(object.footprintKey);
         };
         for (const N of sizes) {
-          for (const [layout, linked] of [['spread', false], ['spread', true], ['concentrated', false]]) collect(generateCity(N, 11, layout, linked));
+          for (const [layout, linked] of [
+            ['spread', false],
+            ['spread', true],
+            ['concentrated', false],
+          ])
+            collect(generateCity(N, 11, layout, linked));
         }
         collect(generateRoadDemo());
         return { keys: [...keys].sort(), footprints: [...footprints].sort() };
@@ -97,7 +110,17 @@
         }
         const bakeMs = performance.now() - started;
         const height = pack(sprites);
-        return { ...draw(sprites, height), stats: { count: keys.length, frames: sprites.length, bakeMs, groups, width: ATLAS_WIDTH, height } };
+        return {
+          ...draw(sprites, height),
+          stats: {
+            count: keys.length,
+            frames: sprites.length,
+            bakeMs,
+            groups,
+            width: ATLAS_WIDTH,
+            height,
+          },
+        };
       };
 
       window.bakeFestival = (paletteId, footprints) => {
@@ -109,7 +132,15 @@
           return { key, ...baker.bake(specFor(key, palette)) };
         });
         const height = pack(sprites);
-        return { ...draw(sprites, height), stats: { count: sprites.length, bakeMs: performance.now() - started, width: ATLAS_WIDTH, height } };
+        return {
+          ...draw(sprites, height),
+          stats: {
+            count: sprites.length,
+            bakeMs: performance.now() - started,
+            width: ATLAS_WIDTH,
+            height,
+          },
+        };
       };
 
       window.bakerReady = true;

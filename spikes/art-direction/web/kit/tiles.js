@@ -198,7 +198,12 @@ export function buildBank(sides, cornersMask, P, seed) {
   const wet = linear(P.ground.wetSand);
   const foam = linear(P.water.light);
   const reach = 0.3;
-  const points = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
+  const points = [
+    [-0.5, -0.5],
+    [0.5, -0.5],
+    [0.5, 0.5],
+    [-0.5, 0.5],
+  ];
   const distance = (x, z) => {
     let d = 2;
     if (sides[0]) d = softMin(d, x + 0.5);
@@ -240,9 +245,27 @@ export function buildSkirt(axis, water, P) {
   const span = (a, c, y0, y1, color) => {
     const m = 0.5 + BLEED;
     if (axis === 'x') {
-      b.poly([[0.5, y0, a * m], [0.5, y0, c * m], [0.5, y1, c * m], [0.5, y1, a * m]], color, hint);
+      b.poly(
+        [
+          [0.5, y0, a * m],
+          [0.5, y0, c * m],
+          [0.5, y1, c * m],
+          [0.5, y1, a * m],
+        ],
+        color,
+        hint,
+      );
     } else {
-      b.poly([[a * m, y0, 0.5], [c * m, y0, 0.5], [c * m, y1, 0.5], [a * m, y1, 0.5]], color, hint);
+      b.poly(
+        [
+          [a * m, y0, 0.5],
+          [c * m, y0, 0.5],
+          [c * m, y1, 0.5],
+          [a * m, y1, 0.5],
+        ],
+        color,
+        hint,
+      );
     }
   };
   span(-1, 1, -0.16, top, water ? waterSide : soil);
@@ -273,7 +296,9 @@ function nearestAlong(points, x, z) {
 export function hermite([h0, h1, m0, m1], t) {
   const t2 = t * t;
   const t3 = t2 * t;
-  return (2 * t3 - 3 * t2 + 1) * h0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * h1 + (t3 - t2) * m1;
+  return (
+    (2 * t3 - 3 * t2 + 1) * h0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * h1 + (t3 - t2) * m1
+  );
 }
 
 /**
@@ -302,7 +327,9 @@ export function buildSlopeRoad(cell, corners, grade, P, layer) {
   const deckHeight = straight ? (x, z) => deckAt(nearestAlong(main.points, x, z)) : terrain;
 
   const build = () => {
-    const b = new Builder(hashString(`${String(cell.road)}${String(cell.highway)}${corners.join('')}`));
+    const b = new Builder(
+      hashString(`${String(cell.road)}${String(cell.highway)}${corners.join('')}`),
+    );
     if (!straight || layer !== LAYER.walk) return b;
     const wall = linear(P.road.wall);
     const coping = shade(wall, 1.12);
@@ -343,13 +370,30 @@ export function buildSlopeRoad(cell, corners, grade, P, layer) {
           const top0 = Math.max(p0[1], e0.ground);
           const top1 = Math.max(p1[1], e1.ground);
           const face = shade(wall, Math.floor(i / 4) % 2 === 0 ? 0.95 : 1);
-          b.poly([p0, p1, [p1[0], top1, p1[2]], [p0[0], top0, p0[2]]], face, [-nx * side, 0, -nz * side]);
+          b.poly([p0, p1, [p1[0], top1, p1[2]], [p0[0], top0, p0[2]]], face, [
+            -nx * side,
+            0,
+            -nz * side,
+          ]);
           const cap0 = 0.012 * e0.fade;
           const cap1 = 0.012 * e1.fade;
-          b.poly([[p0[0], top0, p0[2]], [p1[0], top1, p1[2]], [p1[0], top1 + cap1, p1[2]], [p0[0], top0 + cap0, p0[2]]], coping, [-nx * side, 0, -nz * side]);
+          b.poly(
+            [
+              [p0[0], top0, p0[2]],
+              [p1[0], top1, p1[2]],
+              [p1[0], top1 + cap1, p1[2]],
+              [p0[0], top0 + cap0, p0[2]],
+            ],
+            coping,
+            [-nx * side, 0, -nz * side],
+          );
         }
         if (!wallVisible && (d0 < -0.002 || d1 < -0.002)) {
-          b.poly([p0, p1, toe(e1, side), toe(e0, side)], shade(fill, 0.98 + (Math.floor(i / 4) % 2) * 0.03), [nx * side, 0.6, nz * side]);
+          b.poly(
+            [p0, p1, toe(e1, side), toe(e0, side)],
+            shade(fill, 0.98 + (Math.floor(i / 4) % 2) * 0.03),
+            [nx * side, 0.6, nz * side],
+          );
         }
       }
     }
@@ -375,15 +419,36 @@ export function buildBridge(cell, P) {
     const nx = -dz / length;
     const nz = dx / length;
     const half = ROAD_SPEC[kind].walk / 2 + 0.02;
-    const corner = (t, side, y) => [a[0] + dx * t + nx * side * half, y, a[1] + dz * t + nz * side * half];
-    b.poly([corner(0, 1, -0.05), corner(1, 1, -0.05), corner(1, 1, 0), corner(0, 1, 0)], deckColor, [nx, 0, nz]);
-    b.poly([corner(0, -1, -0.05), corner(1, -1, -0.05), corner(1, -1, 0), corner(0, -1, 0)], deckColor, [-nx, 0, -nz]);
+    const corner = (t, side, y) => [
+      a[0] + dx * t + nx * side * half,
+      y,
+      a[1] + dz * t + nz * side * half,
+    ];
+    b.poly(
+      [corner(0, 1, -0.05), corner(1, 1, -0.05), corner(1, 1, 0), corner(0, 1, 0)],
+      deckColor,
+      [nx, 0, nz],
+    );
+    b.poly(
+      [corner(0, -1, -0.05), corner(1, -1, -0.05), corner(1, -1, 0), corner(0, -1, 0)],
+      deckColor,
+      [-nx, 0, -nz],
+    );
     for (const side of [1, -1]) {
       for (let i = 0; i <= 6; i += 1) {
         const [x, y, z] = corner(i / 6, side * 0.98, 0);
         b.box(x, y, z, 0.016, 0.085, 0.016, shade(rail, 0.85));
       }
-      b.poly([corner(0, side * 0.98, 0.085), corner(1, side * 0.98, 0.085), corner(1, side * 0.98, 0.1), corner(0, side * 0.98, 0.1)], rail, [nx * side, 0, nz * side]);
+      b.poly(
+        [
+          corner(0, side * 0.98, 0.085),
+          corner(1, side * 0.98, 0.085),
+          corner(1, side * 0.98, 0.1),
+          corner(0, side * 0.98, 0.1),
+        ],
+        rail,
+        [nx * side, 0, nz * side],
+      );
     }
     for (const side of [0.62, -0.62]) {
       const [x, , z] = corner(0.5, side, 0);
@@ -411,7 +476,15 @@ export function buildPlannedEnd(kind, inward, P) {
   b.at(0, 0, 0, rotation, (c) => {
     for (const v of [-halfDeck, halfDeck]) {
       for (let x = 0.1; x + 0.07 < reach; x += 0.13) {
-        c.poly([[x, 0.006, v - 0.012], [x + 0.08, 0.006, v - 0.012], [x + 0.08, 0.006, v + 0.012], [x, 0.006, v + 0.012]], dashColor);
+        c.poly(
+          [
+            [x, 0.006, v - 0.012],
+            [x + 0.08, 0.006, v - 0.012],
+            [x + 0.08, 0.006, v + 0.012],
+            [x, 0.006, v + 0.012],
+          ],
+          dashColor,
+        );
       }
     }
     const stripes = Math.max(4, Math.round((halfDeck * 2) / 0.09));
@@ -422,7 +495,8 @@ export function buildPlannedEnd(kind, inward, P) {
         c.box(0.03, height, v, 0.02, 0.034, width, i % 2 === 0 ? red : white);
       }
     }
-    for (const v of [-halfDeck - 0.01, 0, halfDeck + 0.01]) c.box(0.03, 0, v, 0.024, 0.16, 0.024, shade(white, 0.86));
+    for (const v of [-halfDeck - 0.01, 0, halfDeck + 0.01])
+      c.box(0.03, 0, v, 0.024, 0.16, 0.024, shade(white, 0.86));
     for (const v of [-halfDeck * 0.55, 0, halfDeck * 0.55]) {
       c.cylinder(0.17, 0, v, 0.034, 0.002, 0.095, 6, linear(P.road.plan));
       c.cylinder(0.17, 0.038, v, 0.021, 0.015, 0.016, 6, white);
@@ -449,7 +523,15 @@ export function buildNeighbor(axis, kind, P) {
         const v0 = j / cells;
         const v1 = (j + 1) / cells;
         const shift = i === 0 ? -BLEED : 0;
-        b.poly([place(u0 + shift, v0, -0.002), place(u1, v0, -0.002), place(u1, v1, -0.002), place(u0 + shift, v1, -0.002)], shade(land, 0.97 + b.random() * 0.06));
+        b.poly(
+          [
+            place(u0 + shift, v0, -0.002),
+            place(u1, v0, -0.002),
+            place(u1, v1, -0.002),
+            place(u0 + shift, v1, -0.002),
+          ],
+          shade(land, 0.97 + b.random() * 0.06),
+        );
       }
     }
     const side = (y0, y1, color) => {
@@ -469,14 +551,38 @@ export function buildNeighbor(axis, kind, P) {
         const [ax, , az] = place(0.03, sign * v, 0.004);
         const [cx, , cz] = place(0.03, sign * (v + 0.12), 0.004);
         const [wx, wz] = axis === 'x' ? [0.018, 0] : [0, 0.018];
-        b.poly([[ax - wx, 0.004, az - wz], [cx - wx, 0.004, cz - wz], [cx + wx, 0.004, cz + wz], [ax + wx, 0.004, az + wz]], border);
+        b.poly(
+          [
+            [ax - wx, 0.004, az - wz],
+            [cx - wx, 0.004, cz - wz],
+            [cx + wx, 0.004, cz + wz],
+            [ax + wx, 0.004, az + wz],
+          ],
+          border,
+        );
       }
-      for (const [u, v, scale] of [[0.55, 1.1, 1], [1.2, 1.7, 0.9], [1.75, 0.95, 1.1]]) {
+      for (const [u, v, scale] of [
+        [0.55, 1.1, 1],
+        [1.2, 1.7, 0.9],
+        [1.75, 0.95, 1.1],
+      ]) {
         const [x, , z] = place(u, sign * v);
         b.cylinder(x, 0, z, 0.02, 0.014, 0.12, 5, linear(P.tree.trunk));
-        b.blob(x, 0.2 * scale, z, 0.11 * scale, 0.13 * scale, 0.11 * scale, mix(linear(P.tree.leaf[0]), linear(P.backdrop), 0.25));
+        b.blob(
+          x,
+          0.2 * scale,
+          z,
+          0.11 * scale,
+          0.13 * scale,
+          0.11 * scale,
+          mix(linear(P.tree.leaf[0]), linear(P.backdrop), 0.25),
+        );
       }
-      for (const [u, v, tall] of [[1.45, 1.05, 0.34], [1.9, 1.6, 0.5], [2.2, 0.9, 0.26]]) {
+      for (const [u, v, tall] of [
+        [1.45, 1.05, 0.34],
+        [1.9, 1.6, 0.5],
+        [2.2, 0.9, 0.26],
+      ]) {
         const [x, , z] = place(u, sign * v);
         const wall = mix(linear(P.wall.cool), linear(P.backdrop), 0.3);
         b.box(x, 0, z, 0.34, tall, 0.34, wall, { top: shade(wall, 0.92) });
@@ -512,7 +618,12 @@ const CROPS = ['wheat', 'greens', 'rape', 'furrow'];
 /** 农田是连续的：垄线贯穿格子边界，相邻地块之间没有田埂和底板。 */
 export function buildField(crop, axis, P, seed) {
   const b = new Builder(seed);
-  const colors = { wheat: P.field.wheat, greens: P.field.greens, rape: P.field.rape, furrow: P.field.furrow };
+  const colors = {
+    wheat: P.field.wheat,
+    greens: P.field.greens,
+    rape: P.field.rape,
+    furrow: P.field.furrow,
+  };
   const color = linear(colors[CROPS[crop]]);
   const soil = linear(P.field.soil);
   const rows = 5;
@@ -535,8 +646,28 @@ export function buildField(crop, axis, P, seed) {
     const y0 = 0.004;
     const y1 = 0.022;
     const zFront = z1 - width * 0.16;
-    if (axis === 'x') b.poly([[-span, y0, zFront], [span, y0, zFront], [span, y1, zFront], [-span, y1, zFront]], side, [0, 0, 1]);
-    else b.poly([[zFront, y0, -span], [zFront, y0, span], [zFront, y1, span], [zFront, y1, -span]], side, [1, 0, 0]);
+    if (axis === 'x')
+      b.poly(
+        [
+          [-span, y0, zFront],
+          [span, y0, zFront],
+          [span, y1, zFront],
+          [-span, y1, zFront],
+        ],
+        side,
+        [0, 0, 1],
+      );
+    else
+      b.poly(
+        [
+          [zFront, y0, -span],
+          [zFront, y0, span],
+          [zFront, y1, span],
+          [zFront, y1, -span],
+        ],
+        side,
+        [1, 0, 0],
+      );
   }
   return b;
 }

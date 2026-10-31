@@ -14,7 +14,12 @@ export const COMBOS = [
 ];
 
 /** 大三角地块的四个朝向，每一项是直角边从直角顶点量出去的方向。 */
-export const QUADRANTS = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
+export const QUADRANTS = [
+  [1, 1],
+  [-1, 1],
+  [-1, -1],
+  [1, -1],
+];
 
 const STEPPED_SHARES = [0.45, 0.35, 0.2];
 const ROOF_OFFSET = { ell: [-0.35, -0.35], twin: [-0.33, 0] };

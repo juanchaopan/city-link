@@ -55,7 +55,12 @@ export function atomPolygon(id, N) {
   const x = cell % N;
   const y = Math.floor(cell / N);
   const center = [x + 0.5, y + 0.5];
-  const corners = [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]];
+  const corners = [
+    [x, y],
+    [x + 1, y],
+    [x + 1, y + 1],
+    [x, y + 1],
+  ];
   return [corners[q], corners[(q + 1) % 4], center];
 }
 
@@ -86,7 +91,9 @@ function freeAtoms({ N, roads, water, slopes }) {
       for (let q = 0; q < 4; q += 1) {
         const id = cell * 4 + q;
         const polygon = atomPolygon(id, N);
-        if (nearby.every((line) => polygonDistance(polygon, line.points) >= line.half + CLEARANCE)) {
+        if (
+          nearby.every((line) => polygonDistance(polygon, line.points) >= line.half + CLEARANCE)
+        ) {
           free[id] = 1;
         }
       }
@@ -208,7 +215,11 @@ function triangleLands(N, isOpen, zoneAt) {
 
 function trianglePolygon(x, y, q, legs) {
   const [sx, sy] = QUADRANTS[q];
-  const points = [[x, y], [x + sx * legs, y], [x, y + sy * legs]];
+  const points = [
+    [x, y],
+    [x + sx * legs, y],
+    [x, y + sy * legs],
+  ];
   const hypotenuse = legs * Math.SQRT2;
   const perimeter = legs * 2 + hypotenuse;
   const incenter = [
@@ -338,8 +349,16 @@ function placeDiagonalBands({ N, roads, seed }, tools) {
       let t = from;
       while (t < to) {
         const roll = mix(seed, line * 7 + t, side + 3);
-        const lengths = [[2, 3, 1], [3, 2, 1], [1, 2, 3]][roll % 3];
-        const depths = [[2, 3, 1], [3, 2, 1], [2, 1, 3]][(roll >>> 8) % 3];
+        const lengths = [
+          [2, 3, 1],
+          [3, 2, 1],
+          [1, 2, 3],
+        ][roll % 3];
+        const depths = [
+          [2, 3, 1],
+          [3, 2, 1],
+          [2, 1, 3],
+        ][(roll >>> 8) % 3];
         let placed = false;
         for (const depth of depths) {
           for (const length of lengths) {
@@ -347,7 +366,8 @@ function placeDiagonalBands({ N, roads, seed }, tools) {
             const near = line + side;
             const far = line + side * (1 + depth);
             const [c0, c1] = side > 0 ? [near, far] : [far, near];
-            const [u0, u1, v0, v1] = axis === 'u' ? [t, t + length, c0, c1] : [c0, c1, t, t + length];
+            const [u0, u1, v0, v1] =
+              axis === 'u' ? [t, t + length, c0, c1] : [c0, c1, t, t + length];
             const atoms = atomsInRect(N, u0, u1, v0, v1);
             if (atoms.length !== length * depth * 2 || !atoms.every(open)) continue;
             const zone = zoneAt(atoms[0]);
@@ -462,7 +482,12 @@ function placeFarmland({ N, zones, seed }, tools) {
       cells.push(cell);
       const x = cell % N;
       const y = Math.floor(cell / N);
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
         const next = (y + dy) * N + x + dx;
         if (x + dx >= 0 && x + dx < N && fieldCells.has(next) && !seen.has(next)) {
           seen.add(next);
@@ -538,7 +563,12 @@ function placeSmallTriangles({ N, zones, seed }, tools) {
         const a = base + q;
         const b = base + ((q + 1) % 4);
         if (!open(a) || !open(b)) continue;
-        const corners = [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]];
+        const corners = [
+          [x, y],
+          [x + 1, y],
+          [x + 1, y + 1],
+          [x, y + 1],
+        ];
         const polygon = [corners[q], corners[(q + 1) % 4], corners[(q + 2) % 4]];
         const center = [
           (polygon[0][0] + polygon[1][0] + polygon[2][0]) / 3,
@@ -551,7 +581,12 @@ function placeSmallTriangles({ N, zones, seed }, tools) {
         const roll = mix(seed, x * 3 + q, y);
         const farm = zone === ZONE.farm;
         const publicLand = zone === ZONE.public;
-        const kinds = zone === ZONE.commercial ? ['shop', 'parking', 'shop'] : zone === ZONE.residential ? ['garden', 'shop', 'parking'] : ['parking', 'garden', 'parking'];
+        const kinds =
+          zone === ZONE.commercial
+            ? ['shop', 'parking', 'shop']
+            : zone === ZONE.residential
+              ? ['garden', 'shop', 'parking']
+              : ['parking', 'garden', 'parking'];
         const use = farm ? 'crop' : publicLand ? 'garden' : kinds[roll % 3];
         const earns = use === 'shop' || use === 'crop';
         const earnZone = farm ? ZONE.farm : ZONE.commercial;
@@ -643,8 +678,18 @@ export function generateParcels(input) {
  */
 export function triangleLandReport(result, N, zones) {
   const { free, atomOwner, parcels } = result;
-  const lands = triangleLands(N, (atom) => free[atom] === 1, (atom) => zones[atom >> 2]);
-  const summary = { lands: lands.length, complete: 0, fragmented: 0, squarePlusTriangles: 0, bySize: {} };
+  const lands = triangleLands(
+    N,
+    (atom) => free[atom] === 1,
+    (atom) => zones[atom >> 2],
+  );
+  const summary = {
+    lands: lands.length,
+    complete: 0,
+    fragmented: 0,
+    squarePlusTriangles: 0,
+    bySize: {},
+  };
   for (const land of lands) {
     const owners = new Set(land.atoms.map((atom) => atomOwner[atom]));
     const complete = owners.size === 1 && !owners.has(-1);

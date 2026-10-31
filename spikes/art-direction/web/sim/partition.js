@@ -11,10 +11,25 @@ import { WEIGHTS } from './partition-weights.js';
 // 淘汰规则：切出来的块不贴普通道路、或者不是任何规格的形状，都不能成为物业。
 // 这些原子记入 residual，排名时 residual 优先比较，只有所有切法都留下空地时才会用到这个兜底。
 
-export const RECT_SPECS = [[3, 3], [2, 3], [3, 2], [2, 2], [1, 3], [3, 1], [1, 2], [2, 1], [1, 1]];
+export const RECT_SPECS = [
+  [3, 3],
+  [2, 3],
+  [3, 2],
+  [2, 2],
+  [1, 3],
+  [3, 1],
+  [1, 2],
+  [2, 1],
+  [1, 1],
+];
 export const TRIANGLE_LEGS = [4, 3, 2, 1];
 const DIAGONAL_SPANS = [3, 2, 1];
-const QUADRANTS = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
+const QUADRANTS = [
+  [1, 1],
+  [-1, 1],
+  [-1, -1],
+  [1, -1],
+];
 
 const KEEP = 5;
 const MIN_FRONT = 0.7;
@@ -37,17 +52,30 @@ export function atomTable(N) {
     const cell = id >> 2;
     const x = cell % N;
     const y = Math.floor(cell / N);
-    const corners = [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]];
+    const corners = [
+      [x, y],
+      [x + 1, y],
+      [x + 1, y + 1],
+      [x, y + 1],
+    ];
     const a = corners[q];
     const b = corners[(q + 1) % 4];
     cx[id] = (a[0] + b[0] + x + 0.5) / 3;
     cy[id] = (a[1] + b[1] + y + 0.5) / 3;
     shape[id] = [a, b, [x + 0.5, y + 0.5]];
-    const [dx, dy] = [[0, -1], [1, 0], [0, 1], [-1, 0]][q];
+    const [dx, dy] = [
+      [0, -1],
+      [1, 0],
+      [0, 1],
+      [-1, 0],
+    ][q];
     const nx = x + dx;
     const ny = y + dy;
     const inner = [cell * 4 + ((q + 1) % 4), cell * 4 + ((q + 3) % 4)];
-    links[id] = nx < 0 || ny < 0 || nx >= N || ny >= N ? inner : [...inner, (ny * N + nx) * 4 + ((q + 2) % 4)];
+    links[id] =
+      nx < 0 || ny < 0 || nx >= N || ny >= N
+        ? inner
+        : [...inner, (ny * N + nx) * 4 + ((q + 2) % 4)];
   }
   return { cx, cy, neighbors: (id) => links[id], vertices: (id) => shape[id] };
 }
@@ -84,12 +112,31 @@ export function specOf(region, table) {
   const w = maxX - minX;
   const h = maxY - minY;
   if (region.length === w * h * 4 && RECT_SPECS.some(([a, b]) => a === w && b === h)) {
-    return { shape: 'rect', x: minX, y: minY, w, h, regular: Math.sqrt(Math.min(w, h) / Math.max(w, h)) };
+    return {
+      shape: 'rect',
+      x: minX,
+      y: minY,
+      w,
+      h,
+      regular: Math.sqrt(Math.min(w, h) / Math.max(w, h)),
+    };
   }
   const du = maxU - minU;
   const dv = maxV - minV;
-  if (region.length === du * dv * 2 && du * dv >= 2 && DIAGONAL_SPANS.includes(du) && DIAGONAL_SPANS.includes(dv)) {
-    return { shape: 'diagonal', u0: minU, u1: maxU, v0: minV, v1: maxV, regular: Math.sqrt(Math.min(du, dv) / Math.max(du, dv)) * 0.95 };
+  if (
+    region.length === du * dv * 2 &&
+    du * dv >= 2 &&
+    DIAGONAL_SPANS.includes(du) &&
+    DIAGONAL_SPANS.includes(dv)
+  ) {
+    return {
+      shape: 'diagonal',
+      u0: minU,
+      u1: maxU,
+      v0: minV,
+      v1: maxV,
+      regular: Math.sqrt(Math.min(du, dv) / Math.max(du, dv)) * 0.95,
+    };
   }
   if (w === h && TRIANGLE_LEGS.includes(w) && region.length === 2 * w * w) {
     for (let q = 0; q < 4; q += 1) {
@@ -134,7 +181,8 @@ function cutLines(region, table) {
   const lines = [];
   const add = (axis, low, high) => {
     const center = (low + high) / 2;
-    for (let k = low + 1; k < high; k += 1) lines.push({ axis, k, middle: Math.abs(k - center) <= 1 });
+    for (let k = low + 1; k < high; k += 1)
+      lines.push({ axis, k, middle: Math.abs(k - center) <= 1 });
   };
   add('x', minX, maxX);
   add('y', minY, maxY);
@@ -183,11 +231,18 @@ function scoreOf(candidate, totalAtoms) {
 }
 
 function rank(a, b) {
-  return a.residual - b.residual || b.score.total - a.score.total || (a.signature < b.signature ? -1 : a.signature > b.signature ? 1 : 0);
+  return (
+    a.residual - b.residual ||
+    b.score.total - a.score.total ||
+    (a.signature < b.signature ? -1 : a.signature > b.signature ? 1 : 0)
+  );
 }
 
 function signatureOf(pieces, residual) {
-  const body = pieces.map((piece) => `${String(piece.atoms[0])}:${String(piece.atoms.length)}:${piece.spec.shape}`).sort().join('|');
+  const body = pieces
+    .map((piece) => `${String(piece.atoms[0])}:${String(piece.atoms.length)}:${piece.spec.shape}`)
+    .sort()
+    .join('|');
   return residual > 0 ? `${body}#${String(residual)}` : body;
 }
 
@@ -208,7 +263,10 @@ function solveBlock(block, table, front, diagonalFront, stats) {
       total += front[id];
       diagonal += diagonalFront[id];
     }
-    const piece = spec && total >= MIN_FRONT ? { atoms: region, spec, front: total, diagonalFront: diagonal } : null;
+    const piece =
+      spec && total >= MIN_FRONT
+        ? { atoms: region, spec, front: total, diagonalFront: diagonal }
+        : null;
     const entry = { key, spec, frontage: total, piece };
     leaves.set(key, entry);
     return entry;
@@ -236,7 +294,9 @@ function solveBlock(block, table, front, diagonalFront, stats) {
       const right = [];
       for (const id of region) (sideOf(line, id, table) ? left : right).push(id);
       if (left.length === 0 || right.length === 0) return;
-      const parts = [...components(left, table), ...components(right, table)].sort((a, b) => a[0] - b[0]);
+      const parts = [...components(left, table), ...components(right, table)].sort(
+        (a, b) => a[0] - b[0],
+      );
       const key = parts.map((part) => `${String(part[0])}:${String(part.length)}`).join('|');
       if (seen.has(key)) return;
       seen.add(key);
@@ -252,12 +312,26 @@ function solveBlock(block, table, front, diagonalFront, stats) {
     const info = leafOf(region);
     if (memo.has(info.key)) return memo.get(info.key);
     if (info.piece) {
-      const candidate = { pieces: [info.piece], residual: 0, residualAtoms: [], cuts: 0, signature: signatureOf([info.piece], 0), lines: [] };
+      const candidate = {
+        pieces: [info.piece],
+        residual: 0,
+        residualAtoms: [],
+        cuts: 0,
+        signature: signatureOf([info.piece], 0),
+        lines: [],
+      };
       const list = finish(region, [candidate]);
       memo.set(info.key, list);
       return list;
     }
-    const empty = { pieces: [], residual: region.length, residualAtoms: region, cuts: 0, signature: `#${String(region[0])}:${String(region.length)}`, lines: [] };
+    const empty = {
+      pieces: [],
+      residual: region.length,
+      residualAtoms: region,
+      cuts: 0,
+      signature: `#${String(region[0])}:${String(region.length)}`,
+      lines: [],
+    };
     const options = [empty];
     if (info.frontage > 0) {
       for (const { line, parts } of cutsOf(region)) {
@@ -270,7 +344,9 @@ function solveBlock(block, table, front, diagonalFront, stats) {
           if (entry.spec || entry.frontage === 0) stats.noFrontage += 1;
           else stats.noSpec += 1;
         }
-        let combined = [{ pieces: [], residual: 0, residualAtoms: [], cuts: parts.length - 1, lines: [line] }];
+        let combined = [
+          { pieces: [], residual: 0, residualAtoms: [], cuts: parts.length - 1, lines: [line] },
+        ];
         for (const part of parts) {
           const solved = solve(part);
           const next = [];
@@ -305,11 +381,16 @@ function solveBlock(block, table, front, diagonalFront, stats) {
 function halve(region, table) {
   if (region.length <= MAX_REGION) return [region];
   const { minX, maxX, minY, maxY } = bounds(region, table);
-  const line = maxX - minX >= maxY - minY ? { axis: 'x', k: Math.floor((minX + maxX) / 2) } : { axis: 'y', k: Math.floor((minY + maxY) / 2) };
+  const line =
+    maxX - minX >= maxY - minY
+      ? { axis: 'x', k: Math.floor((minX + maxX) / 2) }
+      : { axis: 'y', k: Math.floor((minY + maxY) / 2) };
   const left = [];
   const right = [];
   for (const id of region) (sideOf(line, id, table) ? left : right).push(id);
-  return [...components(left, table), ...components(right, table)].flatMap((part) => halve(part, table));
+  return [...components(left, table), ...components(right, table)].flatMap((part) =>
+    halve(part, table),
+  );
 }
 
 /**

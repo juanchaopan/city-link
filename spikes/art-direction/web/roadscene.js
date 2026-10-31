@@ -58,7 +58,9 @@ function legacySprite(entry, palette, deckHeightOf) {
   if (!cache.has(id)) {
     baker.usePalette(palette);
     const mask = entry.road | entry.highway;
-    const paths = cellPaths(entry.road, entry.highway, entry.arterial).map((path) => (spokesOf(mask).length === 1 ? { ...path, clipStart: false } : path));
+    const paths = cellPaths(entry.road, entry.highway, entry.arterial).map((path) =>
+      spokesOf(mask).length === 1 ? { ...path, clipStart: false } : path,
+    );
     const spec = {
       w: 400,
       h: 340,
@@ -75,18 +77,39 @@ function legacySprite(entry, palette, deckHeightOf) {
 export function worldOf({ N, draw, heights, water = [], gates = [], linked = false }) {
   const { roads, walk } = traceRoads(N);
   draw(walk);
-  const corners = (x, y) => (heights ? [heights(x, y), heights(x + 1, y), heights(x + 1, y + 1), heights(x, y + 1)] : [0, 0, 0, 0]);
+  const corners = (x, y) =>
+    heights
+      ? [heights(x, y), heights(x + 1, y), heights(x + 1, y + 1), heights(x, y + 1)]
+      : [0, 0, 0, 0];
   const levelOf = (x, y) => Math.min(...corners(x, y));
   const isFlat = (x, y) => new Set(corners(x, y)).size === 1;
   const waterSet = new Set(water);
   const isWater = (x, y) => waterSet.has(y * N + x);
-  const sprites = roadSprites({ N, roads, cornersOf: corners, isFlat, levelOf, isWater, gates, linked });
+  const sprites = roadSprites({
+    N,
+    roads,
+    cornersOf: corners,
+    isFlat,
+    levelOf,
+    isWater,
+    gates,
+    linked,
+  });
   return { N, roads, sprites, cornersOf: corners, levelOf, isFlat, isWater, gates, linked };
 }
 
 export function worldOfCity(city, linked) {
   const { N, roads, cornersOf, levelOf, isFlat, isWater, plan } = city;
-  const sprites = roadSprites({ N, roads, cornersOf, isFlat, levelOf, isWater, gates: plan.gates, linked });
+  const sprites = roadSprites({
+    N,
+    roads,
+    cornersOf,
+    isFlat,
+    levelOf,
+    isWater,
+    gates: plan.gates,
+    linked,
+  });
   return { N, roads, sprites, cornersOf, levelOf, isFlat, isWater, gates: plan.gates, linked };
 }
 
@@ -114,8 +137,13 @@ export function compose(world, palette, mode, { withGround }) {
     for (let y = 0; y < N; y += 1) {
       for (let x = 0; x < N; x += 1) {
         const level = world.levelOf(x, y);
-        const shape = world.cornersOf(x, y).map((v) => v - level).join('');
-        const key = world.isWater(x, y) ? 'w-0' : `g-${String(Math.min(3, level))}-${shape}-${String((x * 7 + y * 13) % 3)}`;
+        const shape = world
+          .cornersOf(x, y)
+          .map((v) => v - level)
+          .join('');
+        const key = world.isWater(x, y)
+          ? 'w-0'
+          : `g-${String(Math.min(3, level))}-${shape}-${String((x * 7 + y * 13) % 3)}`;
         stamp(spriteOf(key, palette), x, y, world.isWater(x, y) ? 0 : level);
       }
     }
@@ -134,7 +162,16 @@ export function compose(world, palette, mode, { withGround }) {
       const corners = world.cornersOf(x, y).map((v) => v - level);
       const flat = world.isFlat(x, y);
       const deck = flat ? null : (px, pz) => heightAt(corners, px, pz);
-      stamp(legacySprite({ ...entry, tag: roadTag(entry), shape: flat ? '' : corners.join('') }, palette, deck), x, y, level);
+      stamp(
+        legacySprite(
+          { ...entry, tag: roadTag(entry), shape: flat ? '' : corners.join('') },
+          palette,
+          deck,
+        ),
+        x,
+        y,
+        level,
+      );
     }
   } else {
     for (const list of [sprites.walks, sprites.curbs, sprites.decks]) {
@@ -143,6 +180,7 @@ export function compose(world, palette, mode, { withGround }) {
   }
   for (const { key, x, y, level } of sprites.neighbors) stamp(spriteOf(key, palette), x, y, level);
   for (const { key, x, y } of sprites.bridges) stamp(spriteOf(key, palette), x, y, 0);
-  if (withGround) for (const { key, x, y, level } of sprites.planned) stamp(spriteOf(key, palette), x, y, level);
+  if (withGround)
+    for (const { key, x, y, level } of sprites.planned) stamp(spriteOf(key, palette), x, y, level);
   return { canvas, context, place };
 }

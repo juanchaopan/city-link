@@ -1,5 +1,19 @@
 import { Builder, hashString, linear, mix, shade } from './builder.js';
-import { edgesOf, facesCamera, plate, prism, rectangle, scaled, shopFront, tree, triangleBlock, triangleFrame, triangleLot, wallOf, windows } from './objects.js';
+import {
+  edgesOf,
+  facesCamera,
+  plate,
+  prism,
+  rectangle,
+  scaled,
+  shopFront,
+  tree,
+  triangleBlock,
+  triangleFrame,
+  triangleLot,
+  wallOf,
+  windows,
+} from './objects.js';
 import { steppedTiers } from '../sim/combos.js';
 
 // 模块拼装实验。一栋楼不再烘焙成一整张图，而是底座（地块和底商）、楼身、屋顶三张精灵叠起来，运行时按组合取用。
@@ -26,13 +40,33 @@ const PODIUMS = {
   /** 架空层：一圈柱子，楼像是站在柱子上。 */
   pilotis(b, points, P) {
     const concrete = linear(P.wall.concrete);
-    prism(b, scaled(points, 0.5), LOT_LIFT, 1, shade(concrete, 0.7), shade(concrete, 0.7), P, podiumFloor);
-    prism(b, points, MODULE_FLOOR - 0.03, 1, concrete, shade(concrete, 1.06), P, { spacing: 0.03, skip: 1 });
+    prism(
+      b,
+      scaled(points, 0.5),
+      LOT_LIFT,
+      1,
+      shade(concrete, 0.7),
+      shade(concrete, 0.7),
+      P,
+      podiumFloor,
+    );
+    prism(b, points, MODULE_FLOOR - 0.03, 1, concrete, shade(concrete, 1.06), P, {
+      spacing: 0.03,
+      skip: 1,
+    });
     for (const { x0, z0, x1, z1, length } of edgesOf(points)) {
       const count = Math.max(2, Math.round(length / COLUMN_GAP));
       for (let i = 0; i < count; i += 1) {
         const t = i / count;
-        b.box(x0 + (x1 - x0) * t, LOT_LIFT, z0 + (z1 - z0) * t, 0.05, MODULE_FLOOR - LOT_LIFT, 0.05, concrete);
+        b.box(
+          x0 + (x1 - x0) * t,
+          LOT_LIFT,
+          z0 + (z1 - z0) * t,
+          0.05,
+          MODULE_FLOOR - LOT_LIFT,
+          0.05,
+          concrete,
+        );
       }
     }
   },
@@ -40,13 +74,36 @@ const PODIUMS = {
   lobby(b, points, P) {
     const stone = linear(P.wall.brick);
     prism(b, points, LOT_LIFT, 1, stone, stone, P, podiumFloor);
-    const front = edgesOf(points).filter(facesCamera).reduce((best, edge) => (edge.nx + edge.nz > best.nx + best.nz ? edge : best));
+    const front = edgesOf(points)
+      .filter(facesCamera)
+      .reduce((best, edge) => (edge.nx + edge.nz > best.nx + best.nz ? edge : best));
     const { x0, z0, x1, z1, nx, nz, length } = front;
     const half = Math.min(0.2, 0.4 / length);
-    const at = (t, y, out) => [x0 + (x1 - x0) * (0.5 + t) + nx * out, y, z0 + (z1 - z0) * (0.5 + t) + nz * out];
+    const at = (t, y, out) => [
+      x0 + (x1 - x0) * (0.5 + t) + nx * out,
+      y,
+      z0 + (z1 - z0) * (0.5 + t) + nz * out,
+    ];
     const hall = MODULE_FLOOR * 0.8;
-    b.poly([at(-half, 0.03, 0.006), at(half, 0.03, 0.006), at(half, hall, 0.006), at(-half, hall, 0.006)], linear(P.wall.glass), [nx, 0, nz]);
-    b.poly([at(-half * 1.2, hall + 0.01, 0), at(half * 1.2, hall + 0.01, 0), at(half * 1.2, hall + 0.01, 0.12), at(-half * 1.2, hall + 0.01, 0.12)], linear(P.wall.cool));
+    b.poly(
+      [
+        at(-half, 0.03, 0.006),
+        at(half, 0.03, 0.006),
+        at(half, hall, 0.006),
+        at(-half, hall, 0.006),
+      ],
+      linear(P.wall.glass),
+      [nx, 0, nz],
+    );
+    b.poly(
+      [
+        at(-half * 1.2, hall + 0.01, 0),
+        at(half * 1.2, hall + 0.01, 0),
+        at(half * 1.2, hall + 0.01, 0.12),
+        at(-half * 1.2, hall + 0.01, 0.12),
+      ],
+      linear(P.wall.cool),
+    );
   },
 };
 
@@ -62,7 +119,8 @@ const BODIES = {
     const h = floors * MODULE_FLOOR;
     b.box(0, 0, 0, BODY_SIZE * 0.62, h, BODY_SIZE * 0.62, wall);
     windows(b, BODY_SIZE * 0.62, BODY_SIZE * 0.62, 0, floors, P, MODULE_FLOOR);
-    for (let f = 2; f < floors; f += 3) b.box(0, f * MODULE_FLOOR, 0, BODY_SIZE * 0.66, 0.014, BODY_SIZE * 0.66, accent);
+    for (let f = 2; f < floors; f += 3)
+      b.box(0, f * MODULE_FLOOR, 0, BODY_SIZE * 0.66, 0.014, BODY_SIZE * 0.66, accent);
   },
   ell(b, floors, wall, accent, P) {
     const h = floors * MODULE_FLOOR;
@@ -80,13 +138,24 @@ const BODIES = {
   twin(b, floors, wall, accent, P) {
     const h = floors * MODULE_FLOOR;
     const bar = BODY_SIZE * 0.34;
-    for (const [x, tone] of [[-BODY_SIZE * 0.3, 1], [BODY_SIZE * 0.3, 0.94]]) {
+    for (const [x, tone] of [
+      [-BODY_SIZE * 0.3, 1],
+      [BODY_SIZE * 0.3, 0.94],
+    ]) {
       b.at(x, 0, 0, 0, (c) => {
         c.box(0, 0, 0, bar, h, BODY_SIZE * 0.86, shade(wall, tone));
         windows(c, bar, BODY_SIZE * 0.86, 0, floors, P, MODULE_FLOOR);
       });
     }
-    b.box(0, MODULE_FLOOR * Math.floor(floors * 0.6), 0, BODY_SIZE * 0.3, MODULE_FLOOR, 0.14, accent);
+    b.box(
+      0,
+      MODULE_FLOOR * Math.floor(floors * 0.6),
+      0,
+      BODY_SIZE * 0.3,
+      MODULE_FLOOR,
+      0.14,
+      accent,
+    );
   },
   stepped(b, floors, wall, accent, P) {
     let y = 0;
@@ -104,8 +173,26 @@ const BODIES = {
   drum(b, floors, wall, accent) {
     const r = BODY_SIZE * 0.36;
     for (let f = 0; f < floors; f += 1) {
-      b.cylinder(0, f * MODULE_FLOOR, 0, r, r, MODULE_FLOOR * 0.86, 12, f % 2 === 0 ? wall : shade(wall, 0.88));
-      b.cylinder(0, f * MODULE_FLOOR + MODULE_FLOOR * 0.86, 0, r + 0.012, r + 0.012, MODULE_FLOOR * 0.14, 12, accent);
+      b.cylinder(
+        0,
+        f * MODULE_FLOOR,
+        0,
+        r,
+        r,
+        MODULE_FLOOR * 0.86,
+        12,
+        f % 2 === 0 ? wall : shade(wall, 0.88),
+      );
+      b.cylinder(
+        0,
+        f * MODULE_FLOOR + MODULE_FLOOR * 0.86,
+        0,
+        r + 0.012,
+        r + 0.012,
+        MODULE_FLOOR * 0.14,
+        12,
+        accent,
+      );
     }
   },
 };
@@ -136,10 +223,15 @@ const TONES = [
 
 /** 三角底座楼身之外的屋面：沿最长的斜边一条花池和一排树。 */
 function terrace(b, points, P) {
-  const { x0, z0, x1, z1, nx, nz } = edgesOf(points).reduce((best, edge) => (edge.length > best.length ? edge : best));
+  const { x0, z0, x1, z1, nx, nz } = edgesOf(points).reduce((best, edge) =>
+    edge.length > best.length ? edge : best,
+  );
   const at = (t, out) => [x0 + (x1 - x0) * t - nx * out, z0 + (z1 - z0) * t - nz * out];
   const strip = [at(0.16, 0.08), at(0.84, 0.08), at(0.84, 0.32), at(0.16, 0.32)];
-  b.poly(strip.map(([x, z]) => [x, MODULE_FLOOR + 0.006, z]), linear(P.ground.lawn));
+  b.poly(
+    strip.map(([x, z]) => [x, MODULE_FLOOR + 0.006, z]),
+    linear(P.ground.lawn),
+  );
   for (let i = 0; i < TERRACE_TREES; i += 1) {
     const [x, z] = at(0.22 + (i * 0.56) / (TERRACE_TREES - 1), 0.2);
     tree(b, x, z, P, 0.62, MODULE_FLOOR + 0.006);
@@ -174,7 +266,13 @@ export function buildModule(name, P) {
     if (size !== '2x2') terrace(b, points, P);
   } else if (parts[0] === 'Mb') {
     const [, kind, floors, tone] = parts;
-    BODIES[kind](b, Number(floors), TONES[Number(tone)](P), linear(P.zones.commercial[Number(tone) % 4]), P);
+    BODIES[kind](
+      b,
+      Number(floors),
+      TONES[Number(tone)](P),
+      linear(P.zones.commercial[Number(tone) % 4]),
+      P,
+    );
   } else ROOFS[parts[1]](b, P);
   return b;
 }

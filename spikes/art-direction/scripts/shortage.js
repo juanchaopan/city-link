@@ -5,7 +5,15 @@ import { generateParcels, ZONE } from '../web/sim/parcels.js';
 const city = generateCity(32);
 const zones = city.zones.map((zone) => (zone === ZONE.farm ? zone : ZONE.residential));
 const density = city.density.map((value) => value || 1);
-const result = generateParcels({ N: 32, roads: city.roads, water: city.water, slopes: city.slopes, zones, density, seed: 11 });
+const result = generateParcels({
+  N: 32,
+  roads: city.roads,
+  water: city.water,
+  slopes: city.slopes,
+  zones,
+  density,
+  seed: 11,
+});
 const shortages = [...new Set(result.services.shortages.map((item) => item.name))];
 const onZonedLand = result.parcels.filter((parcel) => parcel.shape === 'service').length;
 console.log(JSON.stringify({ shortages, servicesBuilt: onZonedLand }));

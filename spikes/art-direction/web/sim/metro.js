@@ -51,24 +51,51 @@ export function metroPlan(plan) {
       name: '1 号线',
       color: COLORS[0],
       loop: false,
-      points: [[west, r(1)], [east, r(1)]],
-      stations: [[west, r(1)], [c(1), r(1)], [ringWest, r(1)], [east, r(1)]],
+      points: [
+        [west, r(1)],
+        [east, r(1)],
+      ],
+      stations: [
+        [west, r(1)],
+        [c(1), r(1)],
+        [ringWest, r(1)],
+        [east, r(1)],
+      ],
     },
     {
       id: 2,
       name: '2 号线',
       color: COLORS[1],
       loop: true,
-      points: [[ringWest, ringNorth], [ringEast, ringNorth], [ringEast, ringSouth], [ringWest, ringSouth], [ringWest, ringNorth]],
-      stations: [[ringWest, ringNorth], [ringEast, ringNorth], [ringEast, ringSouth], [ringWest, ringSouth], [ringWest, r(1)]],
+      points: [
+        [ringWest, ringNorth],
+        [ringEast, ringNorth],
+        [ringEast, ringSouth],
+        [ringWest, ringSouth],
+        [ringWest, ringNorth],
+      ],
+      stations: [
+        [ringWest, ringNorth],
+        [ringEast, ringNorth],
+        [ringEast, ringSouth],
+        [ringWest, ringSouth],
+        [ringWest, r(1)],
+      ],
     },
     {
       id: 3,
       name: '3 号线',
       color: COLORS[2],
       loop: false,
-      points: [[c(1), r(0) - 1], [c(1), r(rows.length - 1) + 1]],
-      stations: [[c(1), r(0) - 1], [c(1), r(1)], [c(1), r(rows.length - 1) + 1]],
+      points: [
+        [c(1), r(0) - 1],
+        [c(1), r(rows.length - 1) + 1],
+      ],
+      stations: [
+        [c(1), r(0) - 1],
+        [c(1), r(1)],
+        [c(1), r(rows.length - 1) + 1],
+      ],
     },
   ];
 

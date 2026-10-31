@@ -49,7 +49,12 @@ function widthsOf(path) {
   const spec = ROAD_SPEC[path.kind];
   const walks = path.widths ? path.widths.map((width) => width.walk / 2) : [spec.walk / 2];
   const decks = path.widths ? path.widths.map((width) => width.deck / 2) : [spec.deck / 2];
-  return { walkIn: Math.min(...walks), walkOut: Math.max(...walks), deckIn: Math.min(...decks), deckOut: Math.max(...decks) };
+  return {
+    walkIn: Math.min(...walks),
+    walkOut: Math.max(...walks),
+    deckIn: Math.min(...decks),
+    deckOut: Math.max(...decks),
+  };
 }
 
 /** 每条路中线的世界坐标和路面高度函数，高度决定采样点落在画面的哪个像素上。 */
@@ -61,7 +66,12 @@ function linesOf(world, mode) {
     const x = id % N;
     const y = Math.floor(id / N);
     const inWater = world.isWater(x, y);
-    const bridge = inWater || world.isWater(x - 1, y) || world.isWater(x + 1, y) || world.isWater(x, y - 1) || world.isWater(x, y + 1);
+    const bridge =
+      inWater ||
+      world.isWater(x - 1, y) ||
+      world.isWater(x + 1, y) ||
+      world.isWater(x, y - 1) ||
+      world.isWater(x, y + 1);
     const level = inWater ? 0 : world.levelOf(x, y);
     const corners = world.cornersOf(x, y).map((v) => v - level);
     const flat = world.isFlat(x, y);
@@ -75,12 +85,24 @@ function linesOf(world, mode) {
         if (grade) {
           const dx = c[0] - a[0];
           const dy = c[1] - a[1];
-          const t = Math.max(0, Math.min(1, ((px - a[0]) * dx + (py - a[1]) * dy) / (dx * dx + dy * dy)));
+          const t = Math.max(
+            0,
+            Math.min(1, ((px - a[0]) * dx + (py - a[1]) * dy) / (dx * dx + dy * dy)),
+          );
           return level + hermite(grade, t);
         }
         return level + heightAt(corners, px - x - 0.5, py - y - 0.5) / LEVEL;
       };
-      lines.push({ cell: id, kind: path.kind, points, heightOf, free, bridge, flat, ...widthsOf(path) });
+      lines.push({
+        cell: id,
+        kind: path.kind,
+        points,
+        heightOf,
+        free,
+        bridge,
+        flat,
+        ...widthsOf(path),
+      });
     }
   }
   if (world.linked) {
@@ -88,7 +110,16 @@ function linesOf(world, mode) {
       const [dx, dy] = DIRECTIONS[(gate.inward + 4) % 8];
       const a = [gate.x + 0.5 + dx * 0.5, gate.y + 0.5 + dy * 0.5];
       const c = [a[0] + dx * 1.2, a[1] + dy * 1.2];
-      lines.push({ cell: -1, kind: gate.kind, points: [a, c], heightOf: () => 0, free: false, bridge: false, flat: true, ...widthsOf({ kind: gate.kind }) });
+      lines.push({
+        cell: -1,
+        kind: gate.kind,
+        points: [a, c],
+        heightOf: () => 0,
+        free: false,
+        bridge: false,
+        flat: true,
+        ...widthsOf({ kind: gate.kind }),
+      });
     }
   }
   return lines;
@@ -100,7 +131,15 @@ function junctionsOf(world) {
   for (const [id, { road, highway, arterial }] of sprites.cells) {
     const spokes = spokesOf(road | highway);
     const mixed = spokes.length === 2 && road && highway;
-    if (spokes.length >= 3 || mixed) list.push({ x: (id % N) + 0.5, y: Math.floor(id / N) + 0.5, spokes, road, highway, arterial });
+    if (spokes.length >= 3 || mixed)
+      list.push({
+        x: (id % N) + 0.5,
+        y: Math.floor(id / N) + 0.5,
+        spokes,
+        road,
+        highway,
+        arterial,
+      });
   }
   return list;
 }
@@ -141,7 +180,13 @@ function inspect(world, mode) {
   const lines = linesOf(world, mode);
   const buckets = bucketsOf(lines);
   const junctions = junctionsOf(world);
-  const nearJunction = (px, py) => junctions.some((junction) => Math.abs(junction.x - px) < FILLET_ZONE && Math.abs(junction.y - py) < FILLET_ZONE && Math.hypot(junction.x - px, junction.y - py) < FILLET_ZONE);
+  const nearJunction = (px, py) =>
+    junctions.some(
+      (junction) =>
+        Math.abs(junction.x - px) < FILLET_ZONE &&
+        Math.abs(junction.y - py) < FILLET_ZONE &&
+        Math.hypot(junction.x - px, junction.y - py) < FILLET_ZONE,
+    );
   const marks = {
     walkInDeck: new Map(),
     deckHole: new Map(),
@@ -150,7 +195,12 @@ function inspect(world, mode) {
     overshoot: new Map(),
     capOvershoot: new Map(),
   };
-  const mark = (name, x, y, px, py, found) => marks[name].set(y * canvas.width + x, [Math.round(px * 100) / 100, Math.round(py * 100) / 100, found]);
+  const mark = (name, x, y, px, py, found) =>
+    marks[name].set(y * canvas.width + x, [
+      Math.round(px * 100) / 100,
+      Math.round(py * 100) / 100,
+      found,
+    ]);
   let samples = 0;
   for (const line of lines) {
     for (let k = 0; k < line.points.length - 1; k += 1) {
@@ -188,8 +238,10 @@ function inspect(world, mode) {
           const found = read(x, y);
           samples += 1;
           if (inDeck) {
-            if (found === CLASS.walk || found === CLASS.curb) mark('walkInDeck', x, y, px, py, found);
-            else if (found === CLASS.empty || (found === CLASS.other && !line.bridge)) mark('deckHole', x, y, px, py, found);
+            if (found === CLASS.walk || found === CLASS.curb)
+              mark('walkInDeck', x, y, px, py, found);
+            else if (found === CLASS.empty || (found === CLASS.other && !line.bridge))
+              mark('deckHole', x, y, px, py, found);
           } else if (inWalk && !walkEdge) {
             if (nearJunction(px, py)) continue;
             if (found === CLASS.deck) mark('deckOutside', x, y, px, py, found);
@@ -293,7 +345,8 @@ function gradeReport(world, mode) {
       seen.add(at);
       const line = lines.find((entry) => entry.cell === at);
       const [a, c] = [line.points[0], line.points[line.points.length - 1]];
-      for (let t = 0; t <= 1; t += 0.05) profile.push(line.heightOf(a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t));
+      for (let t = 0; t <= 1; t += 0.05)
+        profile.push(line.heightOf(a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t));
     }
     const first = profile[0];
     const last = profile[profile.length - 1];
@@ -305,7 +358,17 @@ function gradeReport(world, mode) {
   return Math.round(worst * 10) / 10;
 }
 
-const COUNTERS = ['samples', 'walkInDeck', 'deckHole', 'deckOutside', 'walkHole', 'overshoot', 'capOvershoot', 'corners', 'sharpCorners'];
+const COUNTERS = [
+  'samples',
+  'walkInDeck',
+  'deckHole',
+  'deckOutside',
+  'walkHole',
+  'overshoot',
+  'capOvershoot',
+  'corners',
+  'sharpCorners',
+];
 
 function add(total, result) {
   for (const key of COUNTERS) total[key] = (total[key] ?? 0) + result[key];
@@ -319,7 +382,15 @@ function add(total, result) {
 }
 
 function errorCount(row) {
-  return row.walkInDeck + row.deckHole + row.deckOutside + row.walkHole + row.overshoot + row.capOvershoot + row.sharpCorners;
+  return (
+    row.walkInDeck +
+    row.deckHole +
+    row.deckOutside +
+    row.walkHole +
+    row.overshoot +
+    row.capOvershoot +
+    row.sharpCorners
+  );
 }
 
 window.runChecks = (mode) => {
@@ -332,7 +403,11 @@ window.runChecks = (mode) => {
   for (const linked of [false, true]) {
     const city = generateCity(64, 11, 'spread', linked);
     const total = add({}, inspect(worldOfCity(city, linked), mode));
-    rows.push({ name: linked ? '全图 64×64·已打通' : '全图 64×64·未打通', ...total, pass: errorCount(total) === 0 });
+    rows.push({
+      name: linked ? '全图 64×64·已打通' : '全图 64×64·未打通',
+      ...total,
+      pass: errorCount(total) === 0,
+    });
   }
   return rows;
 };
@@ -345,7 +420,10 @@ window.renderSheet = (mode, results) => {
   const scale = 2;
   const labelH = 44;
   const rows = Math.ceil(CASES.length / columns);
-  const sheet = new OffscreenCanvas(columns * (cropW * scale + 12) + 12, rows * (cropH * scale + labelH + 12) + 12);
+  const sheet = new OffscreenCanvas(
+    columns * (cropW * scale + 12) + 12,
+    rows * (cropH * scale + labelH + 12) + 12,
+  );
   const context = sheet.getContext('2d');
   context.fillStyle = '#20303a';
   context.fillRect(0, 0, sheet.width, sheet.height);
@@ -359,17 +437,34 @@ window.renderSheet = (mode, results) => {
     const dx = 12 + col * (cropW * scale + 12);
     const dy = 12 + line * (cropH * scale + labelH + 12);
     context.imageSmoothingEnabled = false;
-    context.drawImage(canvas, sx - cropW / 2, sy - cropH / 2, cropW, cropH, dx, dy + labelH, cropW * scale, cropH * scale);
+    context.drawImage(
+      canvas,
+      sx - cropW / 2,
+      sy - cropH / 2,
+      cropW,
+      cropH,
+      dx,
+      dy + labelH,
+      cropW * scale,
+      cropH * scale,
+    );
     const result = results.find((r) => r.name === entry.name);
     context.fillStyle = result.pass ? '#7fe0a0' : '#ff8a70';
     context.font = '700 26px "Microsoft YaHei"';
-    context.fillText(`${entry.name}（${String(result.variants)} 种） ${result.pass ? '通过' : `错误 ${String(errorCount(result))}`}`, dx + 4, dy + 32);
+    context.fillText(
+      `${entry.name}（${String(result.variants)} 种） ${result.pass ? '通过' : `错误 ${String(errorCount(result))}`}`,
+      dx + 4,
+      dy + 32,
+    );
   });
-  return sheet.convertToBlob({ type: 'image/png' }).then((blob) => new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.readAsDataURL(blob);
-  }));
+  return sheet.convertToBlob({ type: 'image/png' }).then(
+    (blob) =>
+      new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      }),
+  );
 };
 
 window.checkReady = true;

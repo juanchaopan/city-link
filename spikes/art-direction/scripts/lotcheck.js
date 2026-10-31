@@ -45,7 +45,8 @@ function roofsOf(positions) {
     const a = [positions[i], positions[i + 2]];
     const b = [positions[i + 3], positions[i + 5]];
     const c = [positions[i + 6], positions[i + 8]];
-    if (Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) > 1e-6) roofs.push([a, b, c]);
+    if (Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) > 1e-6)
+      roofs.push([a, b, c]);
   }
   return roofs;
 }
@@ -57,7 +58,8 @@ function emptyRadius(samples) {
   let radius = 0;
   for (const point of empty) {
     let nearest = Infinity;
-    for (const wall of walls) nearest = Math.min(nearest, Math.hypot(wall.x - point.x, wall.z - point.z));
+    for (const wall of walls)
+      nearest = Math.min(nearest, Math.hypot(wall.x - point.x, wall.z - point.z));
     radius = Math.max(radius, nearest);
   }
   return radius;
@@ -70,24 +72,38 @@ function measure(name, legs, q) {
     const zs = triangle.map((p) => p[1]);
     const [x0, x1, z0, z1] = [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)];
     for (const sample of samples) {
-      if (sample.covered || sample.x < x0 || sample.x > x1 || sample.z < z0 || sample.z > z1) continue;
+      if (sample.covered || sample.x < x0 || sample.x > x1 || sample.z < z0 || sample.z > z1)
+        continue;
       if (insideTriangle(...triangle, sample.x, sample.z)) sample.covered = true;
     }
   }
   const covered = samples.filter((sample) => sample.covered).length;
-  return { name, coverage: covered / samples.length, emptyRadius: covered === 0 ? legs : emptyRadius(samples) };
+  return {
+    name,
+    coverage: covered / samples.length,
+    emptyRadius: covered === 0 ? legs : emptyRadius(samples),
+  };
 }
 
 const rows = [];
 for (const zone of ZONES) {
   for (const level of LEVELS) {
     for (const legs of LEGS) {
-      for (const variant of VARIANTS) rows.push(measure(`Q-${zone}${String(level)}-${String(legs)}-${String(legs % 4)}-${String(variant)}`, legs, legs % 4));
+      for (const variant of VARIANTS)
+        rows.push(
+          measure(
+            `Q-${zone}${String(level)}-${String(legs)}-${String(legs % 4)}-${String(variant)}`,
+            legs,
+            legs % 4,
+          ),
+        );
     }
   }
 }
 
-const failures = rows.filter((row) => row.coverage < MIN_COVERAGE || row.emptyRadius > MAX_EMPTY_RADIUS);
+const failures = rows.filter(
+  (row) => row.coverage < MIN_COVERAGE || row.emptyRadius > MAX_EMPTY_RADIUS,
+);
 const coverages = rows.map((row) => row.coverage).sort((a, b) => a - b);
 const summary = {
   specs: rows.length,
@@ -97,7 +113,11 @@ const summary = {
   maxEmptyRadius: Math.max(...rows.map((row) => row.emptyRadius)),
 };
 mkdirSync('out', { recursive: true });
-writeFileSync('out/lot-report.json', JSON.stringify({ ...summary, limits: { MIN_COVERAGE, MAX_EMPTY_RADIUS }, rows }, null, 2));
+writeFileSync(
+  'out/lot-report.json',
+  JSON.stringify({ ...summary, limits: { MIN_COVERAGE, MAX_EMPTY_RADIUS }, rows }, null, 2),
+);
 console.log(failures.length === 0 ? '通过' : '不通过', JSON.stringify(summary));
-for (const row of failures.slice(0, 8)) console.log(row.name, row.coverage.toFixed(2), row.emptyRadius.toFixed(2));
+for (const row of failures.slice(0, 8))
+  console.log(row.name, row.coverage.toFixed(2), row.emptyRadius.toFixed(2));
 if (failures.length > 0) process.exitCode = 1;

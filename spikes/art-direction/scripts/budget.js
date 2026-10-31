@@ -12,7 +12,9 @@ const PROPERTIES_AT_64 = 200;
 
 const groups = gen.sunny.groups;
 const average = (name) => groups[name].pixels / groups[name].count;
-const pngPerPixel = gen.dayOnly.pngBytes / Object.values(gen.dayOnly.groups).reduce((sum, group) => sum + group.pixels, 0);
+const pngPerPixel =
+  gen.dayOnly.pngBytes /
+  Object.values(gen.dayOnly.groups).reduce((sum, group) => sum + group.pixels, 0);
 const glowFactor = gen.sunny.pngBytes / gen.dayOnly.pngBytes;
 
 const shared = [
@@ -44,8 +46,16 @@ const whole = totals(`整张烘焙：每规格每分区 ${String(LOOKS)} 种外�
 ]);
 
 const moduleRows = [
-  { name: '底座：每个占地规格 3 种', count: (FOOTPRINTS.axis + FOOTPRINTS.diagonal + FOOTPRINTS.triangle) * 3, area: average('模块·底座') },
-  { name: '楼身：6 种楼型 × 5 种层数 × 3 档大小（配色用运行时染色）', count: 6 * 5 * 3, area: average('模块·楼身') },
+  {
+    name: '底座：每个占地规格 3 种',
+    count: (FOOTPRINTS.axis + FOOTPRINTS.diagonal + FOOTPRINTS.triangle) * 3,
+    area: average('模块·底座'),
+  },
+  {
+    name: '楼身：6 种楼型 × 5 种层数 × 3 档大小（配色用运行时染色）',
+    count: 6 * 5 * 3,
+    area: average('模块·楼身'),
+  },
   { name: '屋顶：3 种 × 3 档大小', count: 9, area: average('模块·屋顶') },
 ];
 const modular = totals('模块拼装：底座、楼身、屋顶分开', [...shared, ...moduleRows]);
@@ -56,10 +66,36 @@ const onScreen = {
   modular: PROPERTIES_AT_64 * spritesPerProperty.modular,
 };
 
-const report = { pngPerPixel, looks: LOOKS, whole, modular, moduleRows, onScreen, sample: { sunny: gen.sunny.pngBytes, dayOnly: gen.dayOnly.pngBytes, dusk: gen.dusk.pngBytes, festival: gen.festival } };
+const report = {
+  pngPerPixel,
+  looks: LOOKS,
+  whole,
+  modular,
+  moduleRows,
+  onScreen,
+  sample: {
+    sunny: gen.sunny.pngBytes,
+    dayOnly: gen.dayOnly.pngBytes,
+    dusk: gen.dusk.pngBytes,
+    festival: gen.festival,
+  },
+};
 writeFileSync('out/budget-report.json', JSON.stringify(report, null, 2));
-const summary = (entry) => ({ count: entry.count, pngMb: Number(entry.pngMb.toFixed(1)), textureMb: Number(entry.textureMb.toFixed(0)) });
+const summary = (entry) => ({
+  count: entry.count,
+  pngMb: Number(entry.pngMb.toFixed(1)),
+  textureMb: Number(entry.textureMb.toFixed(0)),
+});
 console.log('整张烘焙', JSON.stringify(summary(whole)));
 console.log('模块拼装', JSON.stringify(summary(modular)));
 console.log('同屏精灵', JSON.stringify(onScreen));
-console.log('样本', JSON.stringify({ sunnyMb: gen.sunny.pngBytes / 1048576, dayOnlyMb: gen.dayOnly.pngBytes / 1048576, duskMb: gen.dusk.pngBytes / 1048576, festivalKb: gen.festival.pngBytes / 1024, festivalCount: gen.festival.count }));
+console.log(
+  '样本',
+  JSON.stringify({
+    sunnyMb: gen.sunny.pngBytes / 1048576,
+    dayOnlyMb: gen.dayOnly.pngBytes / 1048576,
+    duskMb: gen.dusk.pngBytes / 1048576,
+    festivalKb: gen.festival.pngBytes / 1024,
+    festivalCount: gen.festival.count,
+  }),
+);

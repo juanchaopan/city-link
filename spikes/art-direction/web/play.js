@@ -4,7 +4,15 @@ import { generateRoadDemo } from './sim/roaddemo.js';
 import { resolveStyle } from './sim/packs.js';
 import { SERVICES } from './sim/services.js';
 import { createVehicles } from './vehicles.js';
-import { applyTime, buildWorld, loadAtlas, multiplyColor, screenOf, TILE_HALF_H, TILE_HALF_W } from './world.js';
+import {
+  applyTime,
+  buildWorld,
+  loadAtlas,
+  multiplyColor,
+  screenOf,
+  TILE_HALF_H,
+  TILE_HALF_W,
+} from './world.js';
 import { palettes } from './kit/palettes.js';
 
 // 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图、和邻城打通的开关，
@@ -43,20 +51,38 @@ await app.init({
   hello: false,
 });
 
-const city = sceneName === 'interchange' ? generateRoadDemo() : generateCity(Number(params.get('n') ?? 64), 11, publicLayout, linked);
+const city =
+  sceneName === 'interchange'
+    ? generateRoadDemo()
+    : generateCity(Number(params.get('n') ?? 64), 11, publicLayout, linked);
 const { N } = city;
 const atlas = await loadAtlas(style.atlas, festivalOn ? 'national-day' : null);
 const layers = seam ? ['ground'] : ['ground', 'overlays', 'objects'];
 const bare = params.get('bare') === '1';
-const scene = buildWorld(atlas, city, { layers, festival: festivalOn, dynamicTint: mode === 'layer', palette, bare, stress });
-const vehicles = !seam && carCap > 0 && atlas.frames.lamp ? createVehicles(atlas, city, scene, { cap: carCap }) : null;
+const scene = buildWorld(atlas, city, {
+  layers,
+  festival: festivalOn,
+  dynamicTint: mode === 'layer',
+  palette,
+  bare,
+  stress,
+});
+const vehicles =
+  !seam && carCap > 0 && atlas.frames.lamp
+    ? createVehicles(atlas, city, scene, { cap: carCap })
+    : null;
 
 const camera = new Container();
 camera.addChild(scene.world);
 let second = null;
 if (mode === 'atlas2') {
   const duskAtlas = await loadAtlas('dusk', null);
-  second = buildWorld(duskAtlas, city, { layers, festival: false, dynamicTint: false, palette: palettes.dusk });
+  second = buildWorld(duskAtlas, city, {
+    layers,
+    festival: false,
+    dynamicTint: false,
+    palette: palettes.dusk,
+  });
   second.world.alpha = 0;
   camera.addChild(second.world);
 }
@@ -66,16 +92,26 @@ function table() {
   const margin = 60;
   const step = 8;
   for (let i = -margin; i <= N + margin; i += step) {
-    g.moveTo((i + margin) * TILE_HALF_W, (i - margin) * TILE_HALF_H).lineTo((i - N - margin) * TILE_HALF_W, (i + N + margin) * TILE_HALF_H);
-    g.moveTo((-margin - i) * TILE_HALF_W, (i - margin) * TILE_HALF_H).lineTo((N + margin - i) * TILE_HALF_W, (N + margin + i) * TILE_HALF_H);
+    g.moveTo((i + margin) * TILE_HALF_W, (i - margin) * TILE_HALF_H).lineTo(
+      (i - N - margin) * TILE_HALF_W,
+      (i + N + margin) * TILE_HALF_H,
+    );
+    g.moveTo((-margin - i) * TILE_HALF_W, (i - margin) * TILE_HALF_H).lineTo(
+      (N + margin - i) * TILE_HALF_W,
+      (N + margin + i) * TILE_HALF_H,
+    );
   }
   g.stroke({ color: palette.table.line, width: 6 });
   const drop = 52;
   g.poly([
-    0, -TILE_HALF_H + drop,
-    N * TILE_HALF_W + 34, N * TILE_HALF_H - TILE_HALF_H + drop + 12,
-    0, N * 2 * TILE_HALF_H - TILE_HALF_H + drop + 42,
-    -N * TILE_HALF_W - 34, N * TILE_HALF_H - TILE_HALF_H + drop + 12,
+    0,
+    -TILE_HALF_H + drop,
+    N * TILE_HALF_W + 34,
+    N * TILE_HALF_H - TILE_HALF_H + drop + 12,
+    0,
+    N * 2 * TILE_HALF_H - TILE_HALF_H + drop + 42,
+    -N * TILE_HALF_W - 34,
+    N * TILE_HALF_H - TILE_HALF_H + drop + 12,
   ]).fill({ color: palette.table.shadow, alpha: 0.55 });
   return g;
 }
@@ -84,7 +120,10 @@ const tableLayer = seam ? null : table();
 if (tableLayer) camera.addChildAt(tableLayer, 0);
 
 const ground = (px, py) => {
-  const level = city.levelOf(Math.min(N - 1, Math.max(0, Math.floor(px))), Math.min(N - 1, Math.max(0, Math.floor(py))));
+  const level = city.levelOf(
+    Math.min(N - 1, Math.max(0, Math.floor(px))),
+    Math.min(N - 1, Math.max(0, Math.floor(py))),
+  );
   return screenOf(px, py, level);
 };
 
@@ -92,7 +131,13 @@ function label(text, x, y, size, anchorY = 0) {
   const item = new Text({
     text,
     resolution: 2,
-    style: { fontFamily: 'Microsoft YaHei', fontSize: size, fontWeight: '700', fill: '#ffffff', stroke: { color: '#1f3a4d', width: size / 5 } },
+    style: {
+      fontFamily: 'Microsoft YaHei',
+      fontSize: size,
+      fontWeight: '700',
+      fill: '#ffffff',
+      stroke: { color: '#1f3a4d', width: size / 5 },
+    },
   });
   item.anchor.set(0.5, anchorY);
   item.position.set(x, y);
@@ -111,19 +156,36 @@ function trafficView() {
     const a = ground((edge.from % N) + 0.5, Math.floor(edge.from / N) + 0.5);
     const c = ground((edge.to % N) + 0.5, Math.floor(edge.to / N) + 0.5);
     const load = Math.min(1, edge.ratio / 0.8);
-    g.moveTo(a.sx, a.sy).lineTo(c.sx, c.sy).stroke({ color: loadColor(load), width: 16 + load * 44, cap: 'round' });
+    g.moveTo(a.sx, a.sy)
+      .lineTo(c.sx, c.sy)
+      .stroke({ color: loadColor(load), width: 16 + load * 44, cap: 'round' });
   }
   for (const parcel of city.parcels.parcels) {
-    if (parcel.access < 0 || parcel.capacity === 0 || parcel.shape === 'field' || parcel.shape === 'farmhouse') continue;
+    if (
+      parcel.access < 0 ||
+      parcel.capacity === 0 ||
+      parcel.shape === 'field' ||
+      parcel.shape === 'farmhouse'
+    )
+      continue;
     const from = ground(parcel.px, parcel.py);
     const to = ground((parcel.access % N) + 0.5, Math.floor(parcel.access / N) + 0.5);
-    g.moveTo(from.sx, from.sy).lineTo(to.sx, to.sy).stroke({ color: 0x1f3a4d, width: 4, alpha: 0.7 });
+    g.moveTo(from.sx, from.sy)
+      .lineTo(to.sx, to.sy)
+      .stroke({ color: 0x1f3a4d, width: 4, alpha: 0.7 });
     g.circle(from.sx, from.sy, 10).fill(0x1f3a4d);
   }
   return g;
 }
 
-const SERVICE_COLORS = { hospital: 0x2e9e6b, school: 0xd9744a, police: 0x2f5fa8, fire: 0xd6372f, water: 0x3a9fc8, power: 0xe0a92e };
+const SERVICE_COLORS = {
+  hospital: 0x2e9e6b,
+  school: 0xd9744a,
+  police: 0x2f5fa8,
+  fire: 0xd6372f,
+  water: 0x3a9fc8,
+  power: 0xe0a92e,
+};
 
 function coverageView() {
   scene.world.alpha = 0.4;
@@ -132,7 +194,8 @@ function coverageView() {
   for (const parcel of city.parcels.parcels) {
     if (!parcel.polygon || !missing.has(parcel.id)) continue;
     const count = missing.get(parcel.id);
-    const color = count === 0 ? 0x2fae6c : count === 1 ? 0xf0c040 : count === 2 ? 0xf08a3c : 0xe03c34;
+    const color =
+      count === 0 ? 0x2fae6c : count === 1 ? 0xf0c040 : count === 2 ? 0xf08a3c : 0xe03c34;
     const points = parcel.polygon.flatMap(([px, py]) => {
       const { sx, sy } = ground(px, py);
       return [sx, sy];
@@ -207,7 +270,10 @@ const offset = { x: 0, y: 0 };
 function applyCamera() {
   const { sx, sy } = screenOf(focusX + 0.5, focusY + 0.5, 0);
   camera.scale.set(zoom);
-  camera.position.set(window.innerWidth / 2 - sx * zoom + offset.x, window.innerHeight / 2 - sy * zoom + offset.y);
+  camera.position.set(
+    window.innerWidth / 2 - sx * zoom + offset.x,
+    window.innerHeight / 2 - sy * zoom + offset.y,
+  );
   vehicles?.setView({
     left: -camera.position.x / zoom,
     right: (window.innerWidth - camera.position.x) / zoom,
@@ -234,7 +300,8 @@ function setTime(next) {
     second.objectLayer.tint = tint;
   }
   const clock = document.getElementById('clock');
-  if (clock) clock.textContent = `${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.floor((hour % 1) * 60)).padStart(2, '0')}`;
+  if (clock)
+    clock.textContent = `${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.floor((hour % 1) * 60)).padStart(2, '0')}`;
 }
 setTime(hour);
 
@@ -245,7 +312,9 @@ if (vehicles) {
 
 if (hudOn) {
   const { createHud } = await import('./hud.js');
-  app.stage.addChild(await createHud({ atlas, palette, width: window.innerWidth, height: window.innerHeight }));
+  app.stage.addChild(
+    await createHud({ atlas, palette, width: window.innerWidth, height: window.innerHeight }),
+  );
 }
 
 // 拖动和缩放。
@@ -285,10 +354,14 @@ const release = (event) => {
 };
 canvas.addEventListener('pointerup', release);
 canvas.addEventListener('pointercancel', release);
-canvas.addEventListener('wheel', (event) => {
-  event.preventDefault();
-  zoomAt(event.deltaY < 0 ? 1.12 : 0.89, event.clientX, event.clientY);
-}, { passive: false });
+canvas.addEventListener(
+  'wheel',
+  (event) => {
+    event.preventDefault();
+    zoomAt(event.deltaY < 0 ? 1.12 : 0.89, event.clientX, event.clientY);
+  },
+  { passive: false },
+);
 
 // 控制面板。游戏 1 天是现实 24 分钟；快放时 1 秒走 1 小时。
 const panel = document.getElementById('controls');
@@ -342,7 +415,15 @@ window.sceneStats = {
   sprites: scene.count.sprites + (second?.count.sprites ?? 0),
   atlas: [atlas.width, atlas.height],
 };
-window.trafficStats = () => (vehicles ? { cars: vehicles.count(), wanted: vehicles.wanted(), stopped: vehicles.stopped(), signals: vehicles.signals } : null);
+window.trafficStats = () =>
+  vehicles
+    ? {
+        cars: vehicles.count(),
+        wanted: vehicles.wanted(),
+        stopped: vehicles.stopped(),
+        signals: vehicles.signals,
+      }
+    : null;
 
 window.setHour = setTime;
 
@@ -363,7 +444,12 @@ window.measureFps = (seconds, cycleDay) =>
       else {
         const sorted = deltas.slice(5).sort((a, b) => a - b);
         const at = (q) => sorted[Math.floor(sorted.length * q)];
-        resolve({ frames: sorted.length, p50fps: 1000 / at(0.5), p95fps: 1000 / at(0.95), worstFps: 1000 / sorted[sorted.length - 1] });
+        resolve({
+          frames: sorted.length,
+          p50fps: 1000 / at(0.5),
+          p95fps: 1000 / at(0.95),
+          worstFps: 1000 / sorted[sorted.length - 1],
+        });
       }
     };
     requestAnimationFrame(pan);

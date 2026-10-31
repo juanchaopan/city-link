@@ -1,4 +1,12 @@
-import { Container, Graphics, ImageSource, Particle, ParticleContainer, Rectangle, Texture } from 'pixi.js';
+import {
+  Container,
+  Graphics,
+  ImageSource,
+  Particle,
+  ParticleContainer,
+  Rectangle,
+  Texture,
+} from 'pixi.js';
 import { sortByDepth } from './sim/order.js';
 
 // 把图集和城市数据拼成 Pixi 场景。
@@ -56,7 +64,10 @@ export async function loadAtlas(id, festival) {
   });
   const textures = {};
   for (const [key, frame] of Object.entries(merged)) {
-    textures[key] = new Texture({ source, frame: new Rectangle(frame.x, frame.y, frame.w, frame.h) });
+    textures[key] = new Texture({
+      source,
+      frame: new Rectangle(frame.x, frame.y, frame.w, frame.h),
+    });
   }
   return { source, frames: merged, textures, width: canvas.width, height: canvas.height };
 }
@@ -75,7 +86,13 @@ function particleFor(atlas, key, sx, sy) {
 function batchContainer(atlas, particles, dynamicColor, area) {
   const container = new ParticleContainer({
     texture: particles[0].texture,
-    dynamicProperties: { position: false, rotation: false, uvs: false, vertex: false, color: dynamicColor },
+    dynamicProperties: {
+      position: false,
+      rotation: false,
+      uvs: false,
+      vertex: false,
+      color: dynamicColor,
+    },
   });
   for (const particle of particles) container.addParticle(particle);
   container.boundsArea = area;
@@ -90,7 +107,13 @@ function byChunk(entries) {
     chunks.get(key).push(entry);
   }
   return [...chunks.entries()]
-    .map(([key, list]) => ({ order: key.split(',').map(Number).reduce((a, b) => a + b, 0), list }))
+    .map(([key, list]) => ({
+      order: key
+        .split(',')
+        .map(Number)
+        .reduce((a, b) => a + b, 0),
+      list,
+    }))
     .sort((a, b) => a.order - b.order);
 }
 
@@ -115,7 +138,10 @@ function underlay(city, palette) {
   const colorOf = new Map();
   for (const entry of ground) {
     if (entry.key.startsWith('sk')) continue;
-    colorOf.set(entry.y * N + entry.x, entry.key.startsWith('w-') ? palette.water.deep : palette.ground.grass0);
+    colorOf.set(
+      entry.y * N + entry.x,
+      entry.key.startsWith('w-') ? palette.water.deep : palette.ground.grass0,
+    );
   }
   for (let y = 0; y < N; y += 1) {
     let start = 0;
@@ -125,7 +151,9 @@ function underlay(city, palette) {
       const b = screenOf(x, y, 0);
       const c = screenOf(x, y + 1, 0);
       const d = screenOf(start, y + 1, 0);
-      g.poly([a.sx, a.sy - 2, b.sx + 3, b.sy, c.sx, c.sy + 2, d.sx - 3, d.sy]).fill(colorOf.get(y * N + start));
+      g.poly([a.sx, a.sy - 2, b.sx + 3, b.sy, c.sx, c.sy + 2, d.sx - 3, d.sy]).fill(
+        colorOf.get(y * N + start),
+      );
       start = x;
     }
   }
@@ -137,7 +165,11 @@ function underlay(city, palette) {
  * bare 为真时不垫底，露底检查用它看精灵本身有没有缝。
  * stress 大于 1 时每个物业多画几遍，用来量全城都走模块拼装时的开销。
  */
-export function buildWorld(atlas, city, { layers, festival, dynamicTint, palette, bare = false, stress = 1 }) {
+export function buildWorld(
+  atlas,
+  city,
+  { layers, festival, dynamicTint, palette, bare = false, stress = 1 },
+) {
   const { N } = city;
   const area = new Rectangle(-N * 80, -400, N * 160, N * 80 + 800);
   const groundLayer = new Container();
@@ -192,7 +224,11 @@ export function buildWorld(atlas, city, { layers, festival, dynamicTint, palette
     for (const object of sorted) {
       const parts = object.modules ?? [{ key: object.key, lift: 0, dx: 0, dy: 0 }];
       for (const { key, lift, dx, dy } of parts) {
-        const { sx, sy } = screenOf(object.px + dx, object.py + dy, object.level + lift * MODULE_FLOOR_LEVELS);
+        const { sx, sy } = screenOf(
+          object.px + dx,
+          object.py + dy,
+          object.level + lift * MODULE_FLOOR_LEVELS,
+        );
         addSprite(key, sx, sy);
       }
       if (stress > 1 && object.parcel !== undefined && !object.modules) {
@@ -241,7 +277,8 @@ function lerpColor(a, b, t) {
 
 /** 两个颜色相乘，和 tint 作用在精灵上的效果一样，背景和地面才会一起变暗。 */
 export function multiplyColor(a, b) {
-  const channel = (shift) => Math.round((((a >> shift) & 255) * ((b >> shift) & 255)) / 255) << shift;
+  const channel = (shift) =>
+    Math.round((((a >> shift) & 255) * ((b >> shift) & 255)) / 255) << shift;
   return channel(16) | channel(8) | channel(0);
 }
 

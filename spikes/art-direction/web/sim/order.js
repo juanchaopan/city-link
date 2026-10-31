@@ -118,7 +118,9 @@ export function sortByDepth(rawItems) {
     while (low < high) {
       const middle = (low + high) >> 1;
       const other = ready[middle];
-      const later = items[other].depth > items[index].depth || (items[other].depth === items[index].depth && other > index);
+      const later =
+        items[other].depth > items[index].depth ||
+        (items[other].depth === items[index].depth && other > index);
       if (later) high = middle;
       else low = middle + 1;
     }

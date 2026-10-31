@@ -1,4 +1,12 @@
-import { connectRamps, ELEVATED, footprintCells, LANE, rampLinks, template, templateObject } from './interchange.js';
+import {
+  connectRamps,
+  ELEVATED,
+  footprintCells,
+  LANE,
+  rampLinks,
+  template,
+  templateObject,
+} from './interchange.js';
 import { footprintKey, specKey, traceRoads } from './city.js';
 import { generateParcels, ZONE } from './parcels.js';
 import { roadSprites } from './roadsprites.js';
@@ -25,7 +33,8 @@ function expressLanes(x, y0, y1, heightAt) {
   const line = (offset, from, to) => {
     const points = [];
     const step = from < to ? 1 : -1;
-    for (let y = from; step > 0 ? y <= to : y >= to; y += step) points.push([x + 0.5 + offset, y + 0.5, heightAt(y + 0.5)]);
+    for (let y = from; step > 0 ? y <= to : y >= to; y += step)
+      points.push([x + 0.5 + offset, y + 0.5, heightAt(y + 0.5)]);
     return points;
   };
   return {
@@ -36,15 +45,39 @@ function expressLanes(x, y0, y1, heightAt) {
 
 export function generateRoadDemo(seed = 11) {
   const { roads, walk } = traceRoads(N);
-  walk('highway', [[0, HIGHWAY_ROW], [N - 1, HIGHWAY_ROW]]);
-  walk('arterial', [[0, ARTERIAL_ROW], [40, ARTERIAL_ROW]]);
-  walk('road', [[40, ARTERIAL_ROW], [N - 1, ARTERIAL_ROW]]);
-  for (const y of STREET_ROWS) walk('road', [[20, y], [N - 1, y]]);
-  for (const x of STREET_COLUMNS) walk('road', [[x, STREET_ROWS[0]], [x, STREET_ROWS[1]]]);
+  walk('highway', [
+    [0, HIGHWAY_ROW],
+    [N - 1, HIGHWAY_ROW],
+  ]);
+  walk('arterial', [
+    [0, ARTERIAL_ROW],
+    [40, ARTERIAL_ROW],
+  ]);
+  walk('road', [
+    [40, ARTERIAL_ROW],
+    [N - 1, ARTERIAL_ROW],
+  ]);
+  for (const y of STREET_ROWS)
+    walk('road', [
+      [20, y],
+      [N - 1, y],
+    ]);
+  for (const x of STREET_COLUMNS)
+    walk('road', [
+      [x, STREET_ROWS[0]],
+      [x, STREET_ROWS[1]],
+    ]);
   for (const cx of [EXPRESS_A, EXPRESS_B]) {
-    for (const stub of template('diamond').stubs) walk('arterial', [[cx + stub, ARTERIAL_ROW - 2], [cx + stub, ARTERIAL_ROW + 2]]);
+    for (const stub of template('diamond').stubs)
+      walk('arterial', [
+        [cx + stub, ARTERIAL_ROW - 2],
+        [cx + stub, ARTERIAL_ROW + 2],
+      ]);
   }
-  walk('highway', [[EXPRESS_B, GROUND_ROW], [EXPRESS_B, N - 1]]);
+  walk('highway', [
+    [EXPRESS_B, GROUND_ROW],
+    [EXPRESS_B, N - 1],
+  ]);
 
   const placed = [
     ['cloverleaf', EXPRESS_A, HIGHWAY_ROW],
@@ -56,10 +89,11 @@ export function generateRoadDemo(seed = 11) {
   for (const [name, cx, cy] of placed) {
     for (const [x, y] of footprintCells(name, cx, cy, N)) reserved.add(y * N + x);
   }
-  const covered = (x, y) => placed.some(([name, cx, cy]) => {
-    const [x0, z0, x1, z1] = template(name).footprint;
-    return x >= cx + x0 && x <= cx + x1 && y >= cy + z0 && y <= cy + z1;
-  });
+  const covered = (x, y) =>
+    placed.some(([name, cx, cy]) => {
+      const [x0, z0, x1, z1] = template(name).footprint;
+      return x >= cx + x0 && x <= cx + x1 && y >= cy + z0 && y <= cy + z1;
+    });
 
   const descent = (y) => {
     if (y <= DESCENT_START) return ELEVATED;
@@ -81,7 +115,8 @@ export function generateRoadDemo(seed = 11) {
   const mainA = expressLanes(EXPRESS_A, 0, N - 1, () => ELEVATED);
   const mainB = expressLanes(EXPRESS_B, HIGHWAY_ROW + 1, N - 1, descent);
   lanes.push(mainA.south, mainA.north, mainB.south, mainB.north);
-  for (const [name, cx, cy] of placed) connectRamps({ name, cx, cy, N, main: cx === EXPRESS_A ? mainA : mainB, lanes });
+  for (const [name, cx, cy] of placed)
+    connectRamps({ name, cx, cy, N, main: cx === EXPRESS_A ? mainA : mainB, lanes });
   for (const lane of lanes) lane.exits.sort((a, b) => a.at - b.at);
   const links = rampLinks(lanes);
 
@@ -95,9 +130,25 @@ export function generateRoadDemo(seed = 11) {
     }
   }
   const flat = () => [0, 0, 0, 0];
-  const result = generateParcels({ N, roads, water: new Set(), slopes: new Set(), zones, density, seed, reserved });
+  const result = generateParcels({
+    N,
+    roads,
+    water: new Set(),
+    slopes: new Set(),
+    zones,
+    density,
+    seed,
+    reserved,
+  });
   const traffic = computeTraffic(result.parcels, roads, N, links);
-  const sprites = roadSprites({ N, roads, cornersOf: flat, isFlat: () => true, levelOf: () => 0, isWater: () => false });
+  const sprites = roadSprites({
+    N,
+    roads,
+    cornersOf: flat,
+    isFlat: () => true,
+    levelOf: () => 0,
+    isWater: () => false,
+  });
 
   const ground = [];
   for (let y = 0; y < N; y += 1) {
@@ -108,13 +159,33 @@ export function generateRoadDemo(seed = 11) {
     }
   }
   const objects = placed.map(([name, cx, cy]) => templateObject(name, cx, cy));
-  const square = (x, y) => [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]];
+  const square = (x, y) => [
+    [x, y],
+    [x + 1, y],
+    [x + 1, y + 1],
+    [x, y + 1],
+  ];
   for (const { x, y, h0, h1 } of viaducts) {
-    objects.push({ key: `ev-z-${String(Math.round(h0 * 100))}-${String(Math.round(h1 * 100))}`, px: x + 0.5, py: y + 0.5, level: 0, footprint: square(x, y) });
+    objects.push({
+      key: `ev-z-${String(Math.round(h0 * 100))}-${String(Math.round(h1 * 100))}`,
+      px: x + 0.5,
+      py: y + 0.5,
+      level: 0,
+      footprint: square(x, y),
+    });
   }
   for (const parcel of result.parcels) {
     if (parcel.shape === 'field') continue;
-    objects.push({ key: specKey(parcel), px: parcel.px, py: parcel.py, level: 0, footprint: parcel.polygon, footprintKey: footprintKey(parcel), parcel: parcel.id, festive: false });
+    objects.push({
+      key: specKey(parcel),
+      px: parcel.px,
+      py: parcel.py,
+      level: 0,
+      footprint: parcel.polygon,
+      footprintKey: footprintKey(parcel),
+      parcel: parcel.id,
+      festive: false,
+    });
   }
   return {
     N,
