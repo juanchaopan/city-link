@@ -110,25 +110,33 @@ export function buildViaduct(axis, h0, h1, P) {
   return { build, extra: () => [deckMesh(points, 'express', P, 3.6)] };
 }
 
-/** 整个立交：高架主线、全部匝道和桥墩。 */
+/** 梁和桥墩，没有路面，所以不用显卡，不开浏览器的预览也能用。 */
+export function interchangeFrame(name, P) {
+  const shape = template(name);
+  const main = shape.mainline.map(([x, z]) => [x, z, ELEVATED]);
+  const b = new Builder(hashString(`interchange${name}`));
+  if (main.length > 0) {
+    beam(b, main, ROAD_SPEC.express.walk / 2, P);
+    piersAlong(b, main, 0.8, P);
+  }
+  for (const { points } of shape.ramps()) {
+    beam(b, points, ROAD_SPEC.ramp.walk / 2, P);
+    piersAlong(b, points, 0.34, P, 1.6);
+  }
+  return b;
+}
+
+/** 整个立交：高架主线、全部匝道和桥墩。丁字形没有主线，只有匝道。 */
 export function buildInterchange(name, P) {
   const shape = template(name);
   const main = shape.mainline.map(([x, z]) => [x, z, ELEVATED]);
-  const ramps = shape.ramps();
   const [x0, z0, x1, z1] = shape.footprint;
   const span = Math.max(x1 - x0, z1 - z0) + 6;
-  const build = () => {
-    const b = new Builder(hashString(`interchange${name}`));
-    beam(b, main, ROAD_SPEC.express.walk / 2, P);
-    piersAlong(b, main, 0.8, P);
-    for (const { points } of ramps) {
-      beam(b, points, ROAD_SPEC.ramp.walk / 2, P);
-      piersAlong(b, points, 0.34, P, 1.6);
-    }
-    return b;
+  const extra = () => {
+    const ramps = shape.ramps().map(({ points }) => deckMesh(points, 'ramp', P, span));
+    return main.length > 0 ? [deckMesh(main, 'express', P, span), ...ramps] : ramps;
   };
-  const extra = () => [deckMesh(main, 'express', P, span), ...ramps.map(({ points }) => deckMesh(points, 'ramp', P, span))];
-  return { build, extra };
+  return { build: () => interchangeFrame(name, P), extra };
 }
 
 /** 车头灯照在路面上的光斑，画在发光层上，夜里才显示。rotation 和车身的朝向一样。 */

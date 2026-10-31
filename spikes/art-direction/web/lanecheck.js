@@ -2,6 +2,7 @@ import { Baker } from './kit/bake.js';
 import { bakeKey } from './kit/catalog.js';
 import { palettes } from './kit/palettes.js';
 import { MASK, placer } from './roadscene.js';
+import { generateCity } from './sim/city.js';
 import { generateRoadDemo } from './sim/roaddemo.js';
 import { template, templateFootprint, templateNames } from './sim/interchange.js';
 import { ROAD_SPEC } from './sim/network.js';
@@ -10,9 +11,12 @@ import { ROAD_SPEC } from './sim/network.js';
 // 车要走的每条 lane，中线和车道两侧都必须落在车道像素上；高架下面的地面路也要连续，说明下方可以通路。
 // 被更高的路面盖住的地方读出来还是车道，被桥墩挡住的地方是灰色，这两种都不算断。
 // 匝道并入主线的一段路肩会压在匝道上，两端各留两格不查路肩；地面路被高架的路肩盖住也属于遮挡。
+// 样张放着三种快速路立交，丁字形立交在普通城市里，查的是真实城市路网上的那一个。
 
 const END_ZONE = 2;
 const EDGE_MARGIN = 0.07;
+const TOWN_SIZE = 64;
+const TOWN_MARGIN = 10;
 
 const baker = new Baker();
 const cache = new Map();
@@ -29,21 +33,21 @@ function spriteOf(key, palette) {
   return cache.get(id);
 }
 
-function compose(city, palette, withGround) {
+function compose(city, palette, withGround, within = () => true) {
   const place = placer(city.N);
   const canvas = new OffscreenCanvas(place.width, place.height);
   const context = canvas.getContext('2d', { willReadFrequently: true });
-  const stamp = (key, px, py) => {
+  const stamp = (key, px, py, level) => {
     const sprite = spriteOf(key, palette);
-    const [sx, sy] = place.at(px, py, 0);
+    const [sx, sy] = place.at(px, py, level);
     context.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - sprite.ay));
   };
-  if (withGround) for (const { key, x, y } of city.ground) stamp(key, x + 0.5, y + 0.5);
+  if (withGround) for (const { key, x, y, level } of city.ground) stamp(key, x + 0.5, y + 0.5, level);
   for (const list of [city.walks, city.curbs, city.decks]) {
-    for (const { key, x, y } of list) stamp(key, x + 0.5, y + 0.5);
+    for (const { key, x, y, level } of list) if (within(x, y)) stamp(key, x + 0.5, y + 0.5, level);
   }
   const lifted = city.objects.filter(({ key }) => withGround || key.startsWith('ix-') || key.startsWith('ev-'));
-  for (const { key, px, py } of [...lifted].sort((a, b) => a.px + a.py - b.px - b.py)) stamp(key, px, py);
+  for (const { key, px, py, level } of [...lifted].sort((a, b) => a.px + a.py - b.px - b.py)) stamp(key, px, py, level);
   return { canvas, context, place };
 }
 
@@ -94,27 +98,41 @@ function inspectLane(lane, read, place, offsets, sideCounts) {
   return result;
 }
 
+/** 一张遮罩图上的查询：读像素的函数和坐标换算。 */
+function sceneOf(composed) {
+  const { canvas, context, place } = composed;
+  const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+  return { read: (x, y) => pixelClass(data, canvas.width, x, y), place };
+}
+
 window.runLaneChecks = () => {
   const city = generateRoadDemo();
-  const { canvas, context, place } = compose(city, MASK, false);
-  const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-  const read = (x, y) => pixelClass(data, canvas.width, x, y);
+  const demo = sceneOf(compose(city, MASK, false));
   const rows = [];
-  const total = (name, lanes, sideCounts = true) => {
+  const total = (name, lanes, scene, sideCounts = true) => {
     const sum = { samples: 0, holes: 0, side: 0 };
     const examples = [];
     for (const lane of lanes) {
       const half = ROAD_SPEC[lane.kind].deck / 2 - EDGE_MARGIN;
-      const result = inspectLane(lane, read, place, lane.kind === 'ramp' ? [0, -half, half] : [0], sideCounts);
+      const result = inspectLane(lane, scene.read, scene.place, lane.kind === 'ramp' ? [0, -half, half] : [0], sideCounts);
       for (const key of Object.keys(sum)) sum[key] += result[key];
       examples.push(...result.examples);
     }
     rows.push({ name, lanes: lanes.length, ...sum, pass: sum.holes === 0 && sum.side === 0, examples: examples.slice(0, 6) });
   };
-  total('快速路主线', city.lanes.filter((lane) => lane.kind === 'express'));
-  for (const name of templateNames()) total(`立交·${name}`, city.lanes.filter((lane) => lane.id.startsWith(name)));
+  total('快速路主线', city.lanes.filter((lane) => lane.kind === 'express'), demo);
+  for (const name of templateNames()) {
+    const lanes = city.lanes.filter((lane) => lane.id.startsWith(name));
+    if (lanes.length > 0) total(`立交·${name}`, lanes, demo);
+  }
   const under = [[[26, 19.5, 0], [34, 19.5, 0]], [[10, 28.5, 0], [18, 28.5, 0]], [[26, 38.5, 0], [34, 38.5, 0]]];
-  total('高架下方的地面路', under.map((points) => ({ kind: 'road', points })), false);
+  total('高架下方的地面路', under.map((points) => ({ kind: 'road', points })), demo, false);
+
+  const town = generateCity(TOWN_SIZE);
+  const { cx, cy } = town.plan.interchange;
+  const near = (x, y) => Math.abs(x - cx) <= TOWN_MARGIN && Math.abs(y - cy) <= TOWN_MARGIN;
+  total(`普通城市·${town.plan.interchange.name}`, town.lanes, sceneOf(compose(town, MASK, false, near)));
+
   const footprints = templateNames().map((name) => ({ name, ...templateFootprint(name), bbox: template(name).footprint }));
   return { rows, footprints };
 };

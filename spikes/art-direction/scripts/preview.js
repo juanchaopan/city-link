@@ -1,20 +1,29 @@
 // 不开浏览器的几何预览：用软件光栅把程序建模的三角形按 2:1 等距画出来，内存紧张、开不了烘焙时看形体用。
-// 没有投影、抗锯齿和路面着色器，颜色也不等于成品，只用来判断楼的形状和占地。真实效果以 shots.js 的截图为准。
+// 没有投影、抗锯齿和路面着色器，地面没有起伏，颜色也不等于成品，只用来判断形体和占地。真实效果以 shots.js 的截图为准。
 // node scripts/preview.js lots          out/r7-lots-preview.png：大三角物业的各种规格
 // node scripts/preview.js modules       out/r7-modules-preview.png：Q3 的模块拼装
+// node scripts/preview.js tee           out/r7-tee-preview.png：普通城市里的丁字立交
+// node scripts/preview.js center        out/r7-center-preview.png：市中心，斜路两边的大三角
 import { writeFileSync } from 'node:fs';
+import { LEVEL } from '../web/kit/bake.js';
+import { Builder, linear } from '../web/kit/builder.js';
+import { interchangeFrame } from '../web/kit/interchange.js';
 import { buildModule } from '../web/kit/modules.js';
 import { buildObject } from '../web/kit/objects.js';
 import { palettes } from '../web/kit/palettes.js';
+import { generateCity } from '../web/sim/city.js';
 import { COMBOS, modulesOf } from '../web/sim/combos.js';
+import { ROAD_SPEC, worldPolylines } from '../web/sim/network.js';
 import { createCanvas } from './raster.js';
 
 const P = palettes.sunny;
+const N = 64;
 const SCALE = 128 / Math.SQRT2;
 const ELEVATION = Math.PI / 6;
 const LIFT = 16;
 const SKY = [143, 192, 112];
 const SUN = [0.5, 0.75, 0.42];
+const ROAD_COLOR = { road: '#8b909a', arterial: '#6f747e', highway: '#4f545e', express: '#4f545e', ramp: '#4a4f58' };
 
 const gamma = (value) => Math.round(255 * Math.min(1, Math.max(0, value)) ** (1 / 2.2));
 
@@ -46,10 +55,13 @@ function surface(width, height) {
   return { canvas, draw };
 }
 
-function stamp({ draw }, builder, ox, oy) {
+/** 把一个物体按世界位置 [x, y, z] 画上去。ox、oy 是世界原点在画布上的像素位置。 */
+function stamp({ draw }, builder, ox, oy, [wx, wy, wz] = [0, 0, 0]) {
   const { positions, colors } = builder;
   const view = (i) => {
-    const [x, y, z] = [positions[i], positions[i + 1], positions[i + 2]];
+    const x = positions[i] + wx;
+    const y = positions[i + 1] + wy;
+    const z = positions[i + 2] + wz;
     return [ox + (x - z) * 64, oy + (x + z) * 32 - y * SCALE * Math.cos(ELEVATION), (x + z) * 0.61 + y * 0.5];
   };
   for (let i = 0; i < positions.length; i += 9) {
@@ -106,6 +118,58 @@ function modules() {
   return { path: 'out/r7-modules-preview.png', canvas: sheet.canvas };
 }
 
-const { path, canvas } = (process.argv[2] === 'modules' ? modules : lots)();
+/** 一条折线的路面，每段一个四边形。点是 [x, y, h]，h 是层数。 */
+function ribbon(b, points, half, color) {
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const [ax, az, ah = 0] = points[i];
+    const [cx, cz, ch = 0] = points[i + 1];
+    const length = Math.hypot(cx - ax, cz - az) || 1;
+    const nx = (-(cz - az) / length) * half;
+    const nz = ((cx - ax) / length) * half;
+    const lift = 0.004 + ah * LEVEL;
+    const next = 0.004 + ch * LEVEL;
+    b.poly([[ax + nx, lift, az + nz], [cx + nx, next, cz + nz], [cx - nx, next, cz - nz], [ax - nx, lift, az - nz]], color);
+  }
+}
+
+function cityView(name, [fx, fy], width, height) {
+  const city = generateCity(N);
+  const sheet = surface(width, height);
+  const ox = width / 2 - (fx - fy) * 64;
+  const oy = height / 2 - (fx + fy) * 32;
+  const inView = (px, py) => Math.abs((px - py - (fx - fy)) * 64) < width / 2 + 300 && Math.abs((px + py - (fx + fy)) * 32) < height / 2 + 300;
+
+  const roads = new Builder(1);
+  for (const { points, half, kind, cell } of worldPolylines(city.roads, N)) {
+    if (inView(cell % N, Math.floor(cell / N))) ribbon(roads, points, half, linear(ROAD_COLOR[kind]));
+  }
+  stamp(sheet, roads, ox, oy);
+
+  for (const { key, px, py, level, modules: parts } of city.objects) {
+    if (!inView(px, py) || /^(ix|ev|br|gate|boat|dock)/.test(key)) continue;
+    for (const part of parts ?? []) {
+      const lift = level * LEVEL + (part.lift * LEVEL) / 2;
+      stamp(sheet, buildModule(part.key, P), ox, oy, [px + part.dx, lift, py + part.dy]);
+    }
+    if (!parts) stamp(sheet, buildObject(key, P), ox, oy, [px, level * LEVEL, py]);
+  }
+
+  const { interchange } = city.plan;
+  if (interchange) {
+    const decks = new Builder(2);
+    for (const { points } of city.lanes) ribbon(decks, points, ROAD_SPEC.ramp.deck / 2, linear(ROAD_COLOR.ramp));
+    stamp(sheet, decks, ox, oy);
+    stamp(sheet, interchangeFrame(interchange.name, P), ox, oy, [interchange.cx + 0.5, 0, interchange.cy + 0.5]);
+  }
+  return { path: `out/r7-${name}-preview.png`, canvas: sheet.canvas };
+}
+
+const MODES = {
+  lots,
+  modules,
+  tee: () => cityView('tee', [33, 8], 2200, 1300),
+  center: () => cityView('center', [31, 30], 2000, 2400),
+};
+const { path, canvas } = MODES[process.argv[2] ?? 'lots']();
 writeFileSync(path, canvas.png());
 console.log(path);

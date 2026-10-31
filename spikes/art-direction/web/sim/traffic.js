@@ -4,14 +4,26 @@ import { ZONE } from './zones.js';
 // 道路负担。每个地块的出入口接到一个路段，流量只算到路段，不模拟单辆车。
 // 住宅是出行的起点，商业和工业是终点：起点的出行量按终点容量除以距离平方分配，沿最短路累加到每个路段。
 
-const CAPACITY = { road: 900, arterial: 1800, express: 3000, highway: 3600 };
-const SPEED = { road: 1, arterial: 0.8, express: 0.6, highway: 0.5 };
+const CAPACITY = { road: 900, arterial: 1800, express: 3000, highway: 3600, ramp: 1500 };
+const SPEED = { road: 1, arterial: 0.8, express: 0.6, highway: 0.5, ramp: 0.8 };
 
-export function buildGraph(roads, N) {
+/**
+ * 路网图。节点是有路的格子，边是相邻格之间的路段。links 是立交匝道，
+ * 一条匝道是一条边，两端的格子不相邻，所以高速和城市路网只有带上匝道才是连通的。
+ */
+export function buildGraph(roads, N, links = []) {
   const nodes = [...roads.keys()].sort((a, b) => a - b);
   const index = new Map(nodes.map((id, i) => [id, i]));
   const edges = [];
   const adjacency = nodes.map(() => []);
+  const addEdge = (edge) => {
+    const i = index.get(edge.from);
+    const j = index.get(edge.to);
+    const number = edges.length;
+    edges.push(edge);
+    adjacency[i].push({ to: j, edge: number });
+    adjacency[j].push({ to: i, edge: number });
+  };
   nodes.forEach((id, i) => {
     const { road, highway, arterial = 0 } = roads.get(id);
     const x = id % N;
@@ -19,20 +31,40 @@ export function buildGraph(roads, N) {
     for (const dir of spokesOf(road | highway)) {
       const [dx, dy] = DIRECTIONS[dir];
       const other = (y + dy) * N + x + dx;
-      if (!index.has(other)) continue;
-      const j = index.get(other);
-      if (j < i) continue;
+      if (!index.has(other) || index.get(other) < i) continue;
       const bit = 1 << dir;
       const kind = highway & bit ? 'highway' : arterial & bit ? 'arterial' : 'road';
       const length = Math.hypot(dx, dy);
-      const edge = { from: id, to: other, dir, kind, length, load: 0, cost: length * SPEED[kind] };
-      const number = edges.length;
-      edges.push(edge);
-      adjacency[i].push({ to: j, edge: number });
-      adjacency[j].push({ to: i, edge: number });
+      addEdge({ from: id, to: other, dir, kind, length, load: 0, cost: length * SPEED[kind] });
     }
   });
+  for (const { from, to, length } of links) addEdge({ from, to, kind: 'ramp', length, load: 0, cost: length * SPEED.ramp });
   return { nodes, index, edges, adjacency };
+}
+
+/** 路网分成几块互不相通的部分，返回每个节点所在的块和各块的大小。 */
+export function componentsOf(graph) {
+  const component = new Int32Array(graph.nodes.length).fill(-1);
+  const sizes = [];
+  graph.nodes.forEach((_, start) => {
+    if (component[start] >= 0) return;
+    const label = sizes.length;
+    const stack = [start];
+    component[start] = label;
+    let size = 0;
+    while (stack.length > 0) {
+      const node = stack.pop();
+      size += 1;
+      for (const { to } of graph.adjacency[node]) {
+        if (component[to] < 0) {
+          component[to] = label;
+          stack.push(to);
+        }
+      }
+    }
+    sizes.push(size);
+  });
+  return { component, sizes };
 }
 
 /** 从一个或多个起点出发的最短路。byLength 为真时按路程算，否则按行程时间算。 */
@@ -92,8 +124,8 @@ export function shortestPaths(graph, sources, byLength = false) {
   return { distance, through, previous };
 }
 
-export function computeTraffic(parcels, roads, N) {
-  const graph = buildGraph(roads, N);
+export function computeTraffic(parcels, roads, N, links = []) {
+  const graph = buildGraph(roads, N, links);
   const sources = new Map();
   const sinks = new Map();
   let unreachable = 0;

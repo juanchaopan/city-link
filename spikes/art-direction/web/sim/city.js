@@ -1,5 +1,6 @@
 import { chooseLooks, repeatedNeighbors } from './appearance.js';
 import { COMBOS, modulesOf } from './combos.js';
+import { connectRamps, footprintCells, rampLinks, templateObject } from './interchange.js';
 import { DIRECTIONS } from './network.js';
 import { metroPlan } from './metro.js';
 import { generateParcels, ZONE } from './parcels.js';
@@ -130,7 +131,11 @@ export function traceRoads(N) {
   return { roads, walk };
 }
 
-/** 街区宽度 3、4、5 交替。行线取列线的镜像，斜大道就正好穿过每个街区的两个角，切出整块的大三角。 */
+/**
+ * 街区宽度 3、4、5 交替。行线取列线的镜像，斜大道就正好穿过每个街区的两个角，切出整块的大三角。
+ * 大地图上高速离城区留出丁字立交的进深，南北向的四车道主干伸到立交，路网从这里上高速。
+ * 小地图放不下立交，高速只从城边经过。
+ */
 export function buildRoads(N, s, center, riverAt) {
   const { roads, walk } = traceRoads(N);
 
@@ -147,10 +152,11 @@ export function buildRoads(N, s, center, riverAt) {
   const right = columns[columns.length - 1];
   const bridgeColumn = columns.reduce((best, x) => (Math.abs(x - center) < Math.abs(best - center) ? x : best), columns[0]);
   const mainRow = usableRows[Math.floor(usableRows.length / 2)];
+  const linked = N > 32;
 
   for (const x of columns) if (x !== bridgeColumn) walk('road', [[x, top], [x, south]]);
   for (const y of usableRows) if (y !== mainRow) walk('road', [[left, y], [right, y]]);
-  walk('arterial', [[bridgeColumn, top], [bridgeColumn, south]]);
+  walk('arterial', [[bridgeColumn, linked ? top - 1 : top], [bridgeColumn, south]]);
   walk('arterial', [[left, mainRow], [right, mainRow]]);
 
   const mirrored = columns.map((x) => top + (right - x));
@@ -162,7 +168,7 @@ export function buildRoads(N, s, center, riverAt) {
   const avenueLength = Math.min(right - avenueStart, south - top);
   walk('road', [[avenueStart, top], [avenueStart + avenueLength, top + avenueLength]]);
 
-  const ringRow = top - 2;
+  const ringRow = linked ? top - 5 : top - 2;
   const ringColumn = left - 2;
   walk('highway', [[N - 1, ringRow], [ringColumn + 2, ringRow], [ringColumn, ringRow + 2], [ringColumn, N - 1]]);
   walk('road', [[bridgeColumn, south], [bridgeColumn, N - 1]]);
@@ -180,7 +186,8 @@ export function buildRoads(N, s, center, riverAt) {
     { x: ringColumn, y: N - 1, kind: 'highway', inward: 6, axis: 'z' },
     { x: bridgeColumn, y: N - 1, kind: 'road', inward: 6, axis: 'z' },
   ];
-  return { roads, columns, rows: usableRows, top, left, right, south, ringRow, ringColumn, climbFrom, climbTo, gates };
+  const interchange = linked ? { name: 'tee', cx: bridgeColumn, cy: ringRow } : null;
+  return { roads, columns, rows: usableRows, top, left, right, south, ringRow, ringColumn, climbFrom, climbTo, gates, interchange };
 }
 
 /** 公共用地的街区。spread 时分散在城市各处，concentrated 时全挤在一个角上，用来对比盲区。 */
@@ -294,11 +301,13 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   const center = Math.round(N / 2);
   const riverAt = (x) => Math.round(center + 9 * s + 2 * s * Math.sin((x / N) * Math.PI * 2 + 0.7));
   const plan = buildRoads(N, s, center, riverAt);
-  const { roads, right, south, ringRow, ringColumn } = plan;
+  const { roads, right, south, ringRow, ringColumn, interchange } = plan;
+  const interchangeCells = interchange ? footprintCells(interchange.name, interchange.cx, interchange.cy, N) : [];
   const { h, water, corner } = terrain(N, s, riverAt, (flatten) => {
     for (let y = ringRow - 1; y <= south + 1; y += 1) {
       for (let x = ringColumn - 1; x <= right + 1; x += 1) flatten(x, y, 0);
     }
+    for (const [x, y] of interchangeCells) flatten(x, y, 0);
   });
 
   const cornersOf = (x, y) => [h[corner(x, y)], h[corner(x + 1, y)], h[corner(x + 1, y + 1)], h[corner(x, y + 1)]];
@@ -310,10 +319,15 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   for (let y = 0; y < N; y += 1) {
     for (let x = 0; x < N; x += 1) if (!isFlat(x, y)) slopes.add(y * N + x);
   }
+  const reserved = new Set(interchangeCells.map(([x, y]) => y * N + x));
+  const lanes = [];
+  if (interchange) connectRamps({ ...interchange, N, lanes });
+  const links = rampLinks(lanes);
+
   const usable = (x, y) => x > 0 && y > 0 && x < N - 1 && y < N - 1 && !water.has(y * N + x) && isFlat(x, y);
   const { zones, density } = makeZones(N, s, center, riverAt, plan, usable, publicLayout);
-  const result = generateParcels({ N, roads, water, slopes, zones, density, seed });
-  const traffic = computeTraffic(result.parcels, roads, N);
+  const result = generateParcels({ N, roads, water, slopes, zones, density, seed, reserved });
+  const traffic = computeTraffic(result.parcels, roads, N, links);
   const coverage = coverageOf(result.parcels, result.services, roads, N);
 
   // 外观在规格之外单独选，同规格的相邻物业不重复；外观不影响面积、容量和结算。
@@ -353,6 +367,7 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   const sprites = roadSprites({ N, roads, cornersOf, isFlat, levelOf, isWater, gates: plan.gates, linked });
   for (const { key, x, y } of sprites.bridges) addObject(key, x + 0.5, y + 0.5, 0, cellSquare(x, y));
   for (const { key, x, y, level } of sprites.planned) addObject(key, x + 0.5, y + 0.5, level, cellSquare(x, y));
+  if (interchange) objects.push(templateObject(interchange.name, interchange.cx, interchange.cy));
 
   const crops = valueNoise(41);
   for (const parcel of result.parcels) {
@@ -376,7 +391,7 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   for (let y = 0; y < N; y += 1) {
     for (let x = 0; x < N; x += 1) {
       const id = y * N + x;
-      if (water.has(id) || roads.has(id)) continue;
+      if (water.has(id) || roads.has(id) || reserved.has(id)) continue;
       if ([0, 1, 2, 3].some((q) => result.atomOwner[id * 4 + q] >= 0)) continue;
       const level = levelOf(x, y);
       const flat = isFlat(x, y);
@@ -414,6 +429,9 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
     coverage,
     metro: metroPlan(plan),
     roads,
+    lanes,
+    links,
+    reserved,
     water,
     slopes,
     zones,

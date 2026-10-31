@@ -18,8 +18,8 @@ const views = [
   { name: 'r6-farm', query: `${base}&zoom=0.3&x=26&y=56` },
   { name: 'r6-cut', query: `${base}&zoom=0.62&x=57&y=38` },
   { name: 'r6-junction', query: `${base}&zoom=0.62&x=24&y=38` },
-  { name: 'r6-gate-planned', query: `${base}&zoom=0.5&x=62&y=10` },
-  { name: 'r6-gate-linked', query: `${base}&zoom=0.5&x=63&y=11&linked=1` },
+  { name: 'r6-gate-planned', query: `${base}&zoom=0.5&x=62&y=7` },
+  { name: 'r6-gate-linked', query: `${base}&zoom=0.5&x=63&y=8&linked=1` },
   { name: 'r6-gate-road-linked', query: `${base}&zoom=0.5&x=34&y=63&linked=1` },
   { name: 'r6-ui', query: `${base}&zoom=0.42&x=31&y=33&ui=1` },
   { name: 'r6-traffic', query: `${base}&view=traffic&zoom=0.095&x=31&y=30` },
@@ -37,6 +37,9 @@ const views = [
   { name: 'r6-ix-diamond', query: `${demo}&zoom=0.36&x=30&y=28` },
   { name: 'r6-ix-viaduct', query: `${demo}&zoom=0.5&x=30&y=19` },
   { name: 'r6-ix-taper', query: `${demo}&zoom=0.6&x=40&y=28` },
+  { name: 'r7-tee', query: `${base}&zoom=0.26&x=33&y=8` },
+  { name: 'r7-tee-cars', query: `${base}&zoom=0.42&x=34&y=9&cars=300` },
+  { name: 'r7-tee-night', query: `${base}&zoom=0.26&x=33&y=8&t=22&cars=300` },
 ].filter((view) => filter.length === 0 || filter.some((prefix) => view.name.startsWith(prefix)));
 
 mkdirSync('out', { recursive: true });
@@ -110,13 +113,13 @@ const COUNT_MAGENTA = `
   return { solid, tinted, inside };
 `;
 
-// 网格线：格子边上的像素比格子中间亮。只看纯草地的范围，沿格线取样和格子中心比较。
+// 网格线：格子边上的像素比格子中间亮。只看城西纯草地的范围，沿格线取样和格子中心比较。
 const GRID_CONTRAST = `
   let edge = 0, edgeCount = 0, middle = 0, middleCount = 0;
   for (let py = 0; py < height; py += 1) {
     for (let px = 0; px < width; px += 1) {
       const [gx, gy] = toGround(px, py);
-      if (gx < 2 || gy < 2 || gx > 62 || gy > 9) continue;
+      if (gx < 2 || gy < 12 || gx > 10 || gy > 40) continue;
       const fx = gx - Math.floor(gx);
       const fy = gy - Math.floor(gy);
       const near = Math.min(fx, 1 - fx, fy, 1 - fy);
@@ -175,6 +178,7 @@ if (process.env.SEAM) {
     { name: '满城模块拼装（每物业 3 张），全图', query: 'n=64&controls=0&zoom=0.078&cars=0&stress=3', cycle: false },
     { name: '满城模块拼装（每物业 3 张），游戏视角 300 辆', query: `${game}&cars=300&warm=300&stress=3`, cycle: false },
     { name: '立交场景，300 辆', query: 'scene=interchange&controls=0&zoom=0.2&x=22&y=20&cars=300&warm=300', cycle: false },
+    { name: '普通城市的丁字立交，300 辆', query: 'n=64&controls=0&zoom=0.26&x=33&y=8&cars=300&warm=300', cycle: false },
     { name: '单图集加亮窗层，连续变换时间', query: 'n=64&controls=0&zoom=0.3&x=31&y=30&t=20&cars=300', cycle: true },
     { name: '节日叠加层', query: 'n=64&controls=0&zoom=0.3&x=31&y=30&festival=1&cars=300', cycle: false },
   ];

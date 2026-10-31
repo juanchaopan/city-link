@@ -78,6 +78,21 @@ function rotationOf(hx, hy) {
   return ((Math.round(angle / (Math.PI / 4)) % 8) + 8) % 8;
 }
 
+/** 八个方向里最接近车尾朝向的一个，车从匝道下来进入路网时，就算是从这一边进的格子。 */
+function backwardDirection(hx, hy) {
+  let from = 0;
+  let best = -2;
+  DIRECTIONS.forEach((_, dir) => {
+    const [dx, dy] = unitDirection(dir);
+    const facing = -(dx * hx + dy * hy) / Math.hypot(hx, hy);
+    if (facing > best) {
+      best = facing;
+      from = dir;
+    }
+  });
+  return from;
+}
+
 function pool(atlas, count, area) {
   const key = 'car-0-0';
   const frame = atlas.frames[key];
@@ -293,6 +308,7 @@ export function createVehicles(atlas, city, scene, { cap }) {
 
   const refreshView = () => {
     visibleEdges = city.traffic.edges.filter((edge) => {
+      if (edge.kind === 'ramp') return false;
       const { sx, sy } = screenOf((edge.from % N) + 0.5, Math.floor(edge.from / N) + 0.5, 0);
       return sx > viewBox.left && sx < viewBox.right && sy > viewBox.top && sy < viewBox.bottom;
     });
@@ -317,18 +333,7 @@ export function createVehicles(atlas, city, scene, { cap }) {
       }
       if (lane.toCell !== undefined) {
         const end = pointAt(lane.path, lane.path.length);
-        const entry = roads.get(lane.toCell);
-        let from = -1;
-        let best = -2;
-        for (const dir of spokesOf(entry.road | entry.highway)) {
-          const [dx, dy] = unitDirection(dir);
-          const facing = -(dx * end.hx + dy * end.hy) / Math.hypot(end.hx, end.hy);
-          if (facing > best) {
-            best = facing;
-            from = dir;
-          }
-        }
-        return enterCell(car, lane.toCell, from);
+        return enterCell(car, lane.toCell, backwardDirection(end.hx, end.hy));
       }
       return false;
     }

@@ -1,5 +1,6 @@
-// 验收检查：地块生成器的确定性、面积和容量、地块不压路、街区划分、物业出入口、公共服务覆盖、地铁规则、
-// 交通守恒、遮挡顺序、风格包回退，以及四级道路样张。这些都是纯计算，不需要显卡，用 node 直接运行。
+// 验收检查：地块生成器的确定性、面积和容量、地块不压路、街区划分、物业出入口、立交和路网连通、公共服务覆盖、
+// 地铁规则、交通守恒、遮挡顺序、风格包回退，以及四级道路样张。这些都是纯计算，不需要显卡，用 node 直接运行。
+// 容量规则、物业出入口和立交的检查不通过时退出码是 1。
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { polygonArea, polygonDistance, ROAD_SPEC, worldPolylines } from '../web/sim/network.js';
@@ -10,11 +11,12 @@ import { intersectionRule, templateFootprint, templateNames } from '../web/sim/i
 import { metroCheck } from '../web/sim/metro.js';
 import { countViolations, prepareItems, sortByDepth } from '../web/sim/order.js';
 import { generateRoadDemo } from '../web/sim/roaddemo.js';
-import { buildGraph, computeTraffic } from '../web/sim/traffic.js';
+import { buildGraph, componentsOf, computeTraffic } from '../web/sim/traffic.js';
 import { activeFestival, resolveDecoration, resolveSpec, resolveStyle } from '../web/sim/packs.js';
 
 const SIZES = [32, 64];
 const report = {};
+const problems = [];
 
 function digest(value) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
@@ -83,26 +85,7 @@ function accessCheck(city) {
   const { parcels, atomOwner } = city.parcels;
   const localRoads = new Map([...roads.entries()].filter(([, entry]) => entry.road));
   const graph = buildGraph(localRoads, N);
-  const component = new Int32Array(graph.nodes.length).fill(-1);
-  const sizes = [];
-  graph.nodes.forEach((_, start) => {
-    if (component[start] >= 0) return;
-    const label = sizes.length;
-    const stack = [start];
-    component[start] = label;
-    let size = 0;
-    while (stack.length > 0) {
-      const node = stack.pop();
-      size += 1;
-      for (const { to } of graph.adjacency[node]) {
-        if (component[to] < 0) {
-          component[to] = label;
-          stack.push(to);
-        }
-      }
-    }
-    sizes.push(size);
-  });
+  const { component, sizes } = componentsOf(graph);
   const main = sizes.indexOf(Math.max(...sizes));
   const atomsOf = new Map();
   atomOwner.forEach((owner, atom) => {
@@ -136,6 +119,41 @@ function accessCheck(city) {
     if (nearest > 1.3) result.notTouchingRoad += 1;
   }
   return { ...result, farthestEntrance: farthest };
+}
+
+/** 立交占地里不能有地块和树；匝道的地面一头只能接高速和四车道，不能接两车道。 */
+function reservedCheck(city) {
+  const { N, reserved, roads, lanes, objects } = city;
+  let parcelsOnReserved = 0;
+  city.parcels.atomOwner.forEach((owner, atom) => {
+    if (owner >= 0 && reserved.has(atom >> 2)) parcelsOnReserved += 1;
+  });
+  const forestsOnReserved = objects.filter(({ key, px, py }) => key.startsWith('forest') && reserved.has(Math.floor(py) * N + Math.floor(px))).length;
+  const rampEnds = lanes.flatMap((lane) => [lane.fromCell, lane.toCell]).filter((cell) => cell !== undefined);
+  const rampsOnStreet = rampEnds.filter((cell) => {
+    const entry = roads.get(cell);
+    return !entry || !(entry.highway || entry.arterial);
+  }).length;
+  return { reservedCells: reserved.size, parcelsOnReserved, forestsOnReserved, rampEnds: rampEnds.length, rampsOnStreet };
+}
+
+/** 普通城市的路网要靠匝道连成一张：去掉匝道，高速和城市路网就是分开的两块。 */
+function connectionCheck(city) {
+  const { N, roads, links, plan, traffic } = city;
+  const road = [...roads.entries()];
+  const graph = buildGraph(roads, N, links);
+  const { component } = componentsOf(graph);
+  const labelsOf = (test) => new Set(road.filter(([, entry]) => test(entry)).map(([id]) => component[graph.index.get(id)]));
+  const highway = labelsOf((entry) => entry.highway);
+  const arterial = labelsOf((entry) => entry.arterial);
+  return {
+    interchange: plan.interchange?.name ?? null,
+    links: links.length,
+    partsWithoutRamps: componentsOf(buildGraph(roads, N)).sizes.length,
+    partsWithRamps: componentsOf(graph).sizes.length,
+    highwayMeetsArterial: [...highway].some((label) => arterial.has(label)),
+    rampTrafficSegments: traffic.edges.filter((edge) => edge.kind === 'ramp').length,
+  };
 }
 
 function partitionCheck(city) {
@@ -222,31 +240,38 @@ function styleCheck() {
 /** 四级道路样张：物业不进立交占地、不接快速路，高架和建筑的遮挡顺序正确，相交规则符合设计。 */
 function roadDemoCheck() {
   const city = generateRoadDemo();
-  const { parcels, atomOwner } = city.parcels;
-  let parcelsOnReserved = 0;
-  atomOwner.forEach((owner, atom) => {
-    if (owner >= 0 && city.reserved.has(atom >> 2)) parcelsOnReserved += 1;
-  });
   const rules = {
     streetStreet: intersectionRule('road', 'road'),
     arterialStreet: intersectionRule('arterial', 'road'),
     expressArterial: intersectionRule('express', 'arterial'),
     highwayExpressThrough: intersectionRule('highway', 'express'),
     highwayExpressEnds: intersectionRule('highway', 'express', true),
+    highwayArterial: intersectionRule('highway', 'arterial'),
     highwayStreet: intersectionRule('highway', 'road'),
   };
   return {
-    parcels: parcels.length,
+    parcels: city.parcels.parcels.length,
     lanes: city.lanes.length,
     ramps: city.lanes.filter((lane) => lane.kind === 'ramp').length,
-    parcelsOnReserved,
+    reserved: reservedCheck(city),
     access: accessCheck(city),
     order: orderCheck(city),
-    capacity: capacityCheck(capacityTable(parcels)),
+    capacity: capacityCheck(capacityTable(city.parcels.parcels)),
     rules,
     templates: Object.fromEntries(templateNames().map((name) => [name, templateFootprint(name)])),
     kinds: Object.fromEntries(Object.entries(ROAD_SPEC).map(([name, spec]) => [name, { lanes: spec.lanes, access: spec.access }])),
   };
+}
+
+/** 这一组检查里不该出现的数。label 写进失败清单，排查时直接看到是哪一项。 */
+function expectZero(label, values) {
+  for (const [name, value] of Object.entries(values)) if (value !== 0) problems.push(`${label}.${name}=${String(value)}`);
+}
+
+function judge(label, { capacity, access, reserved }) {
+  expectZero(`${label}.capacity`, { rowsNotProportional: capacity.rowsNotProportional });
+  expectZero(`${label}.access`, { noEntrance: access.noEntrance, notTouchingRoad: access.notTouchingRoad, onExpressOrHighway: access.onExpressOrHighway, unreachable: access.unreachable });
+  expectZero(`${label}.reserved`, { parcelsOnReserved: reserved.parcelsOnReserved, forestsOnReserved: reserved.forestsOnReserved, rampsOnStreet: reserved.rampsOnStreet });
 }
 
 for (const N of SIZES) {
@@ -263,10 +288,11 @@ for (const N of SIZES) {
     zones: city.zones,
     density: city.density,
     seed: 11,
+    reserved: new Set([...city.reserved].reverse()),
   });
   const table = capacityTable(city.parcels.parcels);
   const { traffic } = city;
-  const repeat = computeTraffic(city.parcels.parcels, city.roads, N);
+  const repeat = computeTraffic(city.parcels.parcels, city.roads, N, city.links);
   const shape = (list) => list.filter((p) => p.shape !== 'x').map((p) => [p.shape, p.px, p.py, p.capacity, p.access]);
   report[N] = {
     generateMs: Math.round(elapsed),
@@ -278,6 +304,8 @@ for (const N of SIZES) {
     capacity: capacityCheck(table),
     capacityTable: table,
     access: accessCheck(city),
+    reserved: reservedCheck(city),
+    connection: connectionCheck(city),
     partition: partitionCheck(city),
     looks: city.looks,
     properties: propertyCheck(city),
@@ -299,12 +327,21 @@ for (const N of SIZES) {
     },
     order: orderCheck(city),
   };
+  judge(String(N), report[N]);
+  if (N > 32) {
+    const { connection } = report[N];
+    if (connection.partsWithRamps !== 1 || !connection.highwayMeetsArterial) problems.push(`${String(N)}.connection=${JSON.stringify(connection)}`);
+  }
   console.log(N, JSON.stringify({ ...report[N], capacityTable: undefined }));
 }
 
 report.roadDemo = roadDemoCheck();
+judge('demo', report.roadDemo);
 console.log('demo', JSON.stringify(report.roadDemo));
 report.styles = styleCheck();
 console.log(JSON.stringify(report.styles));
+report.problems = problems;
 mkdirSync('out', { recursive: true });
 writeFileSync('out/verify-report.json', JSON.stringify(report, null, 2));
+console.log(problems.length === 0 ? '检查全部通过' : `不通过：${problems.join('；')}`);
+if (problems.length > 0) process.exitCode = 1;
