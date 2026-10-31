@@ -3,6 +3,7 @@ name: ci
 # 必需的自动检查：格式、lint、架构检查、类型检查、测试、构建、截图回归，以及整个仓库的重复代码检查。
 # 分支规则按 job 名 "ci" 把汇总 job 设为合并前必须通过：它在所有其他 job 结束后运行，任何一个失败它就失败。
 # 这里的命令和 CLAUDE.md「自检命令」保持一致，本地能过的，CI 上也应该能过。
+# duplication 和 client-visual 不装 pnpm，所以要关掉 setup-node 按 packageManager 字段自动开启的缓存。
 
 on:
   pull_request:
@@ -26,6 +27,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: lts/*
+          package-manager-cache: false
       - run: npx --yes jscpd@5 .
 
   checks:
@@ -54,6 +56,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: lts/*
+          package-manager-cache: false
       - run: node scripts/visual.mjs
       - if: failure()
         uses: actions/upload-artifact@v4
