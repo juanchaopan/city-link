@@ -10,8 +10,8 @@ import {
 import { sortByDepth } from './sim/order.js';
 
 // 把图集和城市数据拼成 Pixi 场景。
-// 地面分层绘制：地表、田块、人行道、路缘、车道，路面的层序保证人行道不会盖到车道上。
-// 物体按拓扑排序后的顺序画；亮窗和节日层紧跟在所属建筑后面，都在同一张纹理上，不增加换纹理的次数。
+// 地面分层绘制：地表、田块、人行道、路缘、车道、路面标记，路面的层序保证人行道不会盖到车道上。
+// 物体按拓扑排序后的顺序画；亮窗紧跟在所属建筑后面，在同一张纹理上，不增加换纹理的次数。
 // 模块拼装的物业由几张精灵叠成，从下往上画，每张抬高整数像素。
 
 const CHUNK = 16;
@@ -33,43 +33,26 @@ async function loadImage(url) {
   return image;
 }
 
-/** 节日层画进主图集下方预留的区域，所以开节日不用多一张纹理，结束后重新载入图集就恢复。 */
-export async function loadAtlas(id, festival) {
+export async function loadAtlas(id) {
   const [image, frames] = await Promise.all([
     loadImage(`/out/atlas-${id}.png`),
     fetch(`/out/atlas-${id}.json`).then((r) => r.json()),
   ]);
-  const merged = { ...frames };
-  const canvas = document.createElement('canvas');
-  canvas.width = image.width;
-  canvas.height = image.height;
-  if (festival) {
-    const [overlay, overlayFrames] = await Promise.all([
-      loadImage(`/out/festival-${festival}.png`),
-      fetch(`/out/festival-${festival}.json`).then((r) => r.json()),
-    ]);
-    canvas.height = image.height + overlay.height;
-    canvas.getContext('2d').drawImage(overlay, 0, image.height);
-    for (const [key, frame] of Object.entries(overlayFrames)) {
-      merged[key] = { ...frame, y: frame.y + image.height };
-    }
-  }
-  canvas.getContext('2d').drawImage(image, 0, 0);
   const source = new ImageSource({
-    resource: canvas,
+    resource: image,
     autoGenerateMipmaps: true,
     scaleMode: 'linear',
     mipmapFilter: 'linear',
     maxAnisotropy: 4,
   });
   const textures = {};
-  for (const [key, frame] of Object.entries(merged)) {
+  for (const [key, frame] of Object.entries(frames)) {
     textures[key] = new Texture({
       source,
       frame: new Rectangle(frame.x, frame.y, frame.w, frame.h),
     });
   }
-  return { source, frames: merged, textures, width: canvas.width, height: canvas.height };
+  return { source, frames, textures, width: image.width, height: image.height };
 }
 
 function particleFor(atlas, key, sx, sy) {
@@ -165,11 +148,7 @@ function underlay(city, palette) {
  * bare 为真时不垫底，露底检查用它看精灵本身有没有缝。
  * stress 大于 1 时每个物业多画几遍，用来量全城都走模块拼装时的开销。
  */
-export function buildWorld(
-  atlas,
-  city,
-  { layers, festival, dynamicTint, palette, bare = false, stress = 1 },
-) {
+export function buildWorld(atlas, city, { layers, dynamicTint, palette, bare = false, stress = 1 }) {
   const { N } = city;
   const area = new Rectangle(-N * 80, -400, N * 160, N * 80 + 800);
   const groundLayer = new Container();
@@ -196,7 +175,7 @@ export function buildWorld(
     addCells(city.walks);
     addCells(city.curbs);
     addCells(city.decks);
-    addCells(city.neighbors);
+    addCells(city.marks);
   }
 
   const objectLayer = new Container();
@@ -234,13 +213,6 @@ export function buildWorld(
       if (stress > 1 && object.parcel !== undefined && !object.modules) {
         const { sx, sy } = screenOf(object.px, object.py, object.level);
         for (let i = 1; i < stress; i += 1) addSprite(object.key, sx, sy);
-      }
-      const { sx, sy } = screenOf(object.px, object.py, object.level);
-      const decoration = `fx-${object.footprintKey}`;
-      if (festival && object.footprintKey && object.festive && atlas.frames[decoration]) {
-        const layer = particleFor(atlas, decoration, sx, sy);
-        bodies.push(layer);
-        current.push(layer);
       }
       if (current.length >= BATCH) flush();
     }

@@ -1,27 +1,28 @@
 import { hashString } from './builder.js';
 import { addHeadlightBeam, buildInterchange, buildViaduct } from './interchange.js';
+import { buildCrossing, buildRoundabout, buildStopLine } from './marks.js';
 import { buildModule } from './modules.js';
-import { buildFestival, buildObject } from './objects.js';
+import { buildObject } from './objects.js';
 import {
   buildBank,
   buildBridge,
   buildField,
   buildGround,
   buildMeadow,
-  buildNeighbor,
   buildPlannedEnd,
   buildRoad,
   buildSkirt,
   buildSlopeRoad,
   buildWater,
-  fadeNeighbor,
   LAYER,
   waterLevel,
 } from './tiles.js';
+import { cornersOfShape } from '../sim/surface.js';
 
 // 精灵的名字决定它的画法，生成器只需要知道名字。类别用来分别统计数量和耗时。
 // 路面名字：rw、rc、rd 是人行道、路缘、车道三层，r 是三层合一，只用于界面缩略图；坡上的路加前缀 s。
 // 路面名字的第二段是普通路方向位，有双向四车道时写成 普通路_四车道，第三段是高速方向位。
+// 路面标记：xw 是斑马线，sl 是停车线，rb 是整个环岛。
 
 const flags = (text) => [...text].map((c) => c === '1');
 
@@ -77,7 +78,7 @@ export function specFor(key, P) {
   const kind = parts[0];
   const seed = hashString(key);
   if (kind === 'g') {
-    const corners = [...parts[2]].map(Number);
+    const corners = cornersOfShape(parts[2]);
     return {
       group: '地表',
       w: 160,
@@ -142,10 +143,25 @@ export function specFor(key, P) {
     return { group: '线路', w: 400, h: 260, anchorY: 130, lit: false, build, extra };
   }
   if (kind === 'srw' || kind === 'src' || kind === 'srd') {
-    const corners = [...parts[3]].map(Number);
+    const corners = cornersOfShape(parts[3]);
     const grade = parts[4] ? gradeOf(parts[4]) : null;
     const { build, extra } = buildSlopeRoad(cellOf(parts), corners, grade, P, ROAD_LAYERS[kind]);
     return { group: '坡上线路', w: 400, h: 340, anchorY: 200, lit: false, build, extra };
+  }
+  if (kind === 'xw' || kind === 'sl') {
+    const draw = kind === 'xw' ? buildCrossing : buildStopLine;
+    return {
+      group: '路面标记',
+      w: 240,
+      h: 160,
+      anchorY: 80,
+      lit: false,
+      build: () => draw(parts[1], Number(parts[2]), P),
+    };
+  }
+  if (kind === 'rb') {
+    const { build, extra } = buildRoundabout(parseInt(parts[1], 16), parseInt(parts[2], 16), P);
+    return { group: '环岛', w: 860, h: 520, anchorY: 280, lit: false, build, extra };
   }
   if (kind === 'br') {
     const { build, extra } = buildBridge(cellOf(parts), P);
@@ -202,19 +218,6 @@ export function specFor(key, P) {
       build: () => buildPlannedEnd(parts[1], Number(parts[2]), P),
     };
   }
-  if (kind === 'nb') {
-    const { build, extra } = buildNeighbor(parts[1], parts[2], P);
-    return {
-      group: '邻城',
-      w: 1100,
-      h: 800,
-      anchorY: 340,
-      lit: false,
-      build,
-      extra,
-      fade: (sprite) => fadeNeighbor(sprite, parts[1]),
-    };
-  }
   if (kind === 'car' || kind === 'bus') {
     const rotation = Number(parts[kind === 'car' ? 2 : 1] ?? 0);
     const build = () => {
@@ -269,13 +272,6 @@ export function specFor(key, P) {
       build: () => buildObject(key, P),
     };
   }
-  if (kind === 'fx') {
-    const footprint = key.slice(3);
-    const span = Number(/\d+/.exec(footprint)[0]);
-    const second = Number(/x(\d+)/.exec(footprint)?.[1] ?? span);
-    const size = box(Math.max(span, second) + 0.6, 120);
-    return { group: '节日层', ...size, lit: false, build: () => buildFestival(footprint, P) };
-  }
   if (kind === 't' || kind === 'farmhouse') {
     return {
       group: kind === 't' ? '小三角' : '农舍',
@@ -297,16 +293,16 @@ export function specFor(key, P) {
   };
 }
 
-/** 烘焙一张精灵，包含只有裁好之后才能做的后处理。 */
+/** 烘焙一张精灵。 */
 export function bakeKey(baker, key, P) {
   const spec = specFor(key, P);
-  const result = baker.bake(spec);
-  return { spec, result: spec.fade ? spec.fade(result) : result };
+  return { spec, result: baker.bake(spec) };
 }
 
 const ROTATIONS = [0, 1, 2, 3, 4, 5, 6, 7];
+const MARK_KINDS = ['road', 'arterial'];
 
-/** 一批不进示例城市、但要进图集的精灵：主界面的缩略图、信号灯，以及动态车流用的八个方向的车。 */
+/** 一批不进示例城市、但要进图集的精灵：主界面的缩略图、信号灯、动态车流用的八个方向的车和全部路面标记。 */
 export const EXTRA_KEYS = [
   'r-11-0',
   'r-0-11',
@@ -318,4 +314,6 @@ export const EXTRA_KEYS = [
     ROTATIONS.map((rotation) => `car-${String(color)}-${String(rotation)}`),
   ),
   ...ROTATIONS.map((rotation) => `bus-${String(rotation)}`),
+  ...MARK_KINDS.flatMap((kind) => [0, 1, 2, 3].map((dir) => `xw-${kind}-${String(dir)}`)),
+  ...MARK_KINDS.flatMap((kind) => ROTATIONS.map((dir) => `sl-${kind}-${String(dir)}`)),
 ];

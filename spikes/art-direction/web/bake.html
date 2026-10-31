@@ -13,7 +13,7 @@
       import { palettes } from './kit/palettes.js';
       import { generateCity, keysOf } from './sim/city.js';
       import { generateRoadDemo } from './sim/roaddemo.js';
-      import { bakeKey, EXTRA_KEYS, specFor } from './kit/catalog.js';
+      import { bakeKey, EXTRA_KEYS } from './kit/catalog.js';
 
       const baker = new Baker();
       const GUTTER = 2;
@@ -66,11 +66,8 @@
 
       window.keysFor = (sizes) => {
         const keys = new Set(EXTRA_KEYS);
-        const footprints = new Set();
         const collect = (city) => {
           for (const key of keysOf(city)) keys.add(key);
-          for (const object of city.objects)
-            if (object.footprintKey) footprints.add(object.footprintKey);
         };
         for (const N of sizes) {
           for (const [layout, linked] of [
@@ -81,7 +78,7 @@
             collect(generateCity(N, 11, layout, linked));
         }
         collect(generateRoadDemo());
-        return { keys: [...keys].sort(), footprints: [...footprints].sort() };
+        return [...keys].sort();
       };
 
       /** keys 进主图集，每个亮窗层单独一帧，和建筑在同一张纹理上，所以绘制时不用换纹理。 */
@@ -117,26 +114,6 @@
             frames: sprites.length,
             bakeMs,
             groups,
-            width: ATLAS_WIDTH,
-            height,
-          },
-        };
-      };
-
-      window.bakeFestival = (paletteId, footprints) => {
-        const palette = palettes[paletteId];
-        baker.usePalette({ ...palette, window: { ...palette.window, layer: false } });
-        const started = performance.now();
-        const sprites = footprints.map((footprint) => {
-          const key = `fx-${footprint}`;
-          return { key, ...baker.bake(specFor(key, palette)) };
-        });
-        const height = pack(sprites);
-        return {
-          ...draw(sprites, height),
-          stats: {
-            count: sprites.length,
-            bakeMs: performance.now() - started,
             width: ATLAS_WIDTH,
             height,
           },
