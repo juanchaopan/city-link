@@ -12,6 +12,7 @@ const BED_Y = -0.24;
 const NEIGHBOR_DEPTH = 3;
 const NEIGHBOR_HALF_WIDTH = 2.5;
 const EMBANKMENT_WIDTH = 0.2;
+const EMBANKMENT_FADE = 0.9;
 
 export { DIRECTIONS, LAYER };
 
@@ -276,6 +277,16 @@ export function hermite([h0, h1, m0, m1], t) {
 }
 
 /**
+ * 坡段两端的路基渐变。切线为 0 的一头是坡段的端点，路在那里回到平地，
+ * 挡墙和填方要在这一格里收到 0，否则会带着整段的高度竖直截断。
+ */
+function embankmentFade([, , m0, m1], t) {
+  const atStart = m0 === 0 ? smooth(t / EMBANKMENT_FADE) : 1;
+  const atEnd = m1 === 0 ? smooth((1 - t) / EMBANKMENT_FADE) : 1;
+  return Math.min(atStart, atEnd);
+}
+
+/**
  * 坡上的路。整段路的纵坡由 grade 给定，路面平直，不跟着地形起伏，屏幕上也就不会走出 S 形。
  * 路面横向保持水平，靠山一侧用挡墙接地形，靠外一侧是等宽的填方。填方不按高差放宽，
  * 否则地形的起伏会让它一段宽一段窄，看起来就是一串鼓包。
@@ -308,7 +319,16 @@ export function buildSlopeRoad(cell, corners, grade, P, layer) {
       const [x, z] = pointOnPath(main.points, t);
       const deck = deckAt(t);
       const point = [x + nx * side * halfWidth, deck, z + nz * side * halfWidth];
-      return { point, ground: hillside(point[0], point[2]) };
+      const fade = embankmentFade(grade, t);
+      return { point, fade, ground: deck + (hillside(point[0], point[2]) - deck) * fade };
+    };
+    /** 路基外缘：宽度跟着渐变收窄，外缘的高度落在坡面上，收到 0 时和路面边重合。 */
+    const toe = ({ point, fade }, side) => {
+      const out = EMBANKMENT_WIDTH * fade;
+      const x = point[0] + nx * side * out;
+      const z = point[2] + nz * side * out;
+      const slope = Math.min(point[1], hillside(x, z) + 0.002);
+      return [x, point[1] + (slope - point[1]) * fade, z];
     };
     for (const side of [1, -1]) {
       const wallVisible = (nx + nz) * side < -0.01;
@@ -324,14 +344,12 @@ export function buildSlopeRoad(cell, corners, grade, P, layer) {
           const top1 = Math.max(p1[1], e1.ground);
           const face = shade(wall, Math.floor(i / 4) % 2 === 0 ? 0.95 : 1);
           b.poly([p0, p1, [p1[0], top1, p1[2]], [p0[0], top0, p0[2]]], face, [-nx * side, 0, -nz * side]);
-          b.poly([[p0[0], top0, p0[2]], [p1[0], top1, p1[2]], [p1[0], top1 + 0.012, p1[2]], [p0[0], top0 + 0.012, p0[2]]], coping, [-nx * side, 0, -nz * side]);
+          const cap0 = 0.012 * e0.fade;
+          const cap1 = 0.012 * e1.fade;
+          b.poly([[p0[0], top0, p0[2]], [p1[0], top1, p1[2]], [p1[0], top1 + cap1, p1[2]], [p0[0], top0 + cap0, p0[2]]], coping, [-nx * side, 0, -nz * side]);
         }
         if (!wallVisible && (d0 < -0.002 || d1 < -0.002)) {
-          const o0 = [p0[0] + nx * side * EMBANKMENT_WIDTH, 0, p0[2] + nz * side * EMBANKMENT_WIDTH];
-          const o1 = [p1[0] + nx * side * EMBANKMENT_WIDTH, 0, p1[2] + nz * side * EMBANKMENT_WIDTH];
-          o0[1] = Math.min(p0[1], hillside(o0[0], o0[2]) + 0.002);
-          o1[1] = Math.min(p1[1], hillside(o1[0], o1[2]) + 0.002);
-          b.poly([p0, p1, o1, o0], shade(fill, 0.98 + (Math.floor(i / 4) % 2) * 0.03), [nx * side, 0.6, nz * side]);
+          b.poly([p0, p1, toe(e1, side), toe(e0, side)], shade(fill, 0.98 + (Math.floor(i / 4) % 2) * 0.03), [nx * side, 0.6, nz * side]);
         }
       }
     }
