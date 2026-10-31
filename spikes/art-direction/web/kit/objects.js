@@ -15,13 +15,13 @@ function pick(list, random) {
 function plate(b, points, color) {
   const top = points.map(([x, z]) => [x, LOT_Y, z]);
   b.poly(top, color);
+  const centerX = points.reduce((sum, p) => sum + p[0], 0) / points.length;
+  const centerZ = points.reduce((sum, p) => sum + p[1], 0) / points.length;
   for (let i = 0; i < points.length; i += 1) {
     const [x0, z0] = points[i];
     const [x1, z1] = points[(i + 1) % points.length];
     const nx = z1 - z0;
     const nz = x0 - x1;
-    const centerX = points.reduce((sum, p) => sum + p[0], 0) / points.length;
-    const centerZ = points.reduce((sum, p) => sum + p[1], 0) / points.length;
     const flip = (x0 - centerX) * nx + (z0 - centerZ) * nz < 0 ? -1 : 1;
     b.poly([[x0, 0, z0], [x1, 0, z1], [x1, LOT_Y, z1], [x0, LOT_Y, z0]], shade(color, 0.86), [nx * flip, 0, nz * flip]);
   }
@@ -124,8 +124,8 @@ function parking(b, cx, cz, sx, sz, P, along = 'x') {
   const across = along === 'x' ? sx : sz;
   const bays = Math.max(2, Math.floor(across / 0.11));
   const pitch = across / bays;
-  const deep = (along === 'x' ? sz : sx) * 0.34;
   const other = along === 'x' ? sz : sx;
+  const deep = other * 0.34;
   for (const row of [-1, 1]) {
     for (let i = 0; i <= bays; i += 1) {
       const t = -across / 2 + i * pitch;
@@ -169,6 +169,13 @@ function cottage(c, P, wall, roof, sx, sz, h, axis) {
   c.box(sx * 0.2, h + 0.05, -sz * 0.1, 0.05, 0.13, 0.05, linear(P.wall.brick));
 }
 
+function houseAt(b, px, pz, index, P) {
+  const wall = linear([P.wall.warm, P.wall.cool, P.wall.brick][index % 3]);
+  const roof = linear(P.zones.residential[index % P.zones.residential.length]);
+  const h = FLOOR * (index % 3 === 2 ? 2 : 1.35);
+  b.at(px, LOT_Y, pz, 0, (c) => cottage(c, P, wall, roof, 0.46, 0.4, h, index % 2 === 0 ? 'x' : 'z'));
+}
+
 function houseGroup(b, sx, sz, P, seed) {
   const countX = Math.max(1, Math.round(sx / 0.95));
   const countZ = Math.max(1, Math.round(sz / 0.95));
@@ -176,11 +183,7 @@ function houseGroup(b, sx, sz, P, seed) {
     for (let i = 0; i < countX; i += 1) {
       const px = -sx / 2 + (sx / countX) * (i + 0.5) - 0.05;
       const pz = -sz / 2 + (sz / countZ) * (j + 0.5) - 0.05;
-      const index = seed + i * 3 + j * 5;
-      const wall = linear([P.wall.warm, P.wall.cool, P.wall.brick][index % 3]);
-      const roof = linear(P.zones.residential[index % P.zones.residential.length]);
-      const h = FLOOR * (index % 3 === 2 ? 2 : 1.35);
-      b.at(px, LOT_Y, pz, 0, (c) => cottage(c, P, wall, roof, 0.46, 0.4, h, index % 2 === 0 ? 'x' : 'z'));
+      houseAt(b, px, pz, seed + i * 3 + j * 5, P);
       tree(b, px + 0.33, pz + 0.3, P, 0.75);
     }
   }
@@ -299,6 +302,15 @@ function sawtooth(b, cx, cz, sx, sz, seed, P) {
   }
 }
 
+function wallOf(seed, P) {
+  return [
+    linear(P.wall.warm),
+    linear(P.wall.cool),
+    mix(linear(P.wall.brick), linear(P.wall.warm), 0.5),
+    linear(P.wall.concrete),
+  ][seed % 4];
+}
+
 /** 大地块是一整套：楼在后面，前面朝路的一侧是停车场、庭院或堆场。 */
 function composeRect(b, sx, sz, zone, level, seed, P) {
   const wide = sx >= sz;
@@ -318,9 +330,8 @@ function composeRect(b, sx, sz, zone, level, seed, P) {
   if (zone === 'r') {
     if (level === 1) houseGroup(b, sx, sz, P, seed);
     else {
-      const walls = [linear(P.wall.warm), linear(P.wall.cool), linear(P.wall.concrete), mix(linear(P.wall.brick), linear(P.wall.warm), 0.5)];
       const accent = linear(P.zones.residential[seed % P.zones.residential.length]);
-      slab(b, offsetX, offsetZ, Math.max(0.4, w), Math.max(0.4, d), level === 2 ? 4 + seed % 3 : 9 + (seed % 3) * 2, walls[seed % 4], accent, P);
+      slab(b, offsetX, offsetZ, Math.max(0.4, w * 0.86), Math.max(0.4, d * 0.86), level === 2 ? 4 + seed % 3 : 9 + (seed % 3) * 2, wallOf(seed, P), accent, P);
     }
   } else if (zone === 'c') {
     if (level === 3) {
@@ -344,7 +355,7 @@ function propertyB(b, name, P) {
   const zone = zoneLevel[0];
   const level = Number(zoneLevel[1]);
   const [spanU, spanV] = size.split('x').map(Number);
-  const seed = hashString(name) % 97 + Number(variant);
+  const seed = (hashString(name) % 97) + Number(variant);
   const lotColor = linear(zone === 'r' ? P.ground.lawn : zone === 'c' ? P.road.walk : P.road.yard);
   const unit = orient === 'a' ? 1 : HALF_DIAGONAL;
   const sx = spanU * unit - 0.1;
@@ -363,76 +374,103 @@ const QUADRANTS = [
   [1, -1],
 ];
 
-/** 大三角形物业：楼贴着两条直角边，用停车场、庭院和树把斜边一侧填满。 */
+/**
+ * 大三角形物业。楼不是三角形：主体是矩形或 L 形，贴着两条直角边，
+ * 剩下的斜边一侧用停车场、庭院、堆场和一排树填满，整块地仍是一个物业。
+ */
 function propertyQ(b, name, P) {
   const [, zoneLevel, legsText, orient, variant] = name.split('-');
   const zone = zoneLevel[0];
   const level = Number(zoneLevel[1]);
   const legs = Number(legsText);
   const [sx, sz] = QUADRANTS[Number(orient)];
-  const seed = hashString(name) % 97 + Number(variant);
+  const seed = (hashString(name) % 97) + Number(variant);
   const half = legs / 2;
   const toLocal = (u, v) => [-sx * half + sx * u, -sz * half + sz * v];
   const shrink = 0.07;
-  const corners = [toLocal(shrink, shrink), toLocal(legs - shrink * 2.4, shrink), toLocal(shrink, legs - shrink * 2.4)];
   const lotColor = linear(zone === 'r' ? P.ground.lawn : zone === 'c' ? P.road.walk : P.road.yard);
-  plate(b, corners, lotColor);
+  plate(b, [toLocal(shrink, shrink), toLocal(legs - shrink * 2.4, shrink), toLocal(shrink, legs - shrink * 2.4)], lotColor);
 
-  const arm = legs * 0.27;
-  const reach = legs * 0.66;
-  const wall = linear([P.wall.warm, P.wall.cool, P.wall.concrete][seed % 3]);
-  const accent = linear(zone === 'r' ? P.zones.residential[seed % 4] : P.zones.commercial[seed % 4]);
   const margin = 0.14;
-  const floors = zone === 'i' ? 2 : level === 1 ? 3 : level === 2 ? 5 : 8;
-  const h = floors * FLOOR;
-  const box = (u0, u1, v0, v1) => {
+  const arm = Math.max(0.5, legs * 0.19);
+  const reach = legs * 0.6;
+  const part = (u0, u1, v0, v1) => {
     const [ax, az] = toLocal(u0, v0);
     const [cx, cz] = toLocal(u1, v1);
     return { x: (ax + cx) / 2, z: (az + cz) / 2, w: Math.abs(cx - ax), d: Math.abs(cz - az) };
   };
-  const wing = (part, height) => {
-    b.at(part.x, LOT_Y, part.z, 0, (c) => {
-      c.box(0, 0, 0, part.w, height, part.d, wall, { top: shade(wall, 0.92) });
-      windows(c, part.w, part.d, 0, Math.round(height / FLOOR), P);
-      c.box(0, height, 0, part.w + 0.02, 0.016, part.d + 0.02, accent);
-    });
-  };
-  const useL = Number(variant) === 0 || legs >= 3;
-  if (useL) {
-    const armU = box(margin, margin + reach, margin, margin + arm);
-    const armV = box(margin, margin + arm, margin + arm, margin + reach);
-    // 先画后面的翼楼，绘制顺序只影响重叠部分，这里两翼不重叠。
-    wing(armU, h);
-    wing(armV, h);
-    b.at(armU.x, LOT_Y + h + 0.016, armU.z, 0, (c) => roofClutter(c, 0, armU.w, armU.d, P));
+  const wallColor = wallOf(seed, P);
+  const accent = linear(zone === 'r' ? P.zones.residential[seed % 4] : P.zones.commercial[seed % 4]);
+  const wing = (box, floors) => slab(b, box.x, box.z, box.w, box.d, floors, wallColor, accent, P);
+  const armU = part(margin, margin + reach, margin, margin + arm);
+  const armV = part(margin, margin + arm, margin + arm, margin + reach);
+  const block = reach * 0.74;
+  const corner = part(margin, margin + block, margin, margin + block);
+  let extent = margin + arm;
+
+  if (zone === 'r' && level === 1) {
+    const count = Math.max(2, Math.round(reach / 0.72));
+    for (let i = 0; i < count; i += 1) {
+      const along = margin + 0.3 + i * 0.72;
+      const [ax, az] = toLocal(along, margin + 0.26);
+      houseAt(b, ax, az, seed + i, P);
+      if (i > 0) {
+        const [cx, cz] = toLocal(margin + 0.26, along);
+        houseAt(b, cx, cz, seed + i + 2, P);
+      }
+    }
+    extent = margin + 0.56;
+  } else if (zone === 'r' && level === 2) {
+    wing(armU, 3 + seed % 2);
+    wing(armV, 3 + seed % 2);
+  } else if (zone === 'r') {
+    wing(armU, 2);
+    const tower = part(margin, margin + arm * 1.15, margin + arm, margin + arm * 2.3);
+    slab(b, tower.x, tower.z, tower.w, tower.d, 9 + seed % 4, wallColor, accent, P);
+    wing(part(margin, margin + arm, margin + arm * 2.3, margin + reach), 2);
+  } else if (zone === 'c' && level === 1) {
+    shopHall(b, armU.x, armU.z, armU.w, armU.d, 2, seed, P);
+    shopHall(b, armV.x, armV.z, armV.w, armV.d, 2, seed + 1, P);
+  } else if (zone === 'c' && level === 2) {
+    shopHall(b, corner.x, corner.z, corner.w, corner.d, 3, seed, P);
+    extent = margin + block;
+  } else if (zone === 'c') {
+    shopHall(b, armU.x, armU.z, armU.w, armU.d, 2, seed, P);
+    const side = Math.min(arm * 1.25, 1.1);
+    const tower = part(margin, margin + side, margin + arm, margin + arm + side);
+    if (seed % 3 === 2) roundTower(b, tower.x, tower.z, side * 0.42, 12 + seed % 5, seed, P);
+    else glassTower(b, tower.x, tower.z, tower.w * 0.92, tower.d * 0.92, 11 + seed % 6, seed, P);
+    extent = margin + arm;
   } else {
-    wing(box(margin, margin + reach * 0.62, margin, margin + reach * 0.62), h * 1.3);
+    sawtooth(b, corner.x, corner.z, corner.w, corner.d, seed, P);
+    extent = margin + block;
   }
 
-  // 斜边一侧的外场：停车场或庭院，外圈一条绿化带沿着斜边。
-  const inner = margin + arm + 0.06;
-  const steps = Math.max(2, Math.floor((legs - inner * 2) / 0.32));
-  const hedge = legs - 0.34;
-  for (let i = 0; i <= steps + 2; i += 1) {
-    const t = (i + 0.4) / (steps + 3);
-    const [tx, tz] = toLocal(hedge * t + 0.06, hedge * (1 - t) + 0.06);
-    if (legs * t > inner * 0.5) tree(b, tx, tz, P, 0.72 + b.random() * 0.2);
+  // 外场：沿两条直角边各放一块矩形，都不越过斜边，斜边一侧留给绿化带。
+  const fill = (u0, u1, v0, v1, along) => {
+    if (u1 - u0 < 0.26 || v1 - v0 < 0.26) return;
+    const box = part(u0, u1, v0, v1);
+    if (zone === 'c') parking(b, box.x, box.z, box.w, box.d, P, along);
+    else if (zone === 'i') yard(b, box.x, box.z, box.w, box.d, P);
+    else garden(b, box.x, box.z, box.w, box.d, P, 1 + Math.floor(box.w * box.d * 3));
+  };
+  const slope = legs - 0.46;
+  const gap = 0.06;
+  const startU = extent + gap;
+  const depth = Math.min(arm * 1.2, (slope - startU) * 0.62);
+  fill(startU, slope - margin - depth, margin, margin + depth, 'x');
+  fill(margin, margin + depth, startU, slope - margin - depth, 'z');
+  if (extent < margin + block) {
+    const mid = extent + gap;
+    fill(mid, mid + (slope - 2 * mid) * 0.8, mid, mid + (slope - 2 * mid) * 0.8, 'x');
   }
-  const yardLow = inner;
-  const yardHigh = legs - 0.5;
-  const yardSpan = yardHigh - yardLow;
-  if (yardSpan > 0.25) {
-    const corner = toLocal(yardLow, yardLow);
-    const [cx, cz] = [corner[0] + (sx * yardSpan) / 3, corner[1] + (sz * yardSpan) / 3];
-    const side = yardSpan * 0.62;
-    if (zone === 'c') parking(b, cx, cz, side, side, P, 'x');
-    else if (zone === 'i') yard(b, cx, cz, side, side, P);
-    else {
-      flat(b, rectangle(cx, cz, side, side), LOT_Y + 0.003, shade(linear(P.ground.lawn), 1.05));
-      flat(b, rectangle(cx, cz, side * 0.12, side), LOT_Y + 0.005, linear(P.road.walk));
-      flat(b, rectangle(cx, cz, side, side * 0.12), LOT_Y + 0.005, linear(P.road.walk));
-      b.cylinder(cx, LOT_Y + 0.004, cz, 0.1, 0.1, 0.025, 8, linear(P.wall.concrete), linear(P.water.mid));
-    }
+
+  const hedge = legs - 0.3;
+  const spacing = Math.max(3, Math.floor(hedge / 0.46));
+  for (let i = 0; i <= spacing; i += 1) {
+    const t = (i + 0.5) / (spacing + 1);
+    const [tx, tz] = toLocal(hedge * t + 0.05, hedge * (1 - t) + 0.05);
+    tree(b, tx, tz, P, 0.68 + b.random() * 0.2);
   }
 }
 
@@ -752,7 +790,7 @@ export function buildFestival(footprint, P) {
   const red = linear(P.festival.red);
   const gold = linear(P.festival.gold);
   const colors = P.festival.bunting.map(linear);
-  const poleHeight = 0.26;
+  const poleHeight = 0.3;
   for (let i = 0; i < polygon.length; i += 1) {
     const [x0, z0] = polygon[i];
     const [x1, z1] = polygon[(i + 1) % polygon.length];
@@ -771,9 +809,9 @@ export function buildFestival(footprint, P) {
       const t = s / spans;
       const px = x0 + (x1 - x0) * t;
       const pz = z0 + (z1 - z0) * t;
-      b.cylinder(px, LOT_Y, pz, 0.008, 0.006, poleHeight, 5, gold);
-      b.blob(px, LOT_Y + poleHeight - 0.03, pz, 0.036, 0.046, 0.036, red, 0.02);
-      b.box(px, LOT_Y + poleHeight - 0.085, pz, 0.012, 0.018, 0.012, gold);
+      b.cylinder(px, LOT_Y, pz, 0.009, 0.007, poleHeight, 5, gold);
+      b.blob(px, LOT_Y + poleHeight - 0.03, pz, 0.05, 0.062, 0.05, red, 0.02);
+      b.box(px, LOT_Y + poleHeight - 0.105, pz, 0.016, 0.022, 0.016, gold);
       if (s === spans) continue;
       const flags = 5;
       const qx = x0 + ((x1 - x0) * (s + 1)) / spans;
@@ -790,11 +828,11 @@ export function buildFestival(footprint, P) {
         const cz = pz + (qz - pz) * c;
         const mxx = px + (qx - px) * middle;
         const mzz = pz + (qz - pz) * middle;
-        b.poly([[ax, top - sag(a), az], [cx, top - sag(c), cz], [mxx, top - sag(middle) - 0.05, mzz]], colors[(s + f) % colors.length], [nx, 0, nz]);
+        b.poly([[ax, top - sag(a), az], [cx, top - sag(c), cz], [mxx, top - sag(middle) - 0.06, mzz]], colors[(s + f) % colors.length], [nx, 0, nz]);
       }
     }
     // 红绸：沿地块边缘的一条低矮绸带。
-    b.poly([[x0, LOT_Y + 0.05, z0], [x1, LOT_Y + 0.05, z1], [x1, LOT_Y + 0.078, z1], [x0, LOT_Y + 0.078, z0]], red, [nx, 0, nz]);
+    b.poly([[x0, LOT_Y + 0.05, z0], [x1, LOT_Y + 0.05, z1], [x1, LOT_Y + 0.082, z1], [x0, LOT_Y + 0.082, z0]], red, [nx, 0, nz]);
   }
   return b;
 }

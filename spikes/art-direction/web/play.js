@@ -1,8 +1,6 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import { generateCity } from './sim/city.js';
 import { resolveStyle } from './sim/packs.js';
-import { ZONE } from './sim/zones.js';
-import { DIRECTIONS } from './sim/network.js';
 import { SERVICES } from './sim/services.js';
 import { applyTime, buildWorld, loadAtlas, screenOf, TILE_HALF_H, TILE_HALF_W } from './world.js';
 import { palettes } from './kit/palettes.js';
@@ -78,21 +76,37 @@ const ground = (px, py) => {
   return screenOf(px, py, level);
 };
 
+function label(text, x, y, size, anchorY = 0) {
+  const item = new Text({
+    text,
+    resolution: 2,
+    style: { fontFamily: 'Microsoft YaHei', fontSize: size, fontWeight: '700', fill: '#ffffff', stroke: { color: '#1f3a4d', width: size / 5 } },
+  });
+  item.anchor.set(0.5, anchorY);
+  item.position.set(x, y);
+  return item;
+}
+
+function loadColor(load) {
+  if (load < 0.5) return (Math.round(70 + 340 * load) << 16) | (190 << 8) | 90;
+  return (235 << 16) | (Math.round(190 - 340 * (load - 0.5)) << 8) | 50;
+}
+
 function trafficView() {
+  scene.world.alpha = 0.55;
   const g = new Graphics();
   for (const edge of city.traffic.edges) {
     const a = ground((edge.from % N) + 0.5, Math.floor(edge.from / N) + 0.5);
     const c = ground((edge.to % N) + 0.5, Math.floor(edge.to / N) + 0.5);
     const load = Math.min(1, edge.ratio / 0.8);
-    const color = load < 0.5 ? (Math.round(90 + 330 * load) << 16) | (190 << 8) | 90 : (240 << 16) | (Math.round(200 - 340 * (load - 0.5)) << 8) | 60;
-    g.moveTo(a.sx, a.sy).lineTo(c.sx, c.sy).stroke({ color, width: 8 + load * 34, cap: 'round' });
+    g.moveTo(a.sx, a.sy).lineTo(c.sx, c.sy).stroke({ color: loadColor(load), width: 16 + load * 44, cap: 'round' });
   }
   for (const parcel of city.parcels.parcels) {
-    if (parcel.access < 0 || parcel.capacity === 0 || parcel.shape === 'field') continue;
+    if (parcel.access < 0 || parcel.capacity === 0 || parcel.shape === 'field' || parcel.shape === 'farmhouse') continue;
     const from = ground(parcel.px, parcel.py);
     const to = ground((parcel.access % N) + 0.5, Math.floor(parcel.access / N) + 0.5);
-    g.moveTo(from.sx, from.sy).lineTo(to.sx, to.sy).stroke({ color: 0xffffff, width: 3, alpha: 0.55 });
-    g.circle(from.sx, from.sy, 7).fill({ color: 0x1f3a4d, alpha: 0.8 });
+    g.moveTo(from.sx, from.sy).lineTo(to.sx, to.sy).stroke({ color: 0x1f3a4d, width: 4, alpha: 0.7 });
+    g.circle(from.sx, from.sy, 10).fill(0x1f3a4d);
   }
   return g;
 }
@@ -100,6 +114,7 @@ function trafficView() {
 const SERVICE_COLORS = { hospital: 0x2e9e6b, school: 0xd9744a, police: 0x2f5fa8, fire: 0xd6372f, water: 0x3a9fc8, power: 0xe0a92e };
 
 function coverageView() {
+  scene.world.alpha = 0.4;
   const g = new Graphics();
   const missing = new Map(city.coverage.rows.map((row) => [row.parcel, row.missing.length]));
   for (const parcel of city.parcels.parcels) {
@@ -110,22 +125,20 @@ function coverageView() {
       const { sx, sy } = ground(px, py);
       return [sx, sy];
     });
-    g.poly(points).fill({ color, alpha: 0.72 });
+    g.poly(points).fill({ color, alpha: 0.9 });
   }
   for (const parcel of city.parcels.parcels) {
     if (parcel.shape !== 'service') continue;
     const { sx, sy } = ground(parcel.px, parcel.py);
-    g.circle(sx, sy - 20, 34).fill(SERVICE_COLORS[parcel.use]).stroke({ color: 0xffffff, width: 6 });
+    g.circle(sx, sy, 40).fill(SERVICE_COLORS[parcel.use]).stroke({ color: 0xffffff, width: 7 });
     const name = SERVICES.find((service) => service.id === parcel.use).name;
-    const label = new Text({ text: name, resolution: 2, style: { fontFamily: 'Microsoft YaHei', fontSize: 34, fontWeight: '700', fill: '#ffffff', stroke: { color: '#1f3a4d', width: 6 } } });
-    label.anchor.set(0.5, 0);
-    label.position.set(sx, sy + 18);
-    g.addChild(label);
+    g.addChild(label(name, sx, sy + 44, 52));
   }
   return g;
 }
 
 function metroView() {
+  scene.world.alpha = 0.22;
   const g = new Graphics();
   const at = ([x, y]) => screenOf(x + 0.5, y + 0.5, 0);
   for (const line of city.metro.lines) {
@@ -144,12 +157,9 @@ function metroView() {
     }
     const head = at(line.points[0]);
     const badge = new Graphics();
-    badge.circle(head.sx, head.sy - 70, 44).fill(line.color);
+    badge.circle(head.sx, head.sy - 74, 50).fill(line.color);
     g.addChild(badge);
-    const label = new Text({ text: String(line.id), resolution: 2, style: { fontFamily: 'Microsoft YaHei', fontSize: 56, fontWeight: '800', fill: '#ffffff' } });
-    label.anchor.set(0.5);
-    label.position.set(head.sx, head.sy - 70);
-    g.addChild(label);
+    g.addChild(label(String(line.id), head.sx, head.sy - 74, 64, 0.5));
   }
   for (const crossing of city.metro.crossings) {
     const { sx, sy } = at([crossing.x, crossing.y]);
@@ -157,26 +167,30 @@ function metroView() {
       g.circle(sx, sy, 40).fill(0xffffff).stroke({ color: 0x1f3a4d, width: 12 });
       g.circle(sx, sy, 16).fill(0x1f3a4d);
     }
-    const text = crossing.interchange ? '换乘站' : '穿过，不设站';
-    const label = new Text({ text, resolution: 2, style: { fontFamily: 'Microsoft YaHei', fontSize: 40, fontWeight: '700', fill: '#ffffff', stroke: { color: '#1f3a4d', width: 8 } } });
-    label.anchor.set(0.5, 0);
-    label.position.set(sx, sy + 46);
-    g.addChild(label);
+    g.addChild(label(crossing.interchange ? '换乘站' : '穿过，不设站', sx, sy + 48, 46));
   }
   return g;
 }
 
+const LEGENDS = {
+  traffic: '线越粗越红，路段负担越重。黑点是物业，黑线连到它的出入口路段。',
+  coverage: `绿：六种服务都到位；黄、橙、红：缺 1、2、3 种以上。住宅盲区 ${String(Math.round(city.coverage.blindShare * 100))}%。${city.parcels.services.shortages.length > 0 ? `缺少用地：${[...new Set(city.parcels.services.shortages.map((item) => item.name))].join('、')}` : ''}`,
+  metro: '三条线，两个换乘站，一处穿过不设站。每条线是一根线或一个环，不分叉。',
+};
+
 const views = { traffic: trafficView, coverage: coverageView, metro: metroView };
-if (views[view]) {
-  if (view === 'metro') scene.world.alpha = 0.22;
-  camera.addChild(views[view]());
-}
+if (views[view]) camera.addChild(views[view]());
 app.stage.addChild(camera);
+const legend = document.getElementById('legend');
+if (legend && LEGENDS[view]) {
+  legend.hidden = false;
+  legend.textContent = LEGENDS[view];
+}
 
 let zoom = Number(params.get('zoom') ?? (N === 64 ? 0.078 : 0.145));
-let focusX = Number(params.get('x') ?? N / 2);
-let focusY = Number(params.get('y') ?? N / 2);
-let offset = { x: 0, y: 0 };
+const focusX = Number(params.get('x') ?? N / 2);
+const focusY = Number(params.get('y') ?? N / 2);
+const offset = { x: 0, y: 0 };
 
 function applyCamera() {
   const { sx, sy } = screenOf(focusX + 0.5, focusY + 0.5, 0);
@@ -190,13 +204,14 @@ function setTime(next) {
   hour = next;
   const state = applyTime(scene, hour);
   if (second) {
-    const fade = Math.min(1, Math.max(0, state.glow * 1.25));
-    second.world.alpha = fade;
-    second.groundLayer.tint = hour > 8 && hour < 20 ? 0xffffff : 0x8088c0;
-    second.objectLayer.tint = hour > 8 && hour < 20 ? 0xffffff : 0x8088c0;
+    second.world.alpha = Math.min(1, Math.max(0, state.glow * 1.25));
+    const night = hour < 6 || hour > 20.5;
+    const tint = night ? 0x7a82b8 : 0xffffff;
+    second.groundLayer.tint = tint;
+    second.objectLayer.tint = tint;
   }
-  const label = document.getElementById('clock');
-  if (label) label.textContent = `${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.floor((hour % 1) * 60)).padStart(2, '0')}`;
+  const clock = document.getElementById('clock');
+  if (clock) clock.textContent = `${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.floor((hour % 1) * 60)).padStart(2, '0')}`;
 }
 setTime(hour);
 
@@ -284,8 +299,6 @@ if (panel && controlsOn) {
 window.sceneStats = {
   sprites: scene.count.sprites + (second?.count.sprites ?? 0),
   atlas: [atlas.width, atlas.height],
-  zone: Object.keys(ZONE).length,
-  directions: DIRECTIONS.length,
 };
 
 window.setHour = setTime;

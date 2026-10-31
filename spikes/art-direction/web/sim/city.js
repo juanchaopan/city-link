@@ -160,7 +160,7 @@ export function buildRoads(N, s, center, riverAt) {
 }
 
 /** 公共用地的街区。spread 时分散在城市各处，concentrated 时全挤在一个角上，用来对比盲区。 */
-function publicBlocks(plan, layout, avenueLine, s) {
+function publicBlocks(plan, layout, avenueLine) {
   const { columns, rows } = plan;
   const blocks = [];
   for (let i = 0; i < columns.length - 1; i += 1) {
@@ -174,7 +174,7 @@ function publicBlocks(plan, layout, avenueLine, s) {
     }
   }
   if (layout === 'concentrated') return blocks.slice(0, 2);
-  return blocks.filter((_, index) => index % (s > 1 ? 4 : 3) === 0);
+  return blocks.filter((_, index) => index % 3 === 0);
 }
 
 export function makeZones(N, s, center, riverAt, plan, isUsable, publicLayout) {
@@ -210,7 +210,7 @@ export function makeZones(N, s, center, riverAt, plan, isUsable, publicLayout) {
       }
     }
   }
-  for (const { x0, x1, y0, y1 } of publicBlocks(plan, publicLayout, avenueLine, s)) {
+  for (const { x0, x1, y0, y1 } of publicBlocks(plan, publicLayout, avenueLine)) {
     for (let y = y0; y <= y1; y += 1) {
       for (let x = x0; x <= x1; x += 1) {
         if (isUsable(x, y)) {

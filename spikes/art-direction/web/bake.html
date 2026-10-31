@@ -18,6 +18,12 @@
       const GUTTER = 2;
       const ATLAS_WIDTH = 4096;
 
+      /** dayOnly 是不含亮窗层的白天图集，只用来量"两套图集"方案的包体。 */
+      const paletteOf = (id) =>
+        id === 'dayOnly'
+          ? { ...palettes.sunny, window: { ...palettes.sunny.window, litRatio: 0, layer: false } }
+          : palettes[id];
+
       function pack(sprites) {
         const sorted = [...sprites].sort((a, b) => b.h - a.h || b.w - a.w);
         let x = GUTTER;
@@ -54,16 +60,18 @@
         const keys = new Set(EXTRA_KEYS);
         const footprints = new Set();
         for (const N of sizes) {
-          const city = generateCity(N);
-          for (const key of keysOf(city)) keys.add(key);
-          for (const object of city.objects) if (object.footprintKey) footprints.add(object.footprintKey);
+          for (const layout of ['spread', 'concentrated']) {
+            const city = generateCity(N, 11, layout);
+            for (const key of keysOf(city)) keys.add(key);
+            for (const object of city.objects) if (object.footprintKey) footprints.add(object.footprintKey);
+          }
         }
         return { keys: [...keys].sort(), footprints: [...footprints].sort() };
       };
 
       /** keys 进主图集，每个亮窗层单独一帧，和建筑在同一张纹理上，所以绘制时不用换纹理。 */
       window.bakeAtlas = (paletteId, keys) => {
-        const palette = palettes[paletteId];
+        const palette = paletteOf(paletteId);
         baker.usePalette(palette);
         const groups = {};
         const sprites = [];

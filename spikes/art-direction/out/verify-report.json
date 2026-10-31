@@ -1,6 +1,6 @@
 {
   "32": {
-    "generateMs": 222,
+    "generateMs": 199,
     "parcels": 130,
     "hash": "7314a55b61736a3d",
     "sameOnSecondRun": true,
@@ -659,21 +659,21 @@
     }
   },
   "64": {
-    "generateMs": 385,
-    "parcels": 403,
-    "hash": "e842dc316a4fa65e",
+    "generateMs": 397,
+    "parcels": 387,
+    "hash": "dbb3cbab78d38705",
     "sameOnSecondRun": true,
     "sameWithShuffledInput": true,
     "area": {
       "buildableArea": 2907,
-      "parcelArea": 1551.5,
+      "parcelArea": 1542.5,
       "overlappingAtoms": 0,
       "atomsOutsideBuildable": 0,
       "polygonLargerThanParcel": 0,
-      "usage": 0.5337117303061576
+      "usage": 0.5306157550739594
     },
     "capacity": {
-      "rows": 77,
+      "rows": 81,
       "rowsNotProportional": 0
     },
     "capacityTable": [
@@ -683,9 +683,9 @@
         "shape": "bigTriangle",
         "size": "4×4",
         "use": "",
-        "count": 6,
-        "area": 48,
-        "capacity": 384,
+        "count": 4,
+        "area": 32,
+        "capacity": 256,
         "density": 8
       },
       {
@@ -694,9 +694,9 @@
         "shape": "bigTriangle",
         "size": "3×3",
         "use": "",
-        "count": 3,
-        "area": 13.5,
-        "capacity": 108,
+        "count": 5,
+        "area": 22.5,
+        "capacity": 180,
         "density": 8
       },
       {
@@ -793,8 +793,8 @@
         "shape": "triangle",
         "size": "1×1",
         "use": "parking",
-        "count": 12,
-        "area": 6,
+        "count": 7,
+        "area": 3.5,
         "capacity": 0,
         "density": 0
       },
@@ -804,8 +804,8 @@
         "shape": "triangle",
         "size": "1×1",
         "use": "garden",
-        "count": 21,
-        "area": 10.5,
+        "count": 14,
+        "area": 7,
         "capacity": 0,
         "density": 0
       },
@@ -815,9 +815,9 @@
         "shape": "bigTriangle",
         "size": "4×4",
         "use": "",
-        "count": 3,
-        "area": 24,
-        "capacity": 576,
+        "count": 1,
+        "area": 8,
+        "capacity": 192,
         "density": 24
       },
       {
@@ -826,9 +826,9 @@
         "shape": "bigTriangle",
         "size": "3×3",
         "use": "",
-        "count": 4,
-        "area": 18,
-        "capacity": 432,
+        "count": 5,
+        "area": 22.5,
+        "capacity": 540,
         "density": 24
       },
       {
@@ -892,9 +892,9 @@
         "shape": "bigTriangle",
         "size": "4×4",
         "use": "",
-        "count": 2,
-        "area": 16,
-        "capacity": 768,
+        "count": 1,
+        "area": 8,
+        "capacity": 384,
         "density": 48
       },
       {
@@ -903,9 +903,9 @@
         "shape": "bigTriangle",
         "size": "3×3",
         "use": "",
-        "count": 6,
-        "area": 27,
-        "capacity": 1296,
+        "count": 4,
+        "area": 18,
+        "capacity": 864,
         "density": 48
       },
       {
@@ -925,9 +925,9 @@
         "shape": "bigTriangle",
         "size": "4×4",
         "use": "",
-        "count": 9,
-        "area": 72,
-        "capacity": 288,
+        "count": 7,
+        "area": 56,
+        "capacity": 224,
         "density": 4
       },
       {
@@ -936,9 +936,9 @@
         "shape": "bigTriangle",
         "size": "3×3",
         "use": "",
-        "count": 11,
-        "area": 49.5,
-        "capacity": 198,
+        "count": 7,
+        "area": 31.5,
+        "capacity": 126,
         "density": 4
       },
       {
@@ -947,9 +947,9 @@
         "shape": "bigTriangle",
         "size": "2×2",
         "use": "",
-        "count": 1,
-        "area": 2,
-        "capacity": 8,
+        "count": 3,
+        "area": 6,
+        "capacity": 24,
         "density": 4
       },
       {
@@ -1013,9 +1013,9 @@
         "shape": "rect",
         "size": "1×1",
         "use": "",
-        "count": 6,
-        "area": 6,
-        "capacity": 24,
+        "count": 7,
+        "area": 7,
+        "capacity": 28,
         "density": 4
       },
       {
@@ -1046,9 +1046,9 @@
         "shape": "triangle",
         "size": "1×1",
         "use": "shop",
-        "count": 94,
-        "area": 47,
-        "capacity": 188,
+        "count": 91,
+        "area": 45.5,
+        "capacity": 182,
         "density": 4
       },
       {
@@ -1057,8 +1057,8 @@
         "shape": "triangle",
         "size": "1×1",
         "use": "parking",
-        "count": 36,
-        "area": 18,
+        "count": 32,
+        "area": 16,
         "capacity": 0,
         "density": 0
       },
@@ -1079,9 +1079,20 @@
         "shape": "bigTriangle",
         "size": "3×3",
         "use": "",
-        "count": 9,
-        "area": 40.5,
-        "capacity": 486,
+        "count": 10,
+        "area": 45,
+        "capacity": 540,
+        "density": 12
+      },
+      {
+        "zone": 2,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "2×2",
+        "use": "",
+        "count": 2,
+        "area": 4,
+        "capacity": 48,
         "density": 12
       },
       {
@@ -1101,9 +1112,9 @@
         "shape": "rect",
         "size": "1×1",
         "use": "",
-        "count": 7,
-        "area": 7,
-        "capacity": 84,
+        "count": 8,
+        "area": 8,
+        "capacity": 96,
         "density": 12
       },
       {
@@ -1143,17 +1154,6 @@
         "zone": 2,
         "level": 3,
         "shape": "rect",
-        "size": "1×1",
-        "use": "",
-        "count": 2,
-        "area": 2,
-        "capacity": 48,
-        "density": 24
-      },
-      {
-        "zone": 2,
-        "level": 3,
-        "shape": "rect",
         "size": "3×1",
         "use": "",
         "count": 1,
@@ -1178,8 +1178,8 @@
         "shape": "triangle",
         "size": "1×1",
         "use": "parking",
-        "count": 8,
-        "area": 4,
+        "count": 10,
+        "area": 5,
         "capacity": 0,
         "density": 0
       },
@@ -1189,8 +1189,8 @@
         "shape": "triangle",
         "size": "1×1",
         "use": "garden",
-        "count": 4,
-        "area": 2,
+        "count": 3,
+        "area": 1.5,
         "capacity": 0,
         "density": 0
       },
@@ -1253,11 +1253,11 @@
         "zone": 3,
         "level": 3,
         "shape": "bigTriangle",
-        "size": "4×4",
+        "size": "3×3",
         "use": "",
-        "count": 1,
-        "area": 8,
-        "capacity": 128,
+        "count": 2,
+        "area": 9,
+        "capacity": 144,
         "density": 16
       },
       {
@@ -1352,29 +1352,7 @@
         "zone": 5,
         "level": 1,
         "shape": "public",
-        "size": "1×1",
-        "use": "park",
-        "count": 8,
-        "area": 8,
-        "capacity": 0,
-        "density": 0
-      },
-      {
-        "zone": 5,
-        "level": 1,
-        "shape": "public",
         "size": "2×1",
-        "use": "plaza",
-        "count": 1,
-        "area": 2,
-        "capacity": 0,
-        "density": 0
-      },
-      {
-        "zone": 5,
-        "level": 1,
-        "shape": "public",
-        "size": "1×2",
         "use": "plaza",
         "count": 3,
         "area": 6,
@@ -1386,9 +1364,53 @@
         "level": 1,
         "shape": "public",
         "size": "1×2",
-        "use": "park",
+        "use": "plaza",
+        "count": 8,
+        "area": 16,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "3×3",
+        "use": "plaza",
         "count": 1,
-        "area": 2,
+        "area": 9,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "3×3",
+        "use": "park",
+        "count": 3,
+        "area": 27,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "1×1",
+        "use": "park",
+        "count": 5,
+        "area": 5,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "1×2",
+        "use": "park",
+        "count": 3,
+        "area": 6,
         "capacity": 0,
         "density": 0
       },
@@ -1398,8 +1420,41 @@
         "shape": "public",
         "size": "1×1",
         "use": "plaza",
-        "count": 2,
-        "area": 2,
+        "count": 4,
+        "area": 4,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "3×2",
+        "use": "park",
+        "count": 1,
+        "area": 6,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "3×2",
+        "use": "plaza",
+        "count": 1,
+        "area": 6,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "3×2",
+        "use": "hospital",
+        "count": 1,
+        "area": 6,
         "capacity": 0,
         "density": 0
       },
@@ -1409,8 +1464,8 @@
         "shape": "service",
         "size": "3×3",
         "use": "hospital",
-        "count": 2,
-        "area": 18,
+        "count": 1,
+        "area": 9,
         "capacity": 0,
         "density": 0
       },
@@ -1462,10 +1517,10 @@
         "zone": 5,
         "level": 1,
         "shape": "service",
-        "size": "2×2",
+        "size": "2×1",
         "use": "fire",
         "count": 1,
-        "area": 4,
+        "area": 2,
         "capacity": 0,
         "density": 0
       },
@@ -1486,17 +1541,6 @@
         "shape": "service",
         "size": "3×3",
         "use": "water",
-        "count": 1,
-        "area": 9,
-        "capacity": 0,
-        "density": 0
-      },
-      {
-        "zone": 5,
-        "level": 1,
-        "shape": "service",
-        "size": "3×3",
-        "use": "power",
         "count": 2,
         "area": 18,
         "capacity": 0,
@@ -1506,7 +1550,7 @@
         "zone": 5,
         "level": 1,
         "shape": "service",
-        "size": "3×2",
+        "size": "2×3",
         "use": "power",
         "count": 1,
         "area": 6,
@@ -1516,72 +1560,72 @@
       {
         "zone": 5,
         "level": 1,
-        "shape": "triangle",
-        "size": "1×1",
-        "use": "garden",
-        "count": 8,
-        "area": 4,
+        "shape": "service",
+        "size": "3×3",
+        "use": "power",
+        "count": 1,
+        "area": 9,
         "capacity": 0,
         "density": 0
       }
     ],
     "triangles": {
-      "lands": 69,
-      "complete": 69,
+      "lands": 65,
+      "complete": 65,
       "fragmented": 0,
       "squarePlusTriangles": 0,
       "bySize": {
         "2": {
-          "lands": 3,
-          "complete": 3
+          "lands": 7,
+          "complete": 7
         },
         "3": {
           "lands": 39,
           "complete": 39
         },
         "4": {
-          "lands": 27,
-          "complete": 27
+          "lands": 19,
+          "complete": 19
         }
       }
     },
     "properties": {
       "counts": {
-        "bigTriangle": 69,
+        "bigTriangle": 65,
         "diagonal": 3,
         "rect": 99,
         "farmhouse": 16,
         "field": 2,
         "service": 12,
-        "public": 19,
-        "triangle": 183
+        "public": 33,
+        "triangle": 157
       },
-      "largeProperties": 164,
+      "largeProperties": 175,
       "withoutEntrance": 0,
       "services": {
         "hospital": 2,
         "school": 2,
         "police": 2,
         "fire": 2,
-        "water": 1,
-        "power": 3
+        "water": 2,
+        "power": 2
       }
     },
     "publicLand": {
-      "publicAtoms": 396,
+      "publicAtoms": 656,
       "emptyAtoms": 0
     },
     "coverage": {
       "spread": {
-        "population": 5192,
-        "blindShare": 0.8805855161787365,
+        "population": 4044,
+        "blindShare": 0.543026706231454,
         "missing": {
-          "hospital": 1128,
-          "school": 3164,
-          "police": 3612,
-          "fire": 2828,
-          "water": 88,
-          "power": 0
+          "hospital": 1136,
+          "school": 1788,
+          "police": 1788,
+          "fire": 1376,
+          "water": 64,
+          "power": 88
         }
       },
       "concentrated": {
@@ -1605,24 +1649,24 @@
       "passThroughs": 1
     },
     "roads": {
-      "checked": 401,
+      "checked": 385,
       "overlaps": 0,
       "smallestMargin": 0.09666666666666685
     },
     "traffic": {
       "segments": 664,
-      "generated": 5192,
-      "assigned": 5192.0000000000055,
+      "generated": 4044,
+      "assigned": 4043.9999999999877,
       "unreachable": 0,
       "overloaded": 0,
-      "busiest": 0.8046111638294291,
+      "busiest": 0.6943909487031289,
       "deterministic": true
     },
     "order": {
-      "items": 1349,
+      "items": 1333,
       "cycles": 0,
       "violations": 0,
-      "violationsIfSortedByCenter": 88
+      "violationsIfSortedByCenter": 80
     }
   },
   "styles": {

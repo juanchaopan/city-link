@@ -16,6 +16,19 @@
       canvas {
         display: block;
       }
+      #legend {
+        position: fixed;
+        left: 8px;
+        right: 8px;
+        top: 8px;
+        padding: 8px 12px;
+        background: rgba(243, 247, 244, 0.94);
+        color: #1f3a4d;
+        border-radius: 4px;
+      }
+      #legend[hidden] {
+        display: none;
+      }
       #controls {
         position: fixed;
         left: 8px;
@@ -58,6 +71,7 @@
   </head>
   <body>
     <canvas id="game"></canvas>
+    <div id="legend" hidden></div>
     <div id="controls" hidden>
       <span id="clock">12:00</span>
       <input id="time" type="range" min="0" max="24" step="0.1" aria-label="时间" />

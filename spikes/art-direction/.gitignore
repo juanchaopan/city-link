@@ -1,5 +1,2 @@
 node_modules/
-out/*-city.png
-out/*-river.png
-out/*-slope.png
-out/*-cut.png
+out/atlas-dayOnly.*

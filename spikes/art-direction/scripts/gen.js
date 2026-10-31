@@ -5,7 +5,7 @@ import { startServer } from './serve.js';
 
 const PORT = 4181;
 const argv = process.argv.slice(2);
-const palettes = argv.length > 0 ? argv : ['sunny', 'dusk'];
+const palettes = argv.length > 0 ? argv : ['sunny', 'dusk', 'dayOnly'];
 
 mkdirSync('out', { recursive: true });
 const server = await startServer(PORT);
@@ -55,6 +55,7 @@ writeFileSync(
       tileWidth: 128,
       atlases: [{ image: 'atlas-sunny.png', frames: 'atlas-sunny.json' }],
       specs: keys.filter((key) => /^(B|Q|S|P|t|farmhouse)-/.test(key)),
+      festivalOverrides: {},
       fallback: null,
     },
     null,

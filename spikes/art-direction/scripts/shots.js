@@ -1,34 +1,34 @@
 // 生成样张截图、拼缝检查和帧率测量。
-// 用法：node scripts/shots.js [截图名前缀...]；SEAM=1 时只跑拼缝检查，FPS=1 时只测帧率。
+// 用法：node scripts/shots.js [截图名前缀...]；SEAM=1 时只跑拼缝检查，FPS=1 时只测帧率，SOFT=1 时用软件渲染。
 // 截图脚本用自己的端口，不影响 4180 上正在运行的页面。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { startServer } from './serve.js';
 
-const PORT = 4183;
+const PORT = process.env.SOFT ? 4184 : 4183;
 const filter = process.argv.slice(2);
 const base = 'n=64&controls=0';
 const views = [
-  { name: 'r4-overview', query: `${base}&zoom=0.078` },
-  { name: 'r4-center', query: `${base}&zoom=0.3&x=31&y=30` },
-  { name: 'r4-detail', query: `${base}&zoom=0.55&x=30&y=31` },
-  { name: 'r4-triangle', query: `${base}&zoom=0.6&x=25&y=36` },
-  { name: 'r4-triangle-commerce', query: `${base}&zoom=0.6&x=36&y=26` },
-  { name: 'r4-farm', query: `${base}&zoom=0.3&x=26&y=56` },
-  { name: 'r4-cut', query: `${base}&zoom=0.62&x=57&y=38` },
-  { name: 'r4-slope', query: `${base}&zoom=0.34&x=54&y=30` },
-  { name: 'r4-junction', query: `${base}&zoom=0.8&x=29&y=27` },
-  { name: 'r4-ui', query: `${base}&zoom=0.42&x=31&y=33&ui=1` },
-  { name: 'r4-traffic', query: `${base}&view=traffic&zoom=0.11` },
-  { name: 'r4-coverage', query: `${base}&view=coverage&zoom=0.1` },
-  { name: 'r4-coverage-concentrated', query: `${base}&view=coverage&zoom=0.1&public=concentrated` },
-  { name: 'r4-metro', query: `${base}&view=metro&zoom=0.11` },
-  { name: 'r4-festival', query: `${base}&festival=1&zoom=0.42&x=30&y=31` },
-  { name: 'r4-time-dawn', query: `${base}&zoom=0.3&x=31&y=30&t=6.5` },
-  { name: 'r4-time-noon', query: `${base}&zoom=0.3&x=31&y=30&t=12` },
-  { name: 'r4-time-dusk', query: `${base}&zoom=0.3&x=31&y=30&t=18.6` },
-  { name: 'r4-time-night', query: `${base}&zoom=0.3&x=31&y=30&t=23` },
-  { name: 'r4-time-night-two-atlases', query: `${base}&zoom=0.3&x=31&y=30&t=23&mode=atlas2` },
+  { name: 'r5-overview', query: `${base}&zoom=0.078` },
+  { name: 'r5-center', query: `${base}&zoom=0.3&x=31&y=30` },
+  { name: 'r5-detail', query: `${base}&zoom=0.55&x=30&y=31` },
+  { name: 'r5-triangle-houses', query: `${base}&zoom=0.55&x=45&y=21` },
+  { name: 'r5-triangle-commerce', query: `${base}&zoom=0.55&x=28&y=32` },
+  { name: 'r5-triangle-mixed', query: `${base}&zoom=0.55&x=37&y=23` },
+  { name: 'r5-farm', query: `${base}&zoom=0.3&x=26&y=56` },
+  { name: 'r5-cut', query: `${base}&zoom=0.62&x=57&y=38` },
+  { name: 'r5-junction', query: `${base}&zoom=0.62&x=24&y=38` },
+  { name: 'r5-ui', query: `${base}&zoom=0.42&x=31&y=33&ui=1` },
+  { name: 'r5-traffic', query: `${base}&view=traffic&zoom=0.095&x=31&y=30` },
+  { name: 'r5-coverage', query: `${base}&view=coverage&zoom=0.095&x=31&y=30` },
+  { name: 'r5-coverage-concentrated', query: `${base}&view=coverage&zoom=0.095&x=31&y=30&public=concentrated` },
+  { name: 'r5-metro', query: `${base}&view=metro&zoom=0.095&x=33&y=29` },
+  { name: 'r5-festival', query: `${base}&festival=1&zoom=0.42&x=30&y=31` },
+  { name: 'r5-time-dawn', query: `${base}&zoom=0.3&x=31&y=30&t=6.5` },
+  { name: 'r5-time-noon', query: `${base}&zoom=0.3&x=31&y=30&t=12` },
+  { name: 'r5-time-dusk', query: `${base}&zoom=0.3&x=31&y=30&t=18.6` },
+  { name: 'r5-time-night', query: `${base}&zoom=0.3&x=31&y=30&t=23` },
+  { name: 'r5-time-night-two-atlases', query: `${base}&zoom=0.3&x=31&y=30&t=23&mode=atlas2` },
 ].filter((view) => filter.length === 0 || filter.some((prefix) => view.name.startsWith(prefix)));
 
 mkdirSync('out', { recursive: true });
@@ -36,11 +36,13 @@ const server = await startServer(PORT);
 const browser = await chromium.launch({
   channel: 'chrome',
   headless: true,
-  args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'],
+  args: process.env.SOFT
+    ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
+    : ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'],
 });
 const context = await browser.newContext({
   viewport: { width: 390, height: 844 },
-  deviceScaleFactor: 3,
+  deviceScaleFactor: process.env.SOFT ? 1.5 : 3,
 });
 const page = await context.newPage();
 page.on('pageerror', (error) => console.error('页面错误', error.message));
@@ -50,7 +52,7 @@ page.on('console', (message) => {
 
 async function open(query) {
   await page.goto(`http://localhost:${String(PORT)}/web/play.html?${query}`);
-  await page.waitForSelector('html[data-ready="true"]', { state: 'attached', timeout: 90000 });
+  await page.waitForSelector('html[data-ready="true"]', { state: 'attached', timeout: 120000 });
   await page.waitForTimeout(700);
 }
 
@@ -72,15 +74,13 @@ async function seamCheck() {
         context2d.drawImage(image, 0, 0);
         const { data } = context2d.getImageData(0, 0, image.width, image.height);
         const dpr = 3;
-        const focusX = 15 - 14;
-        const focusY = 15 + 14 + 0;
         let solid = 0;
         let tinted = 0;
         let inside = 0;
         for (let py = 0; py < image.height; py += 1) {
           for (let px = 0; px < image.width; px += 1) {
-            const sx = (px / dpr - 195) / viewZoom + focusX * 64;
-            const sy = (py / dpr - 422) / viewZoom + focusY * 32;
+            const sx = (px / dpr - 195) / viewZoom + 64;
+            const sy = (py / dpr - 422) / viewZoom + 29 * 32;
             const gx = (sx / 64 + sy / 32) / 2;
             const gy = (sy / 32 - sx / 64) / 2;
             if (gx < 1 || gy < 1 || gx > 31 || gy > 31) continue;
@@ -121,7 +121,7 @@ if (process.env.SEAM) {
     report[name] = { sprites: stats.sprites, atlas: stats.atlas, ...fps };
     console.log(name, JSON.stringify(report[name]));
   }
-  writeFileSync('out/fps-report.json', JSON.stringify(report, null, 2));
+  writeFileSync(process.env.SOFT ? 'out/fps-soft-report.json' : 'out/fps-report.json', JSON.stringify(report, null, 2));
 } else {
   for (const view of views) {
     await open(view.query);
