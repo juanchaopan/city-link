@@ -1,0 +1,1108 @@
+{
+  "totals": {
+    "polesOnDeck": 84,
+    "polesOffRoad": 4,
+    "missingCrossings": 134,
+    "crossingEndsOff": 245,
+    "interiorCrossings": 10,
+    "carsOffRoad": 3757,
+    "stoppedInJunction": 63,
+    "lotsOnRoad": 2,
+    "hangingEdges": 66,
+    "headingOff": 276
+  },
+  "rows": [
+    {
+      "name": "T 字",
+      "poles": 3,
+      "polesOnDeck": 0,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "端点",
+          136,
+          2,
+          8.24,
+          8.915,
+          1
+        ],
+        [
+          "端点",
+          136,
+          2,
+          8.76,
+          8.915,
+          4
+        ],
+        [
+          "端点",
+          136,
+          4,
+          8.085,
+          8.76,
+          1
+        ],
+        [
+          "车脚",
+          8.615,
+          14.566618356160177,
+          0,
+          0
+        ],
+        [
+          "停车",
+          8.577539286962535,
+          8.385
+        ]
+      ],
+      "legs": 3,
+      "crossings": 3,
+      "missingCrossings": 0,
+      "crossingEndsOff": 3,
+      "interiorCrossings": 0,
+      "carSamples": 1598,
+      "carsOffRoad": 1,
+      "stoppedSamples": 813,
+      "stoppedInJunction": 1,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 796,
+      "headingOff": 13,
+      "worstHeading": 18.4,
+      "pass": false
+    },
+    {
+      "name": "十字",
+      "poles": 4,
+      "polesOnDeck": 0,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "端点",
+          136,
+          0,
+          8.915,
+          8.24,
+          1
+        ],
+        [
+          "端点",
+          136,
+          2,
+          8.24,
+          8.915,
+          1
+        ],
+        [
+          "端点",
+          136,
+          2,
+          8.76,
+          8.915,
+          4
+        ],
+        [
+          "端点",
+          136,
+          4,
+          8.085,
+          8.24,
+          4
+        ],
+        [
+          "车脚",
+          1.1700398187325523,
+          8.615,
+          0,
+          0
+        ],
+        [
+          "车脚",
+          8.385,
+          1.3479224863173078,
+          0,
+          0
+        ],
+        [
+          "车脚",
+          1.3758918266333136,
+          8.615,
+          0,
+          0
+        ],
+        [
+          "车脚",
+          8.615,
+          14.527744491384246,
+          0,
+          0
+        ]
+      ],
+      "legs": 4,
+      "crossings": 4,
+      "missingCrossings": 0,
+      "crossingEndsOff": 6,
+      "interiorCrossings": 0,
+      "carSamples": 1595,
+      "carsOffRoad": 4,
+      "stoppedSamples": 635,
+      "stoppedInJunction": 0,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 1004,
+      "headingOff": 15,
+      "worstHeading": 18.4,
+      "pass": false
+    },
+    {
+      "name": "四车道十字",
+      "poles": 4,
+      "polesOnDeck": 1,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "灯杆",
+          8.2,
+          8.04,
+          0,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          0
+        ],
+        [
+          "缺斑马线",
+          136,
+          4
+        ],
+        [
+          "端点",
+          136,
+          2,
+          8.24,
+          8.915,
+          1
+        ],
+        [
+          "端点",
+          136,
+          2,
+          8.76,
+          8.915,
+          1
+        ],
+        [
+          "停车",
+          8.717852049785515,
+          8.293465749846797
+        ],
+        [
+          "停车",
+          8.477884903747674,
+          8.437961134753255
+        ]
+      ],
+      "legs": 4,
+      "crossings": 2,
+      "missingCrossings": 2,
+      "crossingEndsOff": 4,
+      "interiorCrossings": 0,
+      "carSamples": 1588,
+      "carsOffRoad": 0,
+      "stoppedSamples": 595,
+      "stoppedInJunction": 2,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 947,
+      "headingOff": 12,
+      "worstHeading": 18.4,
+      "pass": false
+    },
+    {
+      "name": "45° 的 T",
+      "poles": 3,
+      "polesOnDeck": 1,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "灯杆",
+          9.037401153701776,
+          8.613137084989848,
+          0,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          0
+        ],
+        [
+          "缺斑马线",
+          136,
+          1
+        ],
+        [
+          "端点",
+          136,
+          4,
+          8.278309524416878,
+          8.24,
+          1
+        ],
+        [
+          "端点",
+          136,
+          4,
+          8.278309524416878,
+          8.76,
+          1
+        ],
+        [
+          "车脚",
+          14.944879113548994,
+          14.782244553876088,
+          0,
+          0
+        ]
+      ],
+      "legs": 3,
+      "crossings": 1,
+      "missingCrossings": 2,
+      "crossingEndsOff": 2,
+      "interiorCrossings": 0,
+      "carSamples": 1594,
+      "carsOffRoad": 1,
+      "stoppedSamples": 780,
+      "stoppedInJunction": 0,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 901,
+      "headingOff": 20,
+      "worstHeading": 36.5,
+      "pass": false
+    },
+    {
+      "name": "直斜交叉",
+      "poles": 4,
+      "polesOnDeck": 2,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "灯杆",
+          9.037401153701776,
+          8.613137084989848,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          7.962598846298224,
+          8.386862915010152,
+          0,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          0
+        ],
+        [
+          "缺斑马线",
+          136,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          4
+        ],
+        [
+          "缺斑马线",
+          136,
+          5
+        ],
+        [
+          "车脚",
+          14.634162752021714,
+          14.471528192348808,
+          0,
+          0
+        ],
+        [
+          "车脚",
+          14.557752934127466,
+          8.385,
+          0,
+          0
+        ]
+      ],
+      "legs": 4,
+      "crossings": 0,
+      "missingCrossings": 4,
+      "crossingEndsOff": 0,
+      "interiorCrossings": 0,
+      "carSamples": 1594,
+      "carsOffRoad": 4,
+      "stoppedSamples": 500,
+      "stoppedInJunction": 0,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 1080,
+      "headingOff": 27,
+      "worstHeading": 36.5,
+      "pass": false
+    },
+    {
+      "name": "五向",
+      "poles": 5,
+      "polesOnDeck": 2,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "灯杆",
+          9.037401153701776,
+          8.613137084989848,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          8.8,
+          8.96,
+          0,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          0
+        ],
+        [
+          "缺斑马线",
+          136,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          2
+        ],
+        [
+          "端点",
+          136,
+          4,
+          8.085,
+          8.24,
+          1
+        ],
+        [
+          "停车",
+          8.187132412522548,
+          8.615
+        ],
+        [
+          "车脚",
+          2.4511068163062943,
+          8.615,
+          0,
+          0
+        ]
+      ],
+      "legs": 5,
+      "crossings": 2,
+      "missingCrossings": 3,
+      "crossingEndsOff": 4,
+      "interiorCrossings": 0,
+      "carSamples": 1594,
+      "carsOffRoad": 1,
+      "stoppedSamples": 825,
+      "stoppedInJunction": 1,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 823,
+      "headingOff": 23,
+      "worstHeading": 35.3,
+      "pass": false
+    },
+    {
+      "name": "六向",
+      "poles": 6,
+      "polesOnDeck": 4,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "灯杆",
+          9.037401153701776,
+          8.613137084989848,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          8.8,
+          8.96,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          7.962598846298224,
+          8.386862915010152,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          8.2,
+          8.04,
+          0,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          0
+        ],
+        [
+          "缺斑马线",
+          136,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          2
+        ],
+        [
+          "缺斑马线",
+          136,
+          4
+        ]
+      ],
+      "legs": 6,
+      "crossings": 0,
+      "missingCrossings": 6,
+      "crossingEndsOff": 0,
+      "interiorCrossings": 0,
+      "carSamples": 1598,
+      "carsOffRoad": 2,
+      "stoppedSamples": 703,
+      "stoppedInJunction": 1,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 948,
+      "headingOff": 23,
+      "worstHeading": 36.5,
+      "pass": false
+    },
+    {
+      "name": "七向",
+      "poles": 7,
+      "polesOnDeck": 6,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "灯杆",
+          8.96,
+          8.2,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          9.037401153701776,
+          8.613137084989848,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          8.8,
+          8.96,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          7.962598846298224,
+          8.386862915010152,
+          0,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          0
+        ],
+        [
+          "缺斑马线",
+          136,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          2
+        ],
+        [
+          "缺斑马线",
+          136,
+          4
+        ]
+      ],
+      "legs": 7,
+      "crossings": 0,
+      "missingCrossings": 7,
+      "crossingEndsOff": 0,
+      "interiorCrossings": 0,
+      "carSamples": 1596,
+      "carsOffRoad": 2,
+      "stoppedSamples": 806,
+      "stoppedInJunction": 0,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 809,
+      "headingOff": 19,
+      "worstHeading": 33.7,
+      "pass": false
+    },
+    {
+      "name": "八向",
+      "poles": 8,
+      "polesOnDeck": 8,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "灯杆",
+          8.96,
+          8.2,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          9.037401153701776,
+          8.613137084989848,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          8.8,
+          8.96,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          8.386862915010152,
+          9.037401153701776,
+          0,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          0
+        ],
+        [
+          "缺斑马线",
+          136,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          2
+        ],
+        [
+          "缺斑马线",
+          136,
+          3
+        ]
+      ],
+      "legs": 8,
+      "crossings": 0,
+      "missingCrossings": 8,
+      "crossingEndsOff": 0,
+      "interiorCrossings": 0,
+      "carSamples": 1596,
+      "carsOffRoad": 1,
+      "stoppedSamples": 819,
+      "stoppedInJunction": 0,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 901,
+      "headingOff": 24,
+      "worstHeading": 36.5,
+      "pass": false
+    },
+    {
+      "name": "相邻路口",
+      "poles": 8,
+      "polesOnDeck": 0,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "端点",
+          136,
+          0,
+          8.915,
+          8.24,
+          1
+        ],
+        [
+          "端点",
+          136,
+          2,
+          8.24,
+          8.915,
+          1
+        ],
+        [
+          "端点",
+          136,
+          2,
+          8.76,
+          8.915,
+          4
+        ],
+        [
+          "端点",
+          136,
+          4,
+          8.085,
+          8.24,
+          4
+        ],
+        [
+          "停车",
+          8.385,
+          8.67817664558347
+        ],
+        [
+          "停车",
+          8.385,
+          8.67999988214201
+        ],
+        [
+          "停车",
+          8.385,
+          8.37994997300682
+        ],
+        [
+          "停车",
+          8.615,
+          9.323327838971782
+        ]
+      ],
+      "legs": 8,
+      "crossings": 8,
+      "missingCrossings": 0,
+      "crossingEndsOff": 12,
+      "interiorCrossings": 2,
+      "carSamples": 1593,
+      "carsOffRoad": 1,
+      "stoppedSamples": 611,
+      "stoppedInJunction": 58,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 972,
+      "headingOff": 18,
+      "worstHeading": 18.4,
+      "pass": false
+    },
+    {
+      "name": "高地上的路口",
+      "poles": 4,
+      "polesOnDeck": 0,
+      "polesOffRoad": 4,
+      "examples": [
+        [
+          "灯杆",
+          8.96,
+          8.2,
+          0,
+          0
+        ],
+        [
+          "灯杆",
+          8.8,
+          8.96,
+          0,
+          0
+        ],
+        [
+          "灯杆",
+          8.04,
+          8.8,
+          0,
+          0
+        ],
+        [
+          "灯杆",
+          8.2,
+          8.04,
+          0,
+          0
+        ],
+        [
+          "端点",
+          136,
+          0,
+          8.915,
+          8.24,
+          1
+        ],
+        [
+          "端点",
+          136,
+          2,
+          8.24,
+          8.915,
+          1
+        ],
+        [
+          "端点",
+          136,
+          2,
+          8.76,
+          8.915,
+          4
+        ],
+        [
+          "端点",
+          136,
+          4,
+          8.085,
+          8.24,
+          4
+        ]
+      ],
+      "legs": 4,
+      "crossings": 4,
+      "missingCrossings": 0,
+      "crossingEndsOff": 6,
+      "interiorCrossings": 0,
+      "carSamples": 1594,
+      "carsOffRoad": 1481,
+      "stoppedSamples": 905,
+      "stoppedInJunction": 0,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 692,
+      "headingOff": 14,
+      "worstHeading": 18.4,
+      "pass": false
+    },
+    {
+      "name": "坡上的路",
+      "poles": 0,
+      "polesOnDeck": 0,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "车脚",
+          11,
+          8.385,
+          0,
+          0
+        ],
+        [
+          "车脚",
+          12.992503676806457,
+          8.615,
+          0,
+          0
+        ],
+        [
+          "车脚",
+          13,
+          8.385,
+          0,
+          0
+        ],
+        [
+          "车脚",
+          8.287057394040527,
+          8.615,
+          0,
+          0
+        ]
+      ],
+      "legs": 0,
+      "crossings": 0,
+      "missingCrossings": 0,
+      "crossingEndsOff": 0,
+      "interiorCrossings": 0,
+      "carSamples": 1595,
+      "carsOffRoad": 885,
+      "stoppedSamples": 731,
+      "stoppedInJunction": 0,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 3,
+      "worstHang": 4.5,
+      "hangingEdges": 5,
+      "headingSamples": 854,
+      "headingOff": 0,
+      "worstHeading": 0,
+      "pass": false
+    },
+    {
+      "name": "斜穿坡的路",
+      "poles": 0,
+      "polesOnDeck": 0,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "车脚",
+          6.081317279836453,
+          11.081317279836453,
+          0,
+          0
+        ],
+        [
+          "车脚",
+          10.460356485510893,
+          6.702278074162012,
+          0,
+          0
+        ],
+        [
+          "车脚",
+          10.067059528507054,
+          6.77030591182004,
+          0,
+          0
+        ],
+        [
+          "车脚",
+          12.029658535392095,
+          4.8077069049349985,
+          0,
+          0
+        ]
+      ],
+      "legs": 0,
+      "crossings": 0,
+      "missingCrossings": 0,
+      "crossingEndsOff": 0,
+      "interiorCrossings": 0,
+      "carSamples": 1594,
+      "carsOffRoad": 1335,
+      "stoppedSamples": 703,
+      "stoppedInJunction": 0,
+      "lots": 0,
+      "lotsOnRoad": 0,
+      "lotPixels": 0,
+      "slopeCells": 3,
+      "worstHang": 12.9,
+      "hangingEdges": 28,
+      "headingSamples": 905,
+      "headingOff": 0,
+      "worstHeading": 0,
+      "pass": false
+    },
+    {
+      "name": "锐角小三角地块",
+      "poles": 4,
+      "polesOnDeck": 2,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "灯杆",
+          8.96,
+          8.2,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          9.037401153701776,
+          8.613137084989848,
+          0,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          0
+        ],
+        [
+          "缺斑马线",
+          136,
+          1
+        ],
+        [
+          "缺斑马线",
+          136,
+          7
+        ],
+        [
+          "端点",
+          136,
+          4,
+          8.278309524416878,
+          8.24,
+          1
+        ],
+        [
+          "车脚",
+          14.66157834626818,
+          14.498943786595275,
+          0,
+          0
+        ],
+        [
+          "地块压路",
+          "t-shop-1-1",
+          12.5,
+          11.5,
+          274
+        ]
+      ],
+      "legs": 4,
+      "crossings": 1,
+      "missingCrossings": 3,
+      "crossingEndsOff": 2,
+      "interiorCrossings": 0,
+      "carSamples": 1591,
+      "carsOffRoad": 1,
+      "stoppedSamples": 834,
+      "stoppedInJunction": 0,
+      "lots": 65,
+      "lotsOnRoad": 1,
+      "lotPixels": 274,
+      "slopeCells": 0,
+      "worstHang": 0,
+      "hangingEdges": 0,
+      "headingSamples": 789,
+      "headingOff": 25,
+      "worstHeading": 33.7,
+      "pass": false
+    },
+    {
+      "name": "全图 64×64",
+      "poles": 242,
+      "polesOnDeck": 58,
+      "polesOffRoad": 0,
+      "examples": [
+        [
+          "灯杆",
+          20.037401153701776,
+          12.613137084989848,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          19.8,
+          12.96,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          19.2,
+          27.04,
+          0,
+          1
+        ],
+        [
+          "灯杆",
+          19.96,
+          42.2,
+          0,
+          1
+        ],
+        [
+          "缺斑马线",
+          1742,
+          0
+        ],
+        [
+          "缺斑马线",
+          787,
+          0
+        ],
+        [
+          "缺斑马线",
+          787,
+          1
+        ],
+        [
+          "缺斑马线",
+          787,
+          2
+        ]
+      ],
+      "legs": 242,
+      "crossings": 143,
+      "missingCrossings": 99,
+      "crossingEndsOff": 206,
+      "interiorCrossings": 8,
+      "carSamples": 1600,
+      "carsOffRoad": 38,
+      "stoppedSamples": 554,
+      "stoppedInJunction": 0,
+      "lots": 191,
+      "lotsOnRoad": 1,
+      "lotPixels": 274,
+      "slopeCells": 6,
+      "worstHang": 12.9,
+      "hangingEdges": 33,
+      "headingSamples": 995,
+      "headingOff": 43,
+      "worstHeading": 38.5,
+      "pass": false
+    }
+  ]
+}

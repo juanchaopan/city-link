@@ -33,6 +33,27 @@ export const MASK = {
   },
 };
 
+export const CLASS = { empty: 0, deck: 1, walk: 2, curb: 3, other: 4 };
+
+/** 标线是红加绿，混在车道上还是车道；只有蓝色分量明显或者绿色压过红色才算别的层。 */
+export function classify(r, g, b, a) {
+  if (a < 128) return CLASS.empty;
+  if (r > 60 && b < r * 0.35 && g < r * 1.25) return CLASS.deck;
+  if (g > 60 && r < g * 0.35 && b < g * 0.35) return CLASS.walk;
+  if (b > 60 && r < b * 0.35 && g < b * 0.35) return CLASS.curb;
+  return CLASS.other;
+}
+
+/** 整张画布的读取函数，读一次像素，之后按坐标查层。 */
+export function readerOf(context, width, height) {
+  const { data } = context.getImageData(0, 0, width, height);
+  return (x, y) => {
+    if (x < 0 || y < 0 || x >= width || y >= height) return CLASS.empty;
+    const i = (y * width + x) * 4;
+    return classify(data[i], data[i + 1], data[i + 2], data[i + 3]);
+  };
+}
+
 const PAD = 420;
 const baker = new Baker();
 const cache = new Map();
@@ -43,7 +64,7 @@ function canvasOf(sprite) {
   return { canvas, ax: sprite.ax, ay: sprite.ay };
 }
 
-function spriteOf(key, palette) {
+export function spriteOf(key, palette) {
   const id = `${palette.id}|${key}`;
   if (!cache.has(id)) {
     baker.usePalette(palette);
