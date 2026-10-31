@@ -1,0 +1,163 @@
+{
+  "node": "v24.22.1",
+  "opt": {
+    "plateau": 0.14,
+    "low": 0.3,
+    "high": 0.64,
+    "peak": 0.78,
+    "forest": 0.68,
+    "mineralChance": 0.5,
+    "buildableFloor": 0.6,
+    "cornerPad": true,
+    "diagonalRamp": true,
+    "mainShare": 0.45,
+    "riverShare": 0.8,
+    "meanderCell": 9,
+    "routeMargin": 2,
+    "swingMin": 6,
+    "swingSpread": 8,
+    "valley": 3,
+    "lakeChance": 0.3,
+    "lakeMin": 6,
+    "lakeSpread": 4,
+    "sourceLakeMin": 7,
+    "sourceLakeSpread": 3
+  },
+  "stats": {
+    "name": "cluster",
+    "N": 64,
+    "maxLevel": 3,
+    "clusters": 30,
+    "cities": 1920,
+    "hardFailures": 13,
+    "failureReasons": {
+      "route": 60,
+      "firstTrade": 85
+    },
+    "retried": 19,
+    "attemptsMax": 8,
+    "seams": {
+      "heightSeam": 0,
+      "waterSeam": 0,
+      "slope": 0,
+      "waterLevel": 0,
+      "range": 0
+    },
+    "coverage": {
+      "mean": 0.79,
+      "min": 0.766
+    },
+    "network": {
+      "mainSlots": 910,
+      "mainReached": 800,
+      "mouths": 3000,
+      "mouthsBroken": 361
+    },
+    "buildable": {
+      "mean": 0.793,
+      "p05": 0.713,
+      "min": 0.644
+    },
+    "water": {
+      "mean": 0.056,
+      "p05": 0,
+      "min": 0
+    },
+    "hill": {
+      "mean": 0.168,
+      "p05": 0.044,
+      "min": 0.002
+    },
+    "forest": {
+      "mean": 0.19,
+      "p05": 0.107,
+      "min": 0.027
+    },
+    "mineral": {
+      "mean": 0.008,
+      "p05": 0,
+      "min": 0
+    },
+    "slope": {
+      "mean": 0.151,
+      "p05": 0.104,
+      "min": 0.043
+    },
+    "byKind": {
+      "main": {
+        "count": 897,
+        "buildable": {
+          "mean": 0.759,
+          "p05": 0.703,
+          "min": 0.644
+        },
+        "water": {
+          "mean": 0.088,
+          "p05": 0.055,
+          "min": 0.028
+        }
+      },
+      "trib": {
+        "count": 620,
+        "buildable": {
+          "mean": 0.807,
+          "p05": 0.749,
+          "min": 0.692
+        },
+        "water": {
+          "mean": 0.036,
+          "p05": 0.019,
+          "min": 0.01
+        }
+      },
+      "none": {
+        "count": 390,
+        "buildable": {
+          "mean": 0.852,
+          "p05": 0.797,
+          "min": 0.732
+        },
+        "water": {
+          "mean": 0.013,
+          "p05": 0,
+          "min": 0
+        }
+      }
+    },
+    "firstTradeFail": 0,
+    "connectFail": 0,
+    "ms": {
+      "p50": 15.71,
+      "p95": 25.1,
+      "max": 133.68
+    },
+    "createMs": {
+      "mean": 0.78,
+      "max": 4.17
+    },
+    "skeletonJsonBytes": {
+      "mean": 3366,
+      "max": 3375
+    },
+    "look": {
+      "main": {
+        "tiles": 74127,
+        "sharp": 987,
+        "loops": 12,
+        "straight": 42,
+        "sharpPer100": 1.33
+      },
+      "trib": {
+        "tiles": 61006,
+        "sharp": 563,
+        "loops": 7,
+        "straight": 50,
+        "sharpPer100": 0.92
+      }
+    },
+    "storage": {
+      "gzipMean": 620,
+      "gzipMax": 850
+    }
+  }
+}

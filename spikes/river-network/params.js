@@ -1,0 +1,25 @@
+'use strict';
+
+module.exports = {
+  plateau: 0.14,
+  low: 0.3,
+  high: 0.64,
+  peak: 0.78,
+  forest: 0.68,
+  mineralChance: 0.5,
+  buildableFloor: 0.6,
+  cornerPad: true,
+  diagonalRamp: true,
+  mainShare: 0.45,
+  riverShare: 0.8,
+  meanderCell: 9,
+  routeMargin: 2,
+  swingMin: 6,
+  swingSpread: 8,
+  valley: 3,
+  lakeChance: 0.3,
+  lakeMin: 6,
+  lakeSpread: 4,
+  sourceLakeMin: 7,
+  sourceLakeSpread: 3,
+};
