@@ -19,11 +19,11 @@ function shuffle(list, rng) {
   return list;
 }
 
-function fill(seed, N, maxLevel, opt) {
+function fill(seed, N, maxLevel, opt, limit = 64) {
   const started = process.hrtime.bigint();
   const cluster = createCluster(seed, N, maxLevel, opt);
   const createMs = Number(process.hrtime.bigint() - started) / 1e6;
-  const order = shuffle([...Array(64).keys()], makeRng(seed ^ 0x5bd1e995));
+  const order = shuffle([...Array(64).keys()], makeRng(seed ^ 0x5bd1e995)).slice(0, limit);
   const records = [];
   for (const index of order) {
     const t0 = process.hrtime.bigint();
@@ -52,8 +52,7 @@ function run(name, clusters, N, maxLevel, opt, draw) {
   const network = { mainSlots: 0, mainReached: 0, mouths: 0, mouthsBroken: 0 };
   const groups = { main: [], trib: [], none: [] };
   const metrics = [];
-  const look = { tiles: 0, sharp: 0, loops: 0, straight: 0 };
-  const lookTrib = { tiles: 0, sharp: 0, loops: 0, straight: 0 };
+  const look = { main: { tiles: 0, sharp: 0, loops: 0, straight: [] }, trib: { tiles: 0, sharp: 0, loops: 0, straight: [] } };
   let sample = null;
   let second = null;
   for (let seed = 1; seed <= clusters; seed++) {
@@ -79,11 +78,11 @@ function run(name, clusters, N, maxLevel, opt, draw) {
       groups[cluster.skeleton.slots[index].kind].push(m);
       for (const line of result.terrain.lines) {
         const l = lineLook(line.points);
-        const target = line.kind === 'main' ? look : lookTrib;
+        const target = look[line.kind];
         target.tiles += l.tiles;
         target.sharp += l.sharp;
         target.loops += l.loops;
-        target.straight = Math.max(target.straight, l.straight);
+        target.straight.push(l.straight);
       }
     }
     const s = verifySeams(cluster);
@@ -96,6 +95,15 @@ function run(name, clusters, N, maxLevel, opt, draw) {
   const summary = (list, key) => (list.length ? {
     mean: round(mean(pick(list, key))), p05: round(quantile(pick(list, key), 0.05)), min: round(Math.min(...pick(list, key))),
   } : null);
+  const lookSummary = (entry) => ({
+    tiles: entry.tiles,
+    sharp: entry.sharp,
+    loops: entry.loops,
+    sharpPer100: round(entry.sharp / Math.max(1, entry.tiles) * 100, 2),
+    straightP50: quantile(entry.straight, 0.5),
+    straightP95: quantile(entry.straight, 0.95),
+    straightMax: Math.max(...entry.straight),
+  });
   Object.assign(stats, {
     seams,
     coverage: { mean: round(mean(coverage)), min: round(Math.min(...coverage)) },
@@ -116,10 +124,7 @@ function run(name, clusters, N, maxLevel, opt, draw) {
     ms: { p50: round(quantile(times, 0.5), 2), p95: round(quantile(times, 0.95), 2), max: round(Math.max(...times), 2) },
     createMs: { mean: round(mean(creates), 2), max: round(Math.max(...creates), 2) },
     skeletonJsonBytes: { mean: Math.round(mean(skeletonBytes)), max: Math.max(...skeletonBytes) },
-    look: {
-      main: { ...look, sharpPer100: round(look.sharp / Math.max(1, look.tiles) * 100, 2) },
-      trib: { ...lookTrib, sharpPer100: round(lookTrib.sharp / Math.max(1, lookTrib.tiles) * 100, 2) },
-    },
+    look: { main: lookSummary(look.main), trib: lookSummary(look.trib) },
   });
   if (draw) {
     fs.mkdirSync(OUT, { recursive: true });

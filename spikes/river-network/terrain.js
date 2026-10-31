@@ -247,8 +247,10 @@ function attemptGenerate(cluster, sx, sy, seed, attempt, opt) {
   const canBeWater = (x, y) => lower[vid(x, y)] <= 0 && lower[vid(x + 1, y)] <= 0
     && lower[vid(x, y + 1)] <= 0 && lower[vid(x + 1, y + 1)] <= 0;
 
+  // 可建面积不够而重试时，湖泊逐次缩小，可选湖泊不再出现。
+  const lakeScale = attempt < 2 ? 1 : attempt < 5 ? 0.65 : 0.4;
   const carved = carveRivers({
-    N, sides, rng, canBeWater, blocked, corridor, water, pinTile, meander: cluster.meander, originX, originY, opt,
+    N, sides, rng, canBeWater, blocked, corridor, water, pinTile, meander: cluster.meander, originX, originY, opt, lakeScale,
   });
   if (!carved.ok) return { ok: false, reason: 'route' };
 

@@ -7,13 +7,18 @@ const OPPOSITE = { W: 'E', E: 'W', N: 'S', S: 'N' };
 const LEFT = { W: 'S', S: 'E', E: 'N', N: 'W' };
 const RIGHT = { W: 'N', N: 'E', E: 'S', S: 'W' };
 const OFFSET_RANGES = [[8, 21], [43, 55]];
+const MIN_OPPOSITE_GAP = 14;
 
 const inBounds = (x, y) => x >= 0 && y >= 0 && x < 8 && y < 8;
 const key = (x, y) => y * 8 + x;
 
-function randomOffset(rng) {
-  const range = OFFSET_RANGES[rng() < 0.5 ? 0 : 1];
-  return range[0] + ((rng() * (range[1] - range[0] + 1)) | 0);
+function randomOffset(rng, avoid) {
+  for (let tries = 0; tries < 12; tries++) {
+    const range = OFFSET_RANGES[rng() < 0.5 ? 0 : 1];
+    const offset = range[0] + ((rng() * (range[1] - range[0] + 1)) | 0);
+    if (avoid.every((other) => Math.abs(other - offset) >= MIN_OPPOSITE_GAP)) return offset;
+  }
+  return OFFSET_RANGES[0][0];
 }
 
 // 骨架是位置图上的一棵树：slots[位置].sides 记录这个位置哪条边有河穿过、偏移和类型。
@@ -24,9 +29,17 @@ function createSkeleton(seed, edges, opt) {
   const degree = (index) => Object.keys(slots[index].sides).length;
   const connect = (x, y, side, kind) => {
     const [dx, dy] = STEP[side];
-    const offset = randomOffset(rng);
+    const nx = x + dx;
+    const ny = y + dy;
+    // 同一个位置对边的两个口错开，河才不会笔直穿城。
+    const avoid = [];
+    const here = slots[key(x, y)].sides[OPPOSITE[side]];
+    const there = inBounds(nx + dx, ny + dy) ? slots[key(nx, ny)].sides[side] : null;
+    if (here) avoid.push(here.offset);
+    if (there) avoid.push(there.offset);
+    const offset = randomOffset(rng, avoid);
     slots[key(x, y)].sides[side] = { offset, kind };
-    slots[key(x + dx, y + dy)].sides[OPPOSITE[side]] = { offset, kind };
+    slots[key(nx, ny)].sides[OPPOSITE[side]] = { offset, kind };
   };
 
   // 新节点不贴着已有河段，否则树会折回来，看起来像回环。
@@ -78,7 +91,7 @@ function createSkeleton(seed, edges, opt) {
     startX = side === 'W' ? 0 : side === 'E' ? 7 : along;
     startY = side === 'N' ? 0 : side === 'S' ? 7 : along;
     heading = OPPOSITE[side];
-    slots[key(startX, startY)].sides[side] = { offset: randomOffset(rng), kind: 'coast' };
+    slots[key(startX, startY)].sides[side] = { offset: randomOffset(rng, []), kind: 'coast' };
   } else {
     startX = 2 + ((rng() * 4) | 0);
     startY = 2 + ((rng() * 4) | 0);

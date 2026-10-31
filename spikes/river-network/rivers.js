@@ -5,6 +5,7 @@ const { lineLook } = require('./verify');
 
 const STUB = 7;
 const PINNED = 5;
+const PROBES = 12;
 const NEIGHBORS = [
   [0, -1, 1], [1, 0, 1], [0, 1, 1], [-1, 0, 1],
   [1, -1, 1.414], [1, 1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414],
@@ -32,6 +33,26 @@ function relax(points, keepHead, keepTail, passes) {
       list[i][0] = previous[i - 1][0] * 0.25 + previous[i][0] * 0.5 + previous[i + 1][0] * 0.25;
       list[i][1] = previous[i - 1][1] * 0.25 + previous[i][1] * 0.5 + previous[i + 1][1] * 0.25;
     }
+  }
+  return list;
+}
+
+// 沿法线叠一段渐入渐出的正弦，长直段因此变成缓慢的蜿蜒。
+function wiggle(points, keepHead, keepTail, amplitude, wave, phase) {
+  const list = points.map((p) => [p[0], p[1]]);
+  const first = keepHead;
+  const last = list.length - 1 - keepTail;
+  const span = last - first;
+  if (span < 12) return list;
+  for (let i = first + 1; i < last; i++) {
+    const [ax, ay] = points[i - 1];
+    const [bx, by] = points[i + 1];
+    const length = Math.hypot(bx - ax, by - ay) || 1;
+    const t = (i - first) / span;
+    const taper = Math.sin(Math.PI * t);
+    const shift = amplitude * taper * Math.sin((6.283 * (i - first)) / wave + phase);
+    list[i][0] += (-(by - ay) / length) * shift;
+    list[i][1] += ((bx - ax) / length) * shift;
   }
   return list;
 }
@@ -91,9 +112,10 @@ function dijkstra(N, start, free, cost, isGoal) {
 
 // 把河道画进城市：干流、支流和湖泊都写入 ctx.water，返回中心线。
 function carveRivers(ctx) {
-  const { N, sides, rng, canBeWater, blocked, corridor, water, pinTile, meander, originX, originY, opt } = ctx;
+  const { N, sides, rng, canBeWater, blocked, corridor, water, pinTile, meander, originX, originY, opt, lakeScale } = ctx;
   const tid = (x, y) => y * N + x;
   const band = (x, y) => Math.min(x, y, N - 1 - x, N - 1 - y);
+  const world = N * 8;
 
   const nogo = new Uint8Array(N * N);
   for (let y = 0; y < N; y++) {
@@ -166,25 +188,58 @@ function carveRivers(ctx) {
   };
 
   const lines = [];
-  const smoothLine = (points, freeEnd) => relax(points, PINNED, freeEnd ? 0 : PINNED, opt.relaxPasses);
-  const tryPaint = (points, kind) => {
-    const tiles = tilesOf(points);
-    const radius = kind === 'main' ? 1 : 0;
-    for (const [x, y] of tiles) if (!check(x, y, radius)) return false;
-    for (const [x, y] of tiles) stamp(x, y, radius);
-    lines.push({ kind, points });
-    return true;
+  const smoothLine = (points, freeEnd) => {
+    const keepTail = freeEnd ? 0 : PINNED;
+    const relaxed = relax(points, PINNED, keepTail, opt.relaxPasses);
+    const amplitude = opt.wiggleMin + rng() * opt.wiggleSpread;
+    const wave = opt.waveMin + rng() * opt.waveSpread;
+    const waved = relax(wiggle(relaxed, PINNED, keepTail, amplitude, wave, rng() * 6.283), PINNED, keepTail, opt.relaxFinish);
+    waved.plain = relaxed;
+    return waved;
   };
-  const looksFine = (points) => {
+  // 蜿蜒后的河道压到障碍时退回未蜿蜒的版本，保证不会因为观感而断河。
+  const tryPaint = (points, kind) => {
+    const radius = kind === 'main' ? 1 : 0;
+    for (const candidate of points.plain ? [points, points.plain] : [points]) {
+      const tiles = tilesOf(candidate);
+      if (tiles.every(([x, y]) => check(x, y, radius))) {
+        for (const [x, y] of tiles) stamp(x, y, radius);
+        lines.push({ kind, points: candidate });
+        return true;
+      }
+    }
+    return false;
+  };
+  const badness = (points) => {
     const look = lineLook(points);
-    return look.loops === 0 && look.sharp === 0;
+    return look.loops * 100 + look.sharp * 10 + Math.max(0, look.straight - opt.straightMax);
   };
 
-  const lake = (cx, cy, radius) => {
+  // 探针方向上离障碍的最近距离，决定这里放得下多大的湖。
+  const clearance = (cx, cy) => {
+    let best = 20;
+    for (let i = 0; i < PROBES; i++) {
+      const angle = (i / PROBES) * 6.283;
+      for (let r = 1; r < best; r++) {
+        const x = Math.round(cx + Math.cos(angle) * r);
+        const y = Math.round(cy + Math.sin(angle) * r);
+        if (x < 0 || y < 0 || x >= N || y >= N || nogo[tid(x, y)]) {
+          best = r;
+          break;
+        }
+      }
+    }
+    return best;
+  };
+
+  // 湖只留和中心连通的部分，被障碍切开的碎片不算，否则支流可能接到孤立的水面上。
+  const lake = (cx, cy, wanted) => {
+    const radius = Math.max(3, Math.min(wanted * lakeScale, clearance(cx, cy) * opt.lakeFit));
     const p = [rng() * 6.28, rng() * 6.28, rng() * 6.28];
     const stretch = opt.lakeStretchMin + rng() * opt.lakeStretchSpread;
     const turn = rng() * 3.14;
     const reach = Math.ceil(radius * 2.2);
+    const inside = new Uint8Array(N * N);
     for (let dy = -reach; dy <= reach; dy++) {
       for (let dx = -reach; dx <= reach; dx++) {
         const x = cx + dx;
@@ -193,12 +248,35 @@ function carveRivers(ctx) {
         const u = dx * Math.cos(turn) + dy * Math.sin(turn);
         const v = (-dx * Math.sin(turn) + dy * Math.cos(turn)) * (1 + stretch);
         const angle = Math.atan2(v, u);
-        const r = radius * (1 + 0.3 * Math.sin(2 * angle + p[0]) + 0.22 * Math.sin(3 * angle + p[1]) + 0.14 * Math.sin(5 * angle + p[2]));
-        if (Math.hypot(u, v) > r) continue;
+        const lobes = 1 + 0.3 * Math.sin(2 * angle + p[0]) + 0.22 * Math.sin(3 * angle + p[1]) + 0.14 * Math.sin(5 * angle + p[2]);
+        const rough = 1 + 0.5 * (meander(((originX + x) * 3) % world, ((originY + y) * 3) % world) - 0.5);
+        if (Math.hypot(u, v) > radius * lobes * rough) continue;
         if (blocked[tid(x, y)] || corridor[tid(x, y)] || !canBeWater(x, y)) continue;
-        water[tid(x, y)] = 1;
-        pinTile(x, y, 0);
+        inside[tid(x, y)] = 1;
       }
+    }
+    const start = tid(cx, cy);
+    if (!inside[start]) return;
+    inside[start] = 2;
+    const queue = [start];
+    for (let head = 0; head < queue.length; head++) {
+      const t = queue[head];
+      const x = t % N;
+      const y = (t / N) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+        const nt = tid(nx, ny);
+        if (inside[nt] === 1) {
+          inside[nt] = 2;
+          queue.push(nt);
+        }
+      }
+    }
+    for (const t of queue) {
+      water[t] = 1;
+      pinTile(t % N, (t / N) | 0, 0);
     }
   };
 
@@ -207,7 +285,7 @@ function carveRivers(ctx) {
     return dijkstra(N, from, allowed, cost, goal);
   };
 
-  const interiorPoint = (ax, ay, minDistance) => {
+  const roomyPoint = (ax, ay, minDistance) => {
     let best = null;
     let bestScore = -1;
     for (let i = 0; i < 40; i++) {
@@ -216,7 +294,7 @@ function carveRivers(ctx) {
       if (!free(x, y)) continue;
       const d = Math.hypot(x - ax, y - ay);
       if (d < minDistance) continue;
-      const score = d * (0.5 + rng());
+      const score = clearance(x, y) + rng() * 4;
       if (score > bestScore) {
         bestScore = score;
         best = [x, y];
@@ -225,21 +303,28 @@ function carveRivers(ctx) {
     return best;
   };
 
-  // 两个边界口之间绕一个偏离直线的路点，让河道形成大弯；观感不合格就换一个路点，最后才走直线路径。
-  const connectTwo = (a, b) => {
+  // 起点到终点绕一个偏离直线的路点，形成大弯；取最好看的一条，有回环或没有路时才走直接路径。
+  const bend = (a, goalPoint, goal, finish) => {
     const [ax, ay] = a[a.length - 1];
-    const [bx, by] = b[b.length - 1];
-    const mx = (ax + bx) / 2;
-    const my = (ay + by) / 2;
+    const [bx, by] = goalPoint;
     const length = Math.hypot(bx - ax, by - ay) || 1;
     const nx = -(by - ay) / length;
     const ny = (bx - ax) / length;
-    const tail = [...b].reverse().slice(1);
-    let fallback = null;
-    for (let tries = 0; tries < opt.waypointTries; tries++) {
+    let best = null;
+    let bestScore = Infinity;
+    const consider = (points) => {
+      const line = finish(points);
+      const score = badness(line);
+      if (score < bestScore) {
+        bestScore = score;
+        best = line;
+      }
+    };
+    for (let tries = 0; tries < opt.waypointTries && bestScore > 0; tries++) {
       const swing = (opt.swingMin + rng() * opt.swingSpread) * (rng() < 0.5 ? -1 : 1);
-      const wx = Math.round(mx + nx * swing);
-      const wy = Math.round(my + ny * swing);
+      const along = 0.3 + rng() * 0.4;
+      const wx = Math.round(ax + (bx - ax) * along + nx * swing);
+      const wy = Math.round(ay + (by - ay) * along + ny * swing);
       if (wx < 0 || wy < 0 || wx >= N || wy >= N || !free(wx, wy)) continue;
       const first = route([ax, ay], (x, y) => x === wx && y === wy);
       if (!first) continue;
@@ -253,29 +338,28 @@ function carveRivers(ctx) {
           }
         }
       }
-      const second = route([wx, wy], (x, y) => x === bx && y === by, (x, y) => used[tid(x, y)] === 1);
-      if (!second) continue;
-      const line = smoothLine([...a, ...first.slice(1), ...second.slice(1), ...tail], false);
-      if (looksFine(line)) return line;
-      fallback = fallback || line;
+      const second = route([wx, wy], goal, (x, y) => used[tid(x, y)] === 1);
+      if (second) consider([...a, ...first.slice(1), ...second.slice(1)]);
     }
-    const direct = route([ax, ay], (x, y) => x === bx && y === by);
-    if (direct) {
-      const line = smoothLine([...a, ...direct.slice(1), ...tail], false);
-      if (looksFine(line) || !fallback) return line;
+    if (!best || bestScore >= 100) {
+      const direct = route([ax, ay], goal);
+      if (direct) consider([...a, ...direct.slice(1)]);
     }
-    return fallback;
+    return best;
   };
 
-  const toPoint = (stub, target) => {
-    const end = stub[stub.length - 1];
-    const path = route(end, (x, y) => x === target[0] && y === target[1]);
-    return path ? smoothLine([...stub, ...path.slice(1)], true) : null;
+  const connectTwo = (a, b) => {
+    const end = b[b.length - 1];
+    const tail = [...b].reverse().slice(1);
+    return bend(a, end, (x, y) => x === end[0] && y === end[1], (points) => smoothLine([...points, ...tail], false));
   };
+  const toPoint = (stub, target) => bend(stub, target, (x, y) => x === target[0] && y === target[1], (points) => smoothLine(points, true));
   const toNetwork = (stub) => {
     const end = stub[stub.length - 1];
-    const path = route(end, (x, y) => water[tid(x, y)] === 1 && band(x, y) >= 4);
-    return path ? smoothLine([...stub, ...path.slice(1)], false) : null;
+    const isWater = (x, y) => water[tid(x, y)] === 1 && band(x, y) >= 4;
+    const direct = route(end, isWater);
+    if (!direct) return null;
+    return bend(stub, direct[direct.length - 1], isWater, (points) => smoothLine(points, false));
   };
 
   const mains = [];
@@ -287,14 +371,21 @@ function carveRivers(ctx) {
     else mains.push(stub);
   }
 
+  const tipOf = () => {
+    const { points } = lines[lines.length - 1];
+    const tip = points[points.length - 1];
+    return [Math.round(tip[0]), Math.round(tip[1])];
+  };
+
   if (mains.length === 1) {
     const stub = mains[0];
     const end = stub[stub.length - 1];
-    const target = interiorPoint(end[0], end[1], 14);
+    const target = roomyPoint(end[0], end[1], 16);
     if (!target) return { ok: false };
     const line = toPoint(stub, target);
     if (!line || !tryPaint(line, 'main')) return { ok: false };
-    lake(target[0], target[1], opt.sourceLakeMin + rng() * opt.sourceLakeSpread);
+    const [tx, ty] = tipOf();
+    lake(tx, ty, opt.sourceLakeMin + rng() * opt.sourceLakeSpread);
   } else if (mains.length >= 2) {
     const whole = connectTwo(mains[0], mains[1]);
     if (!whole || !tryPaint(whole, 'main')) return { ok: false };
@@ -312,11 +403,14 @@ function carveRivers(ctx) {
   } else if (mains.length === 0 && tribs.length === 1) {
     const stub = tribs[0];
     const end = stub[stub.length - 1];
-    const target = interiorPoint(end[0], end[1], 16);
+    const target = roomyPoint(end[0], end[1], 18);
     if (!target) return { ok: false };
     const line = toPoint(stub, target);
     if (!line || !tryPaint(line, 'trib')) return { ok: false };
-    if (rng() < 0.5) lake(target[0], target[1], opt.pondMin + rng() * opt.pondSpread);
+    if (rng() < 0.5) {
+      const [tx, ty] = tipOf();
+      lake(tx, ty, opt.pondMin + rng() * opt.pondSpread);
+    }
     remaining = [];
   }
   for (const stub of remaining) {
@@ -324,8 +418,8 @@ function carveRivers(ctx) {
     if (!line || !tryPaint(line, 'trib')) return { ok: false };
   }
 
-  if (rng() < opt.lakeChance) {
-    const target = interiorPoint(N / 2, N / 2, 14);
+  if (lakeScale === 1 && rng() < opt.lakeChance) {
+    const target = roomyPoint(N / 2, N / 2, 14);
     if (target) lake(target[0], target[1], opt.lakeMin + rng() * opt.lakeSpread);
   }
   return { ok: true, lines };

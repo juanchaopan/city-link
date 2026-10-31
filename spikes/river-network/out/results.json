@@ -14,17 +14,24 @@
     "riverShare": 0.8,
     "meanderCell": 14,
     "meanderWeight": 3,
-    "routeMargin": 3,
+    "routeMargin": 4,
     "relaxPasses": 40,
+    "relaxFinish": 4,
+    "wiggleMin": 1.8,
+    "wiggleSpread": 1.2,
+    "waveMin": 22,
+    "waveSpread": 12,
     "waypointTries": 6,
-    "swingMin": 7,
+    "swingMin": 9,
     "swingSpread": 9,
+    "straightMax": 28,
     "valley": 3,
-    "lakeChance": 0.22,
-    "lakeMin": 7,
+    "lakeChance": 0.25,
+    "lakeFit": 0.9,
+    "lakeMin": 8,
     "lakeSpread": 4,
-    "lakeStretchMin": 0.1,
-    "lakeStretchSpread": 0.5,
+    "lakeStretchMin": 0.05,
+    "lakeStretchSpread": 0.45,
     "sourceLakeMin": 8,
     "sourceLakeSpread": 4,
     "pondMin": 4,
@@ -52,30 +59,30 @@
       "min": 0.797
     },
     "network": {
-      "mainSlots": 910,
-      "mainReached": 910,
+      "mainSlots": 909,
+      "mainReached": 909,
       "mouths": 3000,
       "mouthsBroken": 0
     },
     "buildable": {
-      "mean": 0.789,
-      "p05": 0.697,
-      "min": 0.62
+      "mean": 0.782,
+      "p05": 0.687,
+      "min": 0.609
     },
     "water": {
-      "mean": 0.061,
+      "mean": 0.068,
       "p05": 0,
       "min": 0
     },
     "hill": {
-      "mean": 0.17,
-      "p05": 0.044,
+      "mean": 0.165,
+      "p05": 0.042,
       "min": 0
     },
     "forest": {
-      "mean": 0.188,
-      "p05": 0.107,
-      "min": 0.029
+      "mean": 0.186,
+      "p05": 0.106,
+      "min": 0.022
     },
     "mineral": {
       "mean": 0.008,
@@ -84,45 +91,45 @@
     },
     "slope": {
       "mean": 0.15,
-      "p05": 0.104,
+      "p05": 0.106,
       "min": 0.039
     },
     "byKind": {
       "main": {
-        "count": 910,
+        "count": 909,
         "buildable": {
-          "mean": 0.753,
-          "p05": 0.677,
-          "min": 0.62
+          "mean": 0.741,
+          "p05": 0.669,
+          "min": 0.609
         },
         "water": {
-          "mean": 0.094,
-          "p05": 0.048,
+          "mean": 0.106,
+          "p05": 0.054,
           "min": 0.012
         }
       },
       "trib": {
-        "count": 620,
+        "count": 621,
         "buildable": {
           "mean": 0.806,
-          "p05": 0.741,
-          "min": 0.707
+          "p05": 0.728,
+          "min": 0.641
         },
         "water": {
-          "mean": 0.039,
-          "p05": 0.015,
+          "mean": 0.042,
+          "p05": 0.012,
           "min": 0.005
         }
       },
       "none": {
         "count": 390,
         "buildable": {
-          "mean": 0.848,
-          "p05": 0.78,
-          "min": 0.711
+          "mean": 0.843,
+          "p05": 0.763,
+          "min": 0.723
         },
         "water": {
-          "mean": 0.017,
+          "mean": 0.02,
           "p05": 0,
           "min": 0
         }
@@ -131,37 +138,41 @@
     "firstTradeFail": 0,
     "connectFail": 0,
     "ms": {
-      "p50": 17.78,
-      "p95": 30.62,
-      "max": 107.47
+      "p50": 24.12,
+      "p95": 75.24,
+      "max": 1055.37
     },
     "createMs": {
-      "mean": 0.76,
-      "max": 3.18
+      "mean": 1.32,
+      "max": 10.54
     },
     "skeletonJsonBytes": {
-      "mean": 3366,
-      "max": 3375
+      "mean": 3364,
+      "max": 3373
     },
     "look": {
       "main": {
-        "tiles": 63185,
-        "sharp": 0,
+        "tiles": 64848,
+        "sharp": 77,
         "loops": 0,
-        "straight": 63,
-        "sharpPer100": 0
+        "sharpPer100": 0.12,
+        "straightP50": 17,
+        "straightP95": 25,
+        "straightMax": 36
       },
       "trib": {
-        "tiles": 51116,
-        "sharp": 0,
+        "tiles": 50750,
+        "sharp": 67,
         "loops": 0,
-        "straight": 63,
-        "sharpPer100": 0
+        "sharpPer100": 0.13,
+        "straightP50": 14,
+        "straightP95": 23,
+        "straightMax": 29
       }
     },
     "storage": {
-      "gzipMean": 613,
-      "gzipMax": 761
+      "gzipMean": 633,
+      "gzipMax": 810
     }
   }
 }
