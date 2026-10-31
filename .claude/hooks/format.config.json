@@ -1,0 +1,13 @@
+{
+  "rules": [
+    {
+      "extensions": [".ts", ".mjs", ".cjs"],
+      "format": "pnpm exec prettier --write {file}",
+      "lint": "pnpm exec eslint {file}"
+    },
+    {
+      "extensions": [".json", ".yml", ".yaml", ".html"],
+      "format": "pnpm exec prettier --write {file}"
+    }
+  ]
+}
