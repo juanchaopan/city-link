@@ -3,6 +3,7 @@ import * as THREE from 'three';
 // 把一份低多边形几何烘焙成等距精灵。
 // 相机是严格的 2:1 正交投影，高度一层正好 32 像素，所以格子边界落在整数像素上，几何上不会有缝。
 // 光照是多次渲染累加：太阳分成若干方向得到柔和阴影，天空光分成半球上的很多方向得到接触阴影。
+// 渲染目标是超采样的半浮点纹理，一张就可能占几百 MB，所以任何时候只留当前尺寸的一套。
 
 export const TILE_W = 128;
 export const SCALE = TILE_W / Math.SQRT2;
@@ -10,6 +11,8 @@ export const LEVEL = 1 / Math.sqrt(6);
 const SUPER = 2;
 const SUN_SAMPLES = 12;
 const SKY_SAMPLES = 28;
+const MSAA_SAMPLES = 4;
+const MSAA_MAX_PIXELS = 1000000;
 
 const QUAD_VERTEX = `
   varying vec2 vUv;
@@ -128,23 +131,32 @@ export class Baker {
     this.invisible = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
     this.depthOnly = new THREE.MeshBasicMaterial({ colorWrite: false });
     this.white = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    this.targets = new Map();
+    this.targets = null;
+    this.targetSize = '';
     this.shadowBaseline = new Map();
   }
 
+  /** 当前尺寸的渲染目标。尺寸一变就释放上一套；超大的精灵只靠超采样抗锯齿，不再叠多重采样。 */
   targetsFor(w, h) {
     const key = `${String(w)}x${String(h)}`;
-    if (!this.targets.has(key)) {
-      const options = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter };
-      const float = { ...options, type: THREE.HalfFloatType };
-      this.targets.set(key, {
-        scene: new THREE.WebGLRenderTarget(w * SUPER, h * SUPER, { ...float, samples: 4 }),
-        sum: new THREE.WebGLRenderTarget(w * SUPER, h * SUPER, { ...float, depthBuffer: false }),
-        out: new THREE.WebGLRenderTarget(w, h, { ...options, depthBuffer: false }),
-        pixels: new Uint8Array(w * h * 4),
-      });
+    if (key === this.targetSize) return this.targets;
+    this.renderer.setRenderTarget(null);
+    if (this.targets) {
+      this.targets.scene.dispose();
+      this.targets.sum.dispose();
+      this.targets.out.dispose();
     }
-    return this.targets.get(key);
+    const options = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter };
+    const float = { ...options, type: THREE.HalfFloatType };
+    const samples = w * h > MSAA_MAX_PIXELS ? 0 : MSAA_SAMPLES;
+    this.targets = {
+      scene: new THREE.WebGLRenderTarget(w * SUPER, h * SUPER, { ...float, samples }),
+      sum: new THREE.WebGLRenderTarget(w * SUPER, h * SUPER, { ...float, depthBuffer: false }),
+      out: new THREE.WebGLRenderTarget(w, h, { ...options, depthBuffer: false }),
+      pixels: new Uint8Array(w * h * 4),
+    };
+    this.targetSize = key;
+    return this.targets;
   }
 
   usePalette(palette) {
