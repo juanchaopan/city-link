@@ -16,6 +16,9 @@ const CLIP_OVERLAP = 0.016;
 
 export const LAYER = { walk: 0, curb: 1, deck: 2, both: 3 };
 
+// 标线样式写在 uWidths.w：0 是两车道的中心虚线，1 是四车道的双黄线加车道线，2 是匝道，没有标线。
+const MARKING = { road: 0, arterial: 1, ramp: 2 };
+
 const HEADER = `
   #define MAX_SEGMENTS ${String(MAX_SEGMENTS)}
   #define MAX_RAYS ${String(MAX_RAYS)}
@@ -99,11 +102,12 @@ const BODY = `
   if (uLayer == 3 && !inWalk && !inDeck) discard;
 
   float highway = best >= 0 ? uWidths[best].z : 0.0;
+  float marking = best >= 0 ? uWidths[best].w : 0.0;
   vec3 color = mix(uWalk, uShoulder, highway);
   if (uLayer == 1 || (uLayer == 3 && inCurb)) color = uCurb;
   if (uLayer >= 2 && inDeck) {
     color = mix(uAsphalt, uHighway, highway);
-    if (deck < 0.0 && !padDeck && best >= 0) {
+    if (deck < 0.0 && !padDeck && best >= 0 && marking < 1.5) {
       float pathLength = uPath[best].y;
       float crossAt = uPath[best].z;
       float halfDeck = uWidths[best].y;
@@ -115,6 +119,13 @@ const BODY = `
           if (abs(bestV) < 0.026) color = uMedian;
           else if (abs(abs(bestV) - 0.205) < 0.008 && dash < period * 0.25) color = uLine;
           else if (abs(abs(bestV) - 0.37) < 0.006) color = uLine;
+        }
+      } else if (marking > 0.5) {
+        bool marked = !junction || (crossAt > 0.0 && bestU > crossAt + 0.15);
+        if (marked && abs(abs(bestV) - 0.016) < 0.006) color = uLine;
+        else if (marked && abs(abs(bestV) - halfDeck * 0.52) < 0.006 && dash < period * 0.27) color = uLine;
+        if (junction && crossAt > 0.0 && crossAt < 0.39 && bestU > crossAt && bestU < crossAt + 0.09 && abs(bestV) < halfDeck - 0.03) {
+          if (fract((bestV + 10.0) / 0.074) < 0.5) color = uLine;
         }
       } else {
         bool marked = !junction || (crossAt > 0.0 && bestU > crossAt + 0.15);
@@ -138,9 +149,9 @@ const unit = (a, b) => {
 
 const blank = () => new THREE.Vector4(0, 0, 0, 0);
 
-/** 路口各方向的延长线。对向且同宽的两个方向合成一条穿过中心的直线。 */
+/** 路口各方向的延长线。对向且同宽的两个方向合成一条穿过中心的直线。一条路切成的几段不是路口，没有延长线。 */
 function junctionRays(paths) {
-  if (paths.length < 2) return [];
+  if (paths.length < 2 || paths[0].chained) return [];
   const rays = paths.map((entry) => {
     const spec = ROAD_SPEC[entry.kind];
     const [dx, dz] = unit([0, 0], entry.points[entry.points.length - 1]);
@@ -178,12 +189,15 @@ function uniformsFor(paths, P, layer) {
     const endDir = unit(points[points.length - 2], points[points.length - 1]);
     const first = points[0];
     const last = points[points.length - 1];
+    const fast = entry.kind === 'highway' || entry.kind === 'express' || entry.kind === 'ramp';
     let start = 0;
     for (let i = 0; i < points.length - 1; i += 1) {
       const [ax, az] = points[i];
       const [bx, bz] = points[i + 1];
+      const walk = entry.widths ? entry.widths[i].walk : spec.walk;
+      const deck = entry.widths ? entry.widths[i].deck : spec.deck;
       segment.push(new THREE.Vector4(ax, az, bx, bz));
-      widths.push(new THREE.Vector4(spec.walk / 2, spec.deck / 2, entry.kind === 'highway' ? 1 : 0, 0));
+      widths.push(new THREE.Vector4(walk / 2, deck / 2, fast ? 1 : 0, MARKING[entry.kind] ?? 0));
       path.push(new THREE.Vector4(start, total, entry.cross, 0));
       flags.push(new THREE.Vector4(index, entry.clipStart && i === 0 ? 1 : 0, entry.clipEnd && i === points.length - 2 ? 1 : 0, 0));
       clipA.push(entry.clipStart ? new THREE.Vector4(first[0], first[1], startDir[0], startDir[1]) : blank());
@@ -247,8 +261,8 @@ function roadMaterial(paths, P, layer) {
 }
 
 /** 路面网格。平地是一块平板；坡上按 deckHeight 起伏，路面横向保持水平。 */
-export function roadMesh(paths, P, deckHeight, layer, span = 3.6) {
-  const steps = deckHeight ? 120 : 1;
+export function roadMesh(paths, P, deckHeight, layer, span = 3.6, resolution = 120) {
+  const steps = deckHeight ? resolution : 1;
   const geometry = new THREE.PlaneGeometry(span, span, steps, steps);
   geometry.rotateX(-Math.PI / 2);
   if (deckHeight) {

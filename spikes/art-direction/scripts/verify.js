@@ -1,13 +1,16 @@
-// 验收检查：地块生成器的确定性、面积和容量、地块不压路、大地块是否完整、公共服务覆盖、地铁规则、
-// 交通守恒、遮挡顺序、风格包回退。这些都是纯计算，不需要显卡，用 node 直接运行。
+// 验收检查：地块生成器的确定性、面积和容量、地块不压路、街区划分、物业出入口、公共服务覆盖、地铁规则、
+// 交通守恒、遮挡顺序、风格包回退，以及四级道路样张。这些都是纯计算，不需要显卡，用 node 直接运行。
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { polygonArea, polygonDistance, worldPolylines } from '../web/sim/network.js';
-import { capacityTable, generateParcels, publicLandReport, RATE, triangleLandReport } from '../web/sim/parcels.js';
+import { polygonArea, polygonDistance, ROAD_SPEC, worldPolylines } from '../web/sim/network.js';
+import { atomPolygon, capacityTable, generateParcels, publicLandReport, RATE } from '../web/sim/parcels.js';
+import { atomTable, specOf } from '../web/sim/partition.js';
 import { generateCity } from '../web/sim/city.js';
+import { intersectionRule, templateFootprint, templateNames } from '../web/sim/interchange.js';
 import { metroCheck } from '../web/sim/metro.js';
 import { countViolations, prepareItems, sortByDepth } from '../web/sim/order.js';
-import { computeTraffic } from '../web/sim/traffic.js';
+import { generateRoadDemo } from '../web/sim/roaddemo.js';
+import { buildGraph, computeTraffic } from '../web/sim/traffic.js';
 import { activeFestival, resolveDecoration, resolveSpec, resolveStyle } from '../web/sim/packs.js';
 
 const SIZES = [32, 64];
@@ -62,7 +65,7 @@ function areaCheck(city) {
 function capacityCheck(table) {
   let wrong = 0;
   for (const row of table) {
-    if (row.use === 'garden' || row.use === 'parking' || row.shape === 'service' || row.shape === 'public') {
+    if (row.use === 'fallow' || row.shape === 'green' || row.shape === 'service' || row.shape === 'public') {
       if (row.capacity !== 0) wrong += 1;
       continue;
     }
@@ -71,12 +74,99 @@ function capacityCheck(table) {
   return { rows: table.length, rowsNotProportional: wrong };
 }
 
+/**
+ * 物业的出入口。容量大于 0 的地块和公共服务都算物业：必须有出入口、出入口紧贴地块、
+ * 接的是普通道路（不是快速路和高速）、并且沿路网能走到城市的主路网。绿地和公园不是物业，不查。
+ */
+function accessCheck(city) {
+  const { N, roads } = city;
+  const { parcels, atomOwner } = city.parcels;
+  const localRoads = new Map([...roads.entries()].filter(([, entry]) => entry.road));
+  const graph = buildGraph(localRoads, N);
+  const component = new Int32Array(graph.nodes.length).fill(-1);
+  const sizes = [];
+  graph.nodes.forEach((_, start) => {
+    if (component[start] >= 0) return;
+    const label = sizes.length;
+    const stack = [start];
+    component[start] = label;
+    let size = 0;
+    while (stack.length > 0) {
+      const node = stack.pop();
+      size += 1;
+      for (const { to } of graph.adjacency[node]) {
+        if (component[to] < 0) {
+          component[to] = label;
+          stack.push(to);
+        }
+      }
+    }
+    sizes.push(size);
+  });
+  const main = sizes.indexOf(Math.max(...sizes));
+  const atomsOf = new Map();
+  atomOwner.forEach((owner, atom) => {
+    if (owner < 0) return;
+    if (!atomsOf.has(owner)) atomsOf.set(owner, []);
+    atomsOf.get(owner).push(atom);
+  });
+  const result = { properties: 0, noEntrance: 0, notTouchingRoad: 0, onExpressOrHighway: 0, unreachable: 0, greenWithCapacity: 0 };
+  let farthest = 0;
+  for (const parcel of parcels) {
+    if (parcel.shape === 'green' && (parcel.capacity !== 0 || parcel.access >= 0)) result.greenWithCapacity += 1;
+    if (parcel.capacity === 0 && parcel.shape !== 'service') continue;
+    result.properties += 1;
+    if (parcel.access < 0) {
+      result.noEntrance += 1;
+      continue;
+    }
+    const entry = roads.get(parcel.access);
+    if (!entry.road) {
+      result.onExpressOrHighway += 1;
+      continue;
+    }
+    if (component[graph.index.get(parcel.access)] !== main) result.unreachable += 1;
+    const x = (parcel.access % N) + 0.5;
+    const y = Math.floor(parcel.access / N) + 0.5;
+    let nearest = Infinity;
+    for (const atom of atomsOf.get(parcel.id) ?? []) {
+      for (const [px, py] of atomPolygon(atom, N)) nearest = Math.min(nearest, Math.hypot(px - x, py - y));
+    }
+    farthest = Math.max(farthest, nearest);
+    if (nearest > 1.3) result.notTouchingRoad += 1;
+  }
+  return { ...result, farthestEntrance: farthest };
+}
+
+function partitionCheck(city) {
+  const { partition, parcels } = city.parcels;
+  const table = atomTable(city.N);
+  const properties = parcels.filter((parcel) => parcel.front !== undefined);
+  const diagonalTotal = properties.reduce((sum, parcel) => sum + parcel.diagonalFront, 0);
+  const onDiagonal = (shape) => properties.filter((parcel) => parcel.shape === shape).reduce((sum, parcel) => sum + parcel.diagonalFront, 0);
+  const triangleBlocks = partition.details.filter(({ atoms }) => specOf(atoms, table)?.shape === 'triangle');
+  return {
+    ...partition.stats,
+    blockAtoms: partition.blockAtoms,
+    residualAtoms: partition.residual.length,
+    fallbackShare: partition.residual.length / partition.blockAtoms,
+    piecesWithoutRoad: properties.filter((parcel) => parcel.front < 0.7).length,
+    piecesWithoutSpec: partition.pieces.filter((piece) => !specOf(piece.atoms, table)).length,
+    triangleBlocks: triangleBlocks.length,
+    triangleBlocksWhole: triangleBlocks.filter(({ candidates }) => candidates[0].pieces.length === 1).length,
+    diagonalFrontage: diagonalTotal,
+    diagonalFrontageOnBands: onDiagonal('diagonal'),
+    diagonalFrontageOnTriangles: onDiagonal('bigTriangle'),
+    bandSizes: [...new Set(properties.filter((parcel) => parcel.shape === 'diagonal').map((parcel) => `${String(parcel.spanU)}x${String(parcel.spanV)}`))].sort(),
+  };
+}
+
 function screenBox(item) {
   const sx = (item.px - item.py) * 64;
   const sy = (item.px + item.py - 1) * 32 - item.level * 32;
   const halfW = Math.max(...item.footprint.map(([x, y]) => Math.abs((x - y) * 64 - (item.px - item.py) * 64))) + 8;
   const halfH = Math.max(...item.footprint.map(([x, y]) => Math.abs((x + y - item.px - item.py) * 32))) + 8;
-  const tall = /^[BQS]-/.test(item.key) ? 460 : item.key.startsWith('forest') ? 90 : 60;
+  const tall = /^[BQS]-/.test(item.key) ? 460 : /^(ix|ev)-/.test(item.key) ? 120 : item.key.startsWith('forest') ? 90 : 60;
   return { left: sx - halfW, right: sx + halfW, top: sy - halfH - tall, bottom: sy + halfH };
 }
 
@@ -101,7 +191,6 @@ function propertyCheck(city) {
   return {
     counts,
     largeProperties: parcels.filter((parcel) => parcel.area >= 2).length,
-    withoutEntrance: parcels.filter((parcel) => parcel.access < 0).length,
     services: kinds,
   };
 }
@@ -130,6 +219,36 @@ function styleCheck() {
   };
 }
 
+/** 四级道路样张：物业不进立交占地、不接快速路，高架和建筑的遮挡顺序正确，相交规则符合设计。 */
+function roadDemoCheck() {
+  const city = generateRoadDemo();
+  const { parcels, atomOwner } = city.parcels;
+  let parcelsOnReserved = 0;
+  atomOwner.forEach((owner, atom) => {
+    if (owner >= 0 && city.reserved.has(atom >> 2)) parcelsOnReserved += 1;
+  });
+  const rules = {
+    streetStreet: intersectionRule('road', 'road'),
+    arterialStreet: intersectionRule('arterial', 'road'),
+    expressArterial: intersectionRule('express', 'arterial'),
+    highwayExpressThrough: intersectionRule('highway', 'express'),
+    highwayExpressEnds: intersectionRule('highway', 'express', true),
+    highwayStreet: intersectionRule('highway', 'road'),
+  };
+  return {
+    parcels: parcels.length,
+    lanes: city.lanes.length,
+    ramps: city.lanes.filter((lane) => lane.kind === 'ramp').length,
+    parcelsOnReserved,
+    access: accessCheck(city),
+    order: orderCheck(city),
+    capacity: capacityCheck(capacityTable(parcels)),
+    rules,
+    templates: Object.fromEntries(templateNames().map((name) => [name, templateFootprint(name)])),
+    kinds: Object.fromEntries(Object.entries(ROAD_SPEC).map(([name, spec]) => [name, { lanes: spec.lanes, access: spec.access }])),
+  };
+}
+
 for (const N of SIZES) {
   const started = performance.now();
   const city = generateCity(N);
@@ -148,7 +267,7 @@ for (const N of SIZES) {
   const table = capacityTable(city.parcels.parcels);
   const { traffic } = city;
   const repeat = computeTraffic(city.parcels.parcels, city.roads, N);
-  const shape = (list) => list.map((p) => [p.shape, p.px, p.py, p.capacity, p.access]);
+  const shape = (list) => list.filter((p) => p.shape !== 'x').map((p) => [p.shape, p.px, p.py, p.capacity, p.access]);
   report[N] = {
     generateMs: Math.round(elapsed),
     parcels: city.parcels.parcels.length,
@@ -158,7 +277,9 @@ for (const N of SIZES) {
     area: areaCheck(city),
     capacity: capacityCheck(table),
     capacityTable: table,
-    triangles: triangleLandReport(city.parcels, N, city.zones),
+    access: accessCheck(city),
+    partition: partitionCheck(city),
+    looks: city.looks,
     properties: propertyCheck(city),
     publicLand: publicLandReport(city.parcels, N, city.zones),
     coverage: {
@@ -181,6 +302,8 @@ for (const N of SIZES) {
   console.log(N, JSON.stringify({ ...report[N], capacityTable: undefined }));
 }
 
+report.roadDemo = roadDemoCheck();
+console.log('demo', JSON.stringify(report.roadDemo));
 report.styles = styleCheck();
 console.log(JSON.stringify(report.styles));
 mkdirSync('out', { recursive: true });

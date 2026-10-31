@@ -1,6 +1,7 @@
 // 在有显卡的无头 Chrome 里烘焙图集，写到 out/，并生成风格包和节日包的清单。
 import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { COMBOS } from '../web/sim/combos.js';
 import { startServer } from './serve.js';
 
 const PORT = 4181;
@@ -45,16 +46,20 @@ writeFileSync('out/festival-national-day.json', JSON.stringify(festival.frames))
 report.festival = { ...festival.stats, pngBytes: festivalBytes };
 console.log('节日层', festival.stats.count, '张', festivalBytes, '字节', `${String(festival.stats.width)}×${String(festival.stats.height)}`);
 
+// 风格包的规格约定：specs 是整张烘焙的规格；parts 是模块，combos 是模块的组合，同一规格可以有很多组合。
+// 风格包可以只提供一部分：缺的规格退回标准风格。节日层只认占地规格，不认外观，所以两种做法都能叠加。
 writeFileSync(
   'out/style-standard.json',
   JSON.stringify(
     {
-      formatVersion: 1,
+      formatVersion: 2,
       id: 'standard',
       name: '标准',
       tileWidth: 128,
       atlases: [{ image: 'atlas-sunny.png', frames: 'atlas-sunny.json' }],
       specs: keys.filter((key) => /^(B|Q|S|P|t|farmhouse)-/.test(key)),
+      parts: keys.filter((key) => /^M[pbr]-/.test(key)),
+      combos: { '2x2': COMBOS, Q3: COMBOS },
       festivalOverrides: {},
       fallback: null,
     },

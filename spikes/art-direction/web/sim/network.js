@@ -12,9 +12,13 @@ export const DIRECTIONS = [
   [1, -1],
 ];
 
+// 四级道路加匝道。access 表示建筑能不能直接接这种路；不能接的路只从匝道或互通进出。
 export const ROAD_SPEC = {
-  road: { walk: 0.66, deck: 0.46 },
-  highway: { walk: 0.9, deck: 0.8 },
+  road: { walk: 0.66, deck: 0.46, lanes: 2, access: true },
+  arterial: { walk: 0.82, deck: 0.66, lanes: 4, access: true },
+  express: { walk: 0.9, deck: 0.8, lanes: 4, access: false },
+  highway: { walk: 0.9, deck: 0.8, lanes: 6, access: false },
+  ramp: { walk: 0.46, deck: 0.36, lanes: 1, access: false },
 };
 
 export function spokesOf(mask) {
@@ -48,22 +52,49 @@ function crossDistance(dir, spokes, walk) {
   return walk / 2 / Math.tan(smallest / 2) + 0.04;
 }
 
+/** 四车道接两车道：一格之内分段收窄，每段的宽度单独给，边线是连续的斜线。 */
+function taperPath(start, end, fromKind, toKind) {
+  const steps = 8;
+  const from = ROAD_SPEC[fromKind];
+  const to = ROAD_SPEC[toKind];
+  const points = [];
+  const widths = [];
+  for (let i = 0; i <= steps; i += 1) {
+    const t = i / steps;
+    points.push([start[0] + (end[0] - start[0]) * t, start[1] + (end[1] - start[1]) * t]);
+  }
+  for (let i = 0; i < steps; i += 1) {
+    const t = (i + 0.5) / steps;
+    const eased = t * t * (3 - 2 * t);
+    widths.push({ walk: from.walk + (to.walk - from.walk) * eased, deck: from.deck + (to.deck - from.deck) * eased });
+  }
+  return { points, kind: fromKind, widths, clipStart: true, clipEnd: true, cross: -1 };
+}
+
 /**
  * 一格里的路面中线，坐标相对格子中心。
  * 两个方向的路连成一条线：对向是直线，转弯用二次贝塞尔，切线正好是两端的方向，所以和相邻格平滑相接。
  * 三个方向以上是路口，每个方向一条从中心出发的线。
  * 只有一个方向的格子是断头路，起点用平切，路面不会以圆头结束。
+ * arterialMask 是 roadMask 里属于双向四车道的方向。
  */
-export function cellPaths(roadMask, highwayMask) {
+export function cellPaths(roadMask, highwayMask, arterialMask = 0) {
   const mask = roadMask | highwayMask;
   const spokes = spokesOf(mask);
-  const kindOf = (dir) => (highwayMask & (1 << dir) ? 'highway' : 'road');
-  if (spokes.length === 2 && kindOf(spokes[0]) === kindOf(spokes[1])) {
+  const kindOf = (dir) => {
+    if (highwayMask & (1 << dir)) return 'highway';
+    return arterialMask & (1 << dir) ? 'arterial' : 'road';
+  };
+  if (spokes.length === 2) {
     const [a, c] = spokes;
     const start = spokeEnd(a);
     const end = spokeEnd(c);
-    const points = (a + 4) % 8 === c ? [start, end] : bezier(start, end);
-    return [{ points, kind: kindOf(a), clipStart: true, clipEnd: true, cross: -1 }];
+    const straight = (a + 4) % 8 === c;
+    if (kindOf(a) === kindOf(c)) {
+      return [{ points: straight ? [start, end] : bezier(start, end), kind: kindOf(a), clipStart: true, clipEnd: true, cross: -1 }];
+    }
+    const local = (dir) => kindOf(dir) !== 'highway';
+    if (straight && local(a) && local(c)) return [taperPath(start, end, kindOf(a), kindOf(c))];
   }
   return spokes.map((dir) => {
     const kind = kindOf(dir);
@@ -76,10 +107,10 @@ export function cellPaths(roadMask, highwayMask) {
 export function worldPolylines(roads, N) {
   const lines = [];
   for (const id of [...roads.keys()].sort((a, b) => a - b)) {
-    const { road, highway } = roads.get(id);
+    const { road, highway, arterial = 0 } = roads.get(id);
     const x = id % N;
     const y = Math.floor(id / N);
-    for (const path of cellPaths(road, highway)) {
+    for (const path of cellPaths(road, highway, arterial)) {
       lines.push({
         cell: id,
         kind: path.kind,

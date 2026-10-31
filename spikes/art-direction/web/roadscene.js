@@ -6,7 +6,7 @@ import { roadMesh as legacyMesh } from './kit/roadshader.legacy.js';
 import { heightAt } from './kit/tiles.js';
 import { traceRoads } from './sim/city.js';
 import { cellPaths, spokesOf } from './sim/network.js';
-import { roadSprites } from './sim/roadsprites.js';
+import { roadSprites, roadTag } from './sim/roadsprites.js';
 
 // 路面验收用的场景：把路面按游戏里的方式烘焙成精灵，再按游戏里的层序拼到一张画布上。
 // mode 为 legacy 时用保留的旧着色器和逐格绘制的旧层序，用来证明检查抓得到用户报告过的错误。
@@ -58,7 +58,7 @@ function legacySprite(entry, palette, deckHeightOf) {
   if (!cache.has(id)) {
     baker.usePalette(palette);
     const mask = entry.road | entry.highway;
-    const paths = cellPaths(entry.road, entry.highway).map((path) => (spokesOf(mask).length === 1 ? { ...path, clipStart: false } : path));
+    const paths = cellPaths(entry.road, entry.highway, entry.arterial).map((path) => (spokesOf(mask).length === 1 ? { ...path, clipStart: false } : path));
     const spec = {
       w: 400,
       h: 340,
@@ -134,8 +134,7 @@ export function compose(world, palette, mode, { withGround }) {
       const corners = world.cornersOf(x, y).map((v) => v - level);
       const flat = world.isFlat(x, y);
       const deck = flat ? null : (px, pz) => heightAt(corners, px, pz);
-      const tag = `${entry.road.toString(16)}-${entry.highway.toString(16)}`;
-      stamp(legacySprite({ ...entry, tag, shape: flat ? '' : corners.join('') }, palette, deck), x, y, level);
+      stamp(legacySprite({ ...entry, tag: roadTag(entry), shape: flat ? '' : corners.join('') }, palette, deck), x, y, level);
     }
   } else {
     for (const list of [sprites.walks, sprites.curbs, sprites.decks]) {

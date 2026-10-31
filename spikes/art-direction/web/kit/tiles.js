@@ -4,6 +4,7 @@ import { LAYER, roadMesh } from './roadshader.js';
 import { cellPaths, DIRECTIONS, ROAD_SPEC, spokeEnd, spokesOf } from '../sim/network.js';
 
 // 地表、水面、河岸、线路和农田。线路分三层绘制：全图先画人行道，再画路缘，最后画车道。
+// cell 是一格路网：road、highway 两组方向位，arterial 标出 road 里的双向四车道。
 
 const BLEED = 0.013;
 const WATER_Y = -0.13;
@@ -249,8 +250,8 @@ export function buildSkirt(axis, water, P) {
   return b;
 }
 
-export function buildRoad(road, highway, P, layer) {
-  const paths = cellPaths(road, highway);
+export function buildRoad(cell, P, layer) {
+  const paths = cellPaths(cell.road, cell.highway, cell.arterial);
   return { build: () => new Builder(1), extra: () => [roadMesh(paths, P, null, layer)] };
 }
 
@@ -280,8 +281,8 @@ export function hermite([h0, h1, m0, m1], t) {
  * 否则地形的起伏会让它一段宽一段窄，看起来就是一串鼓包。
  * 相机只看得见朝南、朝东的挡墙，背对相机的一侧不画，否则墙面会盖住路面。
  */
-export function buildSlopeRoad(road, highway, corners, grade, P, layer) {
-  const paths = cellPaths(road, highway);
+export function buildSlopeRoad(cell, corners, grade, P, layer) {
+  const paths = cellPaths(cell.road, cell.highway, cell.arterial);
   const main = paths[0];
   const straight = paths.length === 1 && main.points.length === 2 && grade;
   const terrain = (x, z) => heightAt(corners, x, z);
@@ -290,7 +291,7 @@ export function buildSlopeRoad(road, highway, corners, grade, P, layer) {
   const deckHeight = straight ? (x, z) => deckAt(nearestAlong(main.points, x, z)) : terrain;
 
   const build = () => {
-    const b = new Builder(hashString(`${String(road)}${String(highway)}${corners.join('')}`));
+    const b = new Builder(hashString(`${String(cell.road)}${String(cell.highway)}${corners.join('')}`));
     if (!straight || layer !== LAYER.walk) return b;
     const wall = linear(P.road.wall);
     const coping = shade(wall, 1.12);
@@ -339,12 +340,12 @@ export function buildSlopeRoad(road, highway, corners, grade, P, layer) {
   return { build, extra: () => [roadMesh(paths, P, deckHeight, layer)] };
 }
 
-export function buildBridge(road, highway, P) {
-  const paths = cellPaths(road, highway);
-  const spokes = spokesOf(road | highway);
-  const kind = highway ? 'highway' : 'road';
+export function buildBridge(cell, P) {
+  const paths = cellPaths(cell.road, cell.highway, cell.arterial);
+  const spokes = spokesOf(cell.road | cell.highway);
+  const kind = paths[0].kind;
   const build = () => {
-    const b = new Builder(hashString(`b${String(road)}${String(highway)}`));
+    const b = new Builder(hashString(`b${String(cell.road)}${String(cell.highway)}`));
     const deckColor = linear(P.road.bridge);
     const rail = linear(P.road.rail);
     const pier = linear(P.road.wall);

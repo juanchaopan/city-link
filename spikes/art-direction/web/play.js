@@ -1,14 +1,17 @@
 import { Application, Color, Container, Graphics, Text } from 'pixi.js';
 import { generateCity } from './sim/city.js';
+import { generateRoadDemo } from './sim/roaddemo.js';
 import { resolveStyle } from './sim/packs.js';
 import { SERVICES } from './sim/services.js';
+import { createVehicles } from './vehicles.js';
 import { applyTime, buildWorld, loadAtlas, multiplyColor, screenOf, TILE_HALF_H, TILE_HALF_W } from './world.js';
 import { palettes } from './kit/palettes.js';
 
-// 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图，以及和邻城打通的开关。
+// 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图、和邻城打通的开关，
+// 以及四级道路的立交场景。车流和红绿灯是纯视觉层，不改变任何结算结果。
 
 const params = new URLSearchParams(location.search);
-const N = Number(params.get('n') ?? 64);
+const sceneName = params.get('scene') ?? 'city';
 const mode = params.get('mode') ?? 'layer';
 const seam = params.get('seam') === '1';
 const seamBackground = params.get('backdrop');
@@ -18,6 +21,8 @@ const view = params.get('view') ?? 'city';
 const publicLayout = params.get('public') ?? 'spread';
 const hudOn = params.get('ui') === '1';
 const controlsOn = params.get('controls') !== '0';
+const carCap = Number(params.get('cars') ?? 300);
+const stress = Number(params.get('stress') ?? 1);
 
 // 风格解析和存档无关：缺包时退回标准风格。样张里只装了标准风格。
 const installedStyles = { standard: { id: 'standard', atlas: 'sunny' } };
@@ -38,11 +43,13 @@ await app.init({
   hello: false,
 });
 
-const city = generateCity(N, 11, publicLayout, linked);
+const city = sceneName === 'interchange' ? generateRoadDemo() : generateCity(Number(params.get('n') ?? 64), 11, publicLayout, linked);
+const { N } = city;
 const atlas = await loadAtlas(style.atlas, festivalOn ? 'national-day' : null);
 const layers = seam ? ['ground'] : ['ground', 'overlays', 'objects'];
 const bare = params.get('bare') === '1';
-const scene = buildWorld(atlas, city, { layers, festival: festivalOn, dynamicTint: mode === 'layer', palette, bare });
+const scene = buildWorld(atlas, city, { layers, festival: festivalOn, dynamicTint: mode === 'layer', palette, bare, stress });
+const vehicles = !seam && carCap > 0 && atlas.frames.lamp ? createVehicles(atlas, city, scene, { cap: carCap }) : null;
 
 const camera = new Container();
 camera.addChild(scene.world);
@@ -201,6 +208,12 @@ function applyCamera() {
   const { sx, sy } = screenOf(focusX + 0.5, focusY + 0.5, 0);
   camera.scale.set(zoom);
   camera.position.set(window.innerWidth / 2 - sx * zoom + offset.x, window.innerHeight / 2 - sy * zoom + offset.y);
+  vehicles?.setView({
+    left: -camera.position.x / zoom,
+    right: (window.innerWidth - camera.position.x) / zoom,
+    top: -camera.position.y / zoom,
+    bottom: (window.innerHeight - camera.position.y) / zoom,
+  });
 }
 applyCamera();
 
@@ -208,6 +221,7 @@ let hour = Number(params.get('t') ?? 12);
 function setTime(next) {
   hour = next;
   const state = applyTime(scene, hour);
+  vehicles?.setTime(state.tint, state.glow);
   if (!seam) {
     app.renderer.background.color = multiplyColor(backdrop, state.tint);
     tableLayer.tint = state.tint;
@@ -223,6 +237,11 @@ function setTime(next) {
   if (clock) clock.textContent = `${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.floor((hour % 1) * 60)).padStart(2, '0')}`;
 }
 setTime(hour);
+
+if (vehicles) {
+  app.ticker.add((ticker) => vehicles.step(Math.min(0.05, ticker.deltaMS / 1000)));
+  for (let i = 0; i < Number(params.get('warm') ?? 0); i += 1) vehicles.step(0.05);
+}
 
 if (hudOn) {
   const { createHud } = await import('./hud.js');
@@ -296,6 +315,16 @@ if (panel && controlsOn) {
     url.searchParams.set('view', select.value);
     location.href = url.toString();
   });
+  const sceneSelect = document.getElementById('scene');
+  sceneSelect.value = sceneName;
+  sceneSelect.addEventListener('change', () => {
+    const url = new URL(location.href);
+    url.searchParams.set('scene', sceneSelect.value);
+    url.searchParams.delete('x');
+    url.searchParams.delete('y');
+    url.searchParams.delete('zoom');
+    location.href = url.toString();
+  });
   const toggle = (id, name, value) => {
     const box = document.getElementById(id);
     box.checked = value;
@@ -313,6 +342,7 @@ window.sceneStats = {
   sprites: scene.count.sprites + (second?.count.sprites ?? 0),
   atlas: [atlas.width, atlas.height],
 };
+window.trafficStats = () => (vehicles ? { cars: vehicles.count(), wanted: vehicles.wanted(), stopped: vehicles.stopped(), signals: vehicles.signals } : null);
 
 window.setHour = setTime;
 

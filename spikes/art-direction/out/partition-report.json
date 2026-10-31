@@ -1,0 +1,303 @@
+{
+  "stats": {
+    "enumerated": 73787,
+    "noFrontage": 15420,
+    "noSpec": 66678,
+    "blocks": 67,
+    "wholeBlocks": 23,
+    "millis": 25261.6811
+  },
+  "blockAtoms": 2536,
+  "residualAtoms": 30,
+  "blocksCut": 44,
+  "detail": {
+    "blockAtoms": 50,
+    "box": [
+      22,
+      16,
+      31,
+      25
+    ],
+    "before": [
+      {
+        "shape": "diagonal",
+        "use": "",
+        "area": 1
+      },
+      {
+        "shape": "diagonal",
+        "use": "",
+        "area": 4.5
+      },
+      {
+        "shape": "diagonal",
+        "use": "",
+        "area": 1
+      },
+      {
+        "shape": "diagonal",
+        "use": "",
+        "area": 0.5
+      },
+      {
+        "shape": "rect",
+        "use": "",
+        "area": 1
+      },
+      {
+        "shape": "rect",
+        "use": "",
+        "area": 1
+      },
+      {
+        "shape": "triangle",
+        "use": "parking",
+        "area": 0.5
+      },
+      {
+        "shape": "triangle",
+        "use": "shop",
+        "area": 0.5
+      },
+      {
+        "shape": "triangle",
+        "use": "parking",
+        "area": 0.5
+      },
+      {
+        "shape": "triangle",
+        "use": "shop",
+        "area": 0.5
+      }
+    ],
+    "after": [
+      {
+        "shape": "triangle",
+        "use": "shop",
+        "area": 0.5
+      },
+      {
+        "shape": "triangle",
+        "use": "shop",
+        "area": 0.5
+      },
+      {
+        "shape": "diagonal",
+        "use": "",
+        "area": 2
+      },
+      {
+        "shape": "diagonal",
+        "use": "",
+        "area": 2
+      },
+      {
+        "shape": "diagonal",
+        "use": "",
+        "area": 2
+      },
+      {
+        "shape": "triangle",
+        "use": "shop",
+        "area": 0.5
+      },
+      {
+        "shape": "triangle",
+        "use": "shop",
+        "area": 0.5
+      },
+      {
+        "shape": "bigTriangle",
+        "use": "",
+        "area": 4.5
+      }
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "cuts": 7,
+        "residual": 0,
+        "score": {
+          "total": 0.41667,
+          "size": 0.1736111111111111,
+          "regular": 0.8160000000000001,
+          "cuts": 0.125,
+          "even": 0.16666666666666666,
+          "diagonal": 0.6
+        },
+        "pieces": [
+          {
+            "shape": "triangle",
+            "area": 0.5,
+            "front": 2.4
+          },
+          {
+            "shape": "triangle",
+            "area": 0.5,
+            "front": 1
+          },
+          {
+            "shape": "diagonal",
+            "area": 2,
+            "front": 1.4
+          },
+          {
+            "shape": "diagonal",
+            "area": 2,
+            "front": 1.4
+          },
+          {
+            "shape": "diagonal",
+            "area": 2,
+            "front": 1.4
+          },
+          {
+            "shape": "triangle",
+            "area": 0.5,
+            "front": 1
+          },
+          {
+            "shape": "triangle",
+            "area": 0.5,
+            "front": 2.4
+          },
+          {
+            "shape": "triangle",
+            "area": 4.5,
+            "front": 6
+          }
+        ]
+      },
+      {
+        "rank": 2,
+        "cuts": 2,
+        "residual": 0,
+        "score": {
+          "total": 0.3291724255579821,
+          "size": 0.462962962962963,
+          "regular": 0.8079183588453085,
+          "cuts": 0.3333333333333333,
+          "even": 0.6666666694098947,
+          "diagonal": 0
+        },
+        "pieces": [
+          {
+            "shape": "triangle",
+            "area": 2,
+            "front": 4.8
+          },
+          {
+            "shape": "rect",
+            "area": 6,
+            "front": 5
+          },
+          {
+            "shape": "triangle",
+            "area": 4.5,
+            "front": 7.2
+          }
+        ]
+      },
+      {
+        "rank": 3,
+        "cuts": 2,
+        "residual": 0,
+        "score": {
+          "total": 0.32917242555798204,
+          "size": 0.462962962962963,
+          "regular": 0.8079183588453084,
+          "cuts": 0.3333333333333333,
+          "even": 0.6666666694098947,
+          "diagonal": 0
+        },
+        "pieces": [
+          {
+            "shape": "triangle",
+            "area": 4.5,
+            "front": 7.2
+          },
+          {
+            "shape": "rect",
+            "area": 6,
+            "front": 5
+          },
+          {
+            "shape": "triangle",
+            "area": 2,
+            "front": 4.8
+          }
+        ]
+      },
+      {
+        "rank": 4,
+        "cuts": 3,
+        "residual": 0,
+        "score": {
+          "total": 0.2536773544065728,
+          "size": 0.3472222222222222,
+          "regular": 0.8491370849898475,
+          "cuts": 0.25,
+          "even": 0.27614237541124453,
+          "diagonal": 0
+        },
+        "pieces": [
+          {
+            "shape": "triangle",
+            "area": 4.5,
+            "front": 7.2
+          },
+          {
+            "shape": "rect",
+            "area": 2,
+            "front": 3
+          },
+          {
+            "shape": "rect",
+            "area": 4,
+            "front": 2
+          },
+          {
+            "shape": "triangle",
+            "area": 2,
+            "front": 4.8
+          }
+        ]
+      },
+      {
+        "rank": 5,
+        "cuts": 3,
+        "residual": 0,
+        "score": {
+          "total": 0.2536773544065728,
+          "size": 0.3472222222222222,
+          "regular": 0.8491370849898476,
+          "cuts": 0.25,
+          "even": 0.27614237541124453,
+          "diagonal": 0
+        },
+        "pieces": [
+          {
+            "shape": "triangle",
+            "area": 2,
+            "front": 4.8
+          },
+          {
+            "shape": "rect",
+            "area": 4,
+            "front": 2
+          },
+          {
+            "shape": "rect",
+            "area": 2,
+            "front": 3
+          },
+          {
+            "shape": "triangle",
+            "area": 4.5,
+            "front": 7.2
+          }
+        ]
+      }
+    ]
+  }
+}

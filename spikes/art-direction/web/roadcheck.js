@@ -9,7 +9,7 @@ import { cellPaths, DIRECTIONS, ROAD_SPEC, spokesOf } from './sim/network.js';
 // 路面验收：拼好的路面逐像素核对。沿每条路采样，按几何算出这个点应该是车道、人行道还是路外，
 // 再和遮罩配色下读出来的层比较。边界两侧留一点容差，容差以内的像素不计。
 // 陡坡在屏幕上被压扁，1 像素的取整就对应较大的横向距离，所以坡路的容差放宽，车道内的判断不放宽。
-// 桥头的栏杆会挡住靠近相机一侧的一点路面，挡墙压顶和人行道同色，这两处按遮挡处理，不算错误。
+// 桥头的栏杆会挡住靠近相机一侧的一点路面，这一处按遮挡处理，不算错误。
 
 const CLASS = { empty: 0, deck: 1, walk: 2, curb: 3, other: 4 };
 const MARGIN = 0.03;
@@ -44,12 +44,20 @@ function lineDistance(line, px, py) {
   return best;
 }
 
+/** 收窄路段的宽度不是一个数，车道内用最窄处判断，路外用最宽处判断，中间的过渡带不计。 */
+function widthsOf(path) {
+  const spec = ROAD_SPEC[path.kind];
+  const walks = path.widths ? path.widths.map((width) => width.walk / 2) : [spec.walk / 2];
+  const decks = path.widths ? path.widths.map((width) => width.deck / 2) : [spec.deck / 2];
+  return { walkIn: Math.min(...walks), walkOut: Math.max(...walks), deckIn: Math.min(...decks), deckOut: Math.max(...decks) };
+}
+
 /** 每条路中线的世界坐标和路面高度函数，高度决定采样点落在画面的哪个像素上。 */
 function linesOf(world, mode) {
   const { N, sprites } = world;
   const lines = [];
   for (const id of [...sprites.cells.keys()].sort((a, b) => a - b)) {
-    const { road, highway } = sprites.cells.get(id);
+    const { road, highway, arterial } = sprites.cells.get(id);
     const x = id % N;
     const y = Math.floor(id / N);
     const inWater = world.isWater(x, y);
@@ -59,7 +67,7 @@ function linesOf(world, mode) {
     const flat = world.isFlat(x, y);
     const grade = mode === 'legacy' ? null : sprites.grades.get(id);
     const free = spokesOf(road | highway).length === 1;
-    for (const path of cellPaths(road, highway)) {
+    for (const path of cellPaths(road, highway, arterial)) {
       const points = path.points.map(([px, py]) => [px + x + 0.5, py + y + 0.5]);
       const [a, c] = [points[0], points[points.length - 1]];
       const heightOf = (px, py) => {
@@ -72,7 +80,7 @@ function linesOf(world, mode) {
         }
         return level + heightAt(corners, px - x - 0.5, py - y - 0.5) / LEVEL;
       };
-      lines.push({ cell: id, kind: path.kind, points, heightOf, free, bridge, flat, walk: ROAD_SPEC[path.kind].walk / 2, deck: ROAD_SPEC[path.kind].deck / 2 });
+      lines.push({ cell: id, kind: path.kind, points, heightOf, free, bridge, flat, ...widthsOf(path) });
     }
   }
   if (world.linked) {
@@ -80,8 +88,7 @@ function linesOf(world, mode) {
       const [dx, dy] = DIRECTIONS[(gate.inward + 4) % 8];
       const a = [gate.x + 0.5 + dx * 0.5, gate.y + 0.5 + dy * 0.5];
       const c = [a[0] + dx * 1.2, a[1] + dy * 1.2];
-      const spec = ROAD_SPEC[gate.kind];
-      lines.push({ cell: -1, kind: gate.kind, points: [a, c], heightOf: () => 0, free: false, bridge: false, flat: true, walk: spec.walk / 2, deck: spec.deck / 2 });
+      lines.push({ cell: -1, kind: gate.kind, points: [a, c], heightOf: () => 0, free: false, bridge: false, flat: true, ...widthsOf({ kind: gate.kind }) });
     }
   }
   return lines;
@@ -90,10 +97,10 @@ function linesOf(world, mode) {
 function junctionsOf(world) {
   const { N, sprites } = world;
   const list = [];
-  for (const [id, { road, highway }] of sprites.cells) {
+  for (const [id, { road, highway, arterial }] of sprites.cells) {
     const spokes = spokesOf(road | highway);
     const mixed = spokes.length === 2 && road && highway;
-    if (spokes.length >= 3 || mixed) list.push({ x: (id % N) + 0.5, y: Math.floor(id / N) + 0.5, spokes, road, highway });
+    if (spokes.length >= 3 || mixed) list.push({ x: (id % N) + 0.5, y: Math.floor(id / N) + 0.5, spokes, road, highway, arterial });
   }
   return list;
 }
@@ -156,7 +163,7 @@ function inspect(world, mode) {
       const firstStation = line.free ? Math.ceil(MARGIN / 0.02) + 1 : 0;
       for (let s = firstStation; s <= stations; s += 1) {
         const t = (s / stations) * length;
-        for (let v = -(line.walk + 0.12); v <= line.walk + 0.12; v += 0.015) {
+        for (let v = -(line.walkOut + 0.12); v <= line.walkOut + 0.12; v += 0.015) {
           const px = ax + tx * t - ty * v;
           const py = ay + ty * t + tx * v;
           const others = buckets.get(bucketKey(px, py)) ?? [];
@@ -168,10 +175,10 @@ function inspect(world, mode) {
             const other = lines[index];
             const margin = other.flat ? MARGIN : SLOPE_MARGIN;
             const d = lineDistance(other, px, py);
-            if (d < other.deck - margin) inDeck = true;
-            else if (d <= other.deck + margin) deckEdge = true;
-            else if (d < other.walk - margin) inWalk = true;
-            else if (d <= other.walk + margin) walkEdge = true;
+            if (d < other.deckIn - margin) inDeck = true;
+            else if (d <= other.deckOut + margin) deckEdge = true;
+            else if (d < other.walkIn - margin) inWalk = true;
+            else if (d <= other.walkOut + margin) walkEdge = true;
           }
           if (deckEdge && !inDeck) continue;
           const level = line.heightOf(ax + tx * t, ay + ty * t);
@@ -189,7 +196,7 @@ function inspect(world, mode) {
             else if (found === CLASS.empty) mark('walkHole', x, y, px, py, found);
           } else if (!walkEdge) {
             if (nearJunction(px, py)) continue;
-            if (isRoadClass(found) && !(found === CLASS.walk && !line.flat)) mark('overshoot', x, y, px, py, found);
+            if (isRoadClass(found)) mark('overshoot', x, y, px, py, found);
           }
         }
       }
@@ -229,9 +236,11 @@ function inspect(world, mode) {
       const c = spokes[(i + 1) % spokes.length];
       const gap = (c - a + 8) % 8 || 8;
       if (gap >= 4) continue;
-      const kindOf = (dir) => (junction.highway & (1 << dir) ? 'highway' : 'road');
-      if (kindOf(a) !== kindOf(c)) continue;
-      const half = ROAD_SPEC[kindOf(a)].deck / 2;
+      const kindOf = (dir) => {
+        if (junction.highway & (1 << dir)) return 'highway';
+        return junction.arterial & (1 << dir) ? 'arterial' : 'road';
+      };
+      const half = Math.max(ROAD_SPEC[kindOf(a)].deck, ROAD_SPEC[kindOf(c)].deck) / 2;
       const angle = (gap * Math.PI) / 4;
       const middle = ((a + gap / 2) * Math.PI) / 4;
       const distance = half / Math.sin(angle / 2) + 0.02;

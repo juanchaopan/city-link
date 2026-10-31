@@ -67,6 +67,12 @@ function gradeRuns({ N, cells, cornersOf, isFlat, levelOf }) {
   return grades;
 }
 
+/** 精灵名字里的路网部分：普通路、高速两组方向位；有四车道时普通路后面跟它的方向位。 */
+export function roadTag({ road, highway, arterial = 0 }) {
+  const local = arterial ? `${road.toString(16)}_${arterial.toString(16)}` : road.toString(16);
+  return `${local}-${highway.toString(16)}`;
+}
+
 /** 输入路网，输出三层路面、桥和地形信息之外的一切路面精灵。gates 是地图边界上的连接点。 */
 export function roadSprites({ N, roads, cornersOf, isFlat, levelOf, isWater, gates = [], linked = false }) {
   const cells = new Map([...roads.entries()].map(([id, entry]) => [id, { ...entry }]));
@@ -88,12 +94,12 @@ export function roadSprites({ N, roads, cornersOf, isFlat, levelOf, isWater, gat
   const decks = [];
   const bridges = [];
   for (const id of [...cells.keys()].sort((a, b) => a - b)) {
-    const { road, highway } = cells.get(id);
+    const entry = cells.get(id);
     const x = id % N;
     const y = Math.floor(id / N);
-    const tag = `${road.toString(16)}-${highway.toString(16)}`;
+    const tag = roadTag(entry);
     if (isWater(x, y)) {
-      if (spokesOf(road | highway).length === 2) bridges.push({ key: `br-${tag}`, x, y });
+      if (spokesOf(entry.road | entry.highway).length === 2) bridges.push({ key: `br-${tag}`, x, y });
       continue;
     }
     const level = levelOf(x, y);

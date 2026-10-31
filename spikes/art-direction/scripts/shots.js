@@ -7,7 +7,8 @@ import { startServer } from './serve.js';
 
 const PORT = process.env.SOFT ? 4184 : 4183;
 const filter = process.argv.slice(2);
-const base = 'n=64&controls=0';
+const base = 'n=64&controls=0&warm=200';
+const demo = 'scene=interchange&controls=0&warm=200';
 const views = [
   { name: 'r6-overview', query: `${base}&zoom=0.078` },
   { name: 'r6-overview-night', query: `${base}&zoom=0.078&t=22` },
@@ -29,6 +30,13 @@ const views = [
   { name: 'r6-time-noon', query: `${base}&zoom=0.3&x=31&y=30&t=12` },
   { name: 'r6-time-dusk', query: `${base}&zoom=0.3&x=31&y=30&t=18.6` },
   { name: 'r6-time-night', query: `${base}&zoom=0.3&x=31&y=30&t=23` },
+  { name: 'r6-cars-night', query: `${base}&zoom=0.55&x=30&y=31&t=22&cars=300` },
+  { name: 'r6-ix-overview', query: `${demo}&zoom=0.1` },
+  { name: 'r6-ix-cloverleaf', query: `${demo}&zoom=0.26&x=14&y=9` },
+  { name: 'r6-ix-trumpet', query: `${demo}&zoom=0.26&x=30&y=10` },
+  { name: 'r6-ix-diamond', query: `${demo}&zoom=0.36&x=30&y=28` },
+  { name: 'r6-ix-viaduct', query: `${demo}&zoom=0.5&x=30&y=19` },
+  { name: 'r6-ix-taper', query: `${demo}&zoom=0.6&x=40&y=28` },
 ].filter((view) => filter.length === 0 || filter.some((prefix) => view.name.startsWith(prefix)));
 
 mkdirSync('out', { recursive: true });
@@ -121,30 +129,30 @@ const GRID_CONTRAST = `
   return { edge: edge / edgeCount, middle: middle / middleCount, contrast: edge / edgeCount - middle / middleCount };
 `;
 
-/** 露底检查：背景设成品红，只画地表，统计城市内部露出品红的像素。白天和夜里都跑。 */
+/** 露底检查：背景设成品红，只画地表，统计城市内部露出品红的像素。白天和夜里、垫底和不垫底都跑。 */
 async function seamCheck() {
   const rows = [];
   for (const hour of [12, 22]) {
-    for (const zoom of [0.078, 0.25, 0.3333, 0.5, 0.75, 1, 2]) {
-      await open(`n=32&controls=0&zoom=${String(zoom)}&x=15&y=14&seam=1&t=${String(hour)}`);
-      const result = await pixelStats(zoom, [15.5, 14.5], COUNT_MAGENTA);
-      rows.push({ hour, zoom, ...result });
-      console.log(hour, 'zoom', zoom, JSON.stringify(result));
+    for (const bare of [true, false]) {
+      for (const zoom of [0.078, 0.25, 0.5, 1, 2]) {
+        await open(`n=32&controls=0&cars=0&zoom=${String(zoom)}&x=15&y=14&seam=1&t=${String(hour)}&bare=${bare ? '1' : '0'}`);
+        const result = await pixelStats(zoom, [15.5, 14.5], COUNT_MAGENTA);
+        rows.push({ hour, bare, zoom, ...result });
+        console.log(hour, bare ? '不垫底' : '垫底', 'zoom', zoom, JSON.stringify(result));
+      }
     }
   }
   return rows;
 }
 
-/** 网格线检查：全图缩小到游戏最小倍率，夜里比较格线和格子中间的亮度差。bare 是不垫底的版本。 */
+/** 网格线检查：全图缩小到游戏最小倍率，夜里比较格线和格子中间的亮度差。 */
 async function gridCheck() {
   const rows = [];
-  for (const bare of [true, false]) {
-    for (const hour of [12, 22]) {
-      await open(`n=64&controls=0&zoom=0.078&t=${String(hour)}&bare=${bare ? '1' : '0'}`);
-      const result = await pixelStats(0.078, [32.5, 32.5], GRID_CONTRAST);
-      rows.push({ bare, hour, ...result });
-      console.log(bare ? '不垫底' : '垫底', hour, JSON.stringify(result));
-    }
+  for (const hour of [12, 22]) {
+    await open(`n=64&controls=0&cars=0&zoom=0.078&t=${String(hour)}`);
+    const result = await pixelStats(0.078, [32.5, 32.5], GRID_CONTRAST);
+    rows.push({ hour, ...result });
+    console.log('网格', hour, JSON.stringify(result));
   }
   return rows;
 }
@@ -155,18 +163,27 @@ if (process.env.SEAM) {
   report.grid = await gridCheck();
   writeFileSync('out/seam-report.json', JSON.stringify(report, null, 2));
 } else if (process.env.FPS) {
+  const game = 'n=64&controls=0&zoom=0.42&x=31&y=30';
   const cases = [
-    { name: '全图，白天', query: 'n=64&controls=0&zoom=0.078', cycle: false },
-    { name: '游戏视角，白天', query: 'n=64&controls=0&zoom=0.42&x=31&y=30', cycle: false },
-    { name: '单图集加亮窗层，连续变换时间', query: 'n=64&controls=0&zoom=0.3&x=31&y=30&t=20', cycle: true },
-    { name: '两套图集叠加，黄昏混合中', query: 'n=64&controls=0&zoom=0.3&x=31&y=30&t=19&mode=atlas2', cycle: false },
-    { name: '节日叠加层', query: 'n=64&controls=0&zoom=0.3&x=31&y=30&festival=1', cycle: false },
+    { name: '全图，白天，无车', query: 'n=64&controls=0&cars=0&zoom=0.078', cycle: false },
+    { name: '游戏视角，白天，无车', query: `${game}&cars=0`, cycle: false },
+    { name: '游戏视角，300 辆', query: `${game}&cars=300&warm=300`, cycle: false },
+    { name: '游戏视角，600 辆', query: `${game}&cars=600&warm=300`, cycle: false },
+    { name: '夜间车灯，300 辆', query: `${game}&cars=300&warm=300&t=22`, cycle: false },
+    { name: '夜间车灯，600 辆', query: `${game}&cars=600&warm=300&t=22`, cycle: false },
+    { name: '全图缩小，600 辆', query: 'n=64&controls=0&zoom=0.078&cars=600&warm=300', cycle: false },
+    { name: '满城模块拼装（每物业 3 张），全图', query: 'n=64&controls=0&zoom=0.078&cars=0&stress=3', cycle: false },
+    { name: '满城模块拼装（每物业 3 张），游戏视角 300 辆', query: `${game}&cars=300&warm=300&stress=3`, cycle: false },
+    { name: '立交场景，300 辆', query: 'scene=interchange&controls=0&zoom=0.2&x=22&y=20&cars=300&warm=300', cycle: false },
+    { name: '单图集加亮窗层，连续变换时间', query: 'n=64&controls=0&zoom=0.3&x=31&y=30&t=20&cars=300', cycle: true },
+    { name: '节日叠加层', query: 'n=64&controls=0&zoom=0.3&x=31&y=30&festival=1&cars=300', cycle: false },
   ];
   for (const { name, query, cycle } of cases) {
     await open(query);
     const stats = await page.evaluate(() => window.sceneStats);
-    const fps = await page.evaluate((flag) => window.measureFps(6, flag), cycle);
-    report[name] = { sprites: stats.sprites, atlas: stats.atlas, ...fps };
+    const fps = await page.evaluate((flag) => window.measureFps(5, flag), cycle);
+    const cars = await page.evaluate(() => window.trafficStats());
+    report[name] = { sprites: stats.sprites, atlas: stats.atlas, ...fps, cars };
     console.log(name, JSON.stringify(report[name]));
   }
   writeFileSync(process.env.SOFT ? 'out/fps-soft-report.json' : 'out/fps-report.json', JSON.stringify(report, null, 2));
@@ -174,6 +191,8 @@ if (process.env.SEAM) {
   for (const view of views) {
     await open(view.query);
     await page.screenshot({ path: `out/${view.name}.png` });
+    const cars = await page.evaluate(() => window.trafficStats?.());
+    console.log(view.name, JSON.stringify(cars));
   }
 }
 

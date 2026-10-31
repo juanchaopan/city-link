@@ -1,4 +1,6 @@
-import { DIRECTIONS, spokesOf } from './network.js';
+import { chooseLooks, repeatedNeighbors } from './appearance.js';
+import { COMBOS, modulesOf } from './combos.js';
+import { DIRECTIONS } from './network.js';
 import { metroPlan } from './metro.js';
 import { generateParcels, ZONE } from './parcels.js';
 import { roadSprites } from './roadsprites.js';
@@ -98,13 +100,16 @@ function terrain(N, s, riverAt, protect) {
   return { h, water, corner };
 }
 
-/** 按折线铺路。沿途每格记下通向相邻格的方向。 */
+/** 按折线铺路。沿途每格记下通向相邻格的方向。arterial 是 road 的子集，标出其中的双向四车道。 */
 export function traceRoads(N) {
   const roads = new Map();
   const link = (kind, x, y, dir) => {
     const id = y * N + x;
-    const entry = roads.get(id) ?? { road: 0, highway: 0 };
-    entry[kind] |= 1 << dir;
+    const entry = roads.get(id) ?? { road: 0, highway: 0, arterial: 0 };
+    const bit = 1 << dir;
+    if (kind === 'highway') entry.highway |= bit;
+    else entry.road |= bit;
+    if (kind === 'arterial') entry.arterial |= bit;
     roads.set(id, entry);
   };
   const walk = (kind, points) => {
@@ -140,20 +145,27 @@ export function buildRoads(N, s, center, riverAt) {
   const usableRows = rows.filter((y) => y < riverAt(center) - 2);
   const south = usableRows[usableRows.length - 1];
   const right = columns[columns.length - 1];
+  const bridgeColumn = columns.reduce((best, x) => (Math.abs(x - center) < Math.abs(best - center) ? x : best), columns[0]);
+  const mainRow = usableRows[Math.floor(usableRows.length / 2)];
 
-  for (const x of columns) walk('road', [[x, top], [x, south]]);
-  for (const y of usableRows) walk('road', [[left, y], [right, y]]);
+  for (const x of columns) if (x !== bridgeColumn) walk('road', [[x, top], [x, south]]);
+  for (const y of usableRows) if (y !== mainRow) walk('road', [[left, y], [right, y]]);
+  walk('arterial', [[bridgeColumn, top], [bridgeColumn, south]]);
+  walk('arterial', [[left, mainRow], [right, mainRow]]);
 
   const mirrored = columns.map((x) => top + (right - x));
   const start = columns.findIndex((_, i) => mirrored[i] <= south);
   walk('road', [[columns[start], mirrored[start]], [right, mirrored[columns.length - 1]]]);
 
+  // 第二条斜路不过街区的角，切出梯形和五边形的街区，地块划分要靠切分才能解决。
+  const avenueStart = columns[1];
+  const avenueLength = Math.min(right - avenueStart, south - top);
+  walk('road', [[avenueStart, top], [avenueStart + avenueLength, top + avenueLength]]);
+
   const ringRow = top - 2;
   const ringColumn = left - 2;
   walk('highway', [[N - 1, ringRow], [ringColumn + 2, ringRow], [ringColumn, ringRow + 2], [ringColumn, N - 1]]);
-  const bridgeColumn = columns.reduce((best, x) => (Math.abs(x - center) < Math.abs(best - center) ? x : best), columns[0]);
   walk('road', [[bridgeColumn, south], [bridgeColumn, N - 1]]);
-  walk('road', [[left, usableRows[1]], [ringColumn, usableRows[1]]]);
 
   // 切坡路基：路沿 (+1, -1) 方向斜穿台地朝南的直坡。这个方向在屏幕上接近水平，
   // 上坡一侧的挡墙正对相机，下坡一侧的填方也看得见，并且一路走到台地顶上。
@@ -248,6 +260,7 @@ export function specKey(parcel) {
   if (parcel.shape === 'bigTriangle') return `Q-${letter}${String(parcel.level)}-${String(parcel.spanU)}-${parcel.orient}-${String(parcel.variant)}`;
   if (parcel.shape === 'farmhouse') return `farmhouse-${String(parcel.variant)}`;
   if (parcel.shape === 'triangle') return `t-${parcel.use}-${parcel.orient}-${String(parcel.variant)}`;
+  if (parcel.shape === 'green') return parcel.use === 'lawn' ? `P-park-1x1-${String(parcel.variant)}` : `t-${parcel.use}-${parcel.orient}-${String(parcel.variant)}`;
   if (parcel.shape === 'service') return `S-${parcel.use}-${size}`;
   if (parcel.shape === 'public') return `P-${parcel.use}-${size}-${String(parcel.variant)}`;
   return `B-${letter}${String(parcel.level)}-${size}-${parcel.orient}-${String(parcel.variant)}`;
@@ -257,7 +270,7 @@ export function specKey(parcel) {
 export function footprintKey(parcel) {
   if (parcel.shape === 'bigTriangle') return `Q${String(parcel.spanU)}-${parcel.orient}`;
   if (parcel.shape === 'diagonal') return `D${String(parcel.spanU)}x${String(parcel.spanV)}-${parcel.orient}`;
-  if (parcel.shape === 'triangle') return null;
+  if (parcel.shape === 'triangle' || parcel.shape === 'green') return null;
   return `R${String(parcel.spanU)}x${String(parcel.spanV)}`;
 }
 
@@ -265,6 +278,15 @@ export function footprintKey(parcel) {
 function isFestive(parcel) {
   if (parcel.shape === 'service' || parcel.use === 'plaza') return true;
   return parcel.zone === ZONE.commercial && parcel.level === 3 && parcel.shape !== 'triangle';
+}
+
+/** 走模块拼装的物业：2×2 的直角地块和直角边 3 格的大三角地块，中高密度的住宅和商业。 */
+function modularSize(parcel) {
+  if (parcel.zone !== ZONE.residential && parcel.zone !== ZONE.commercial) return null;
+  if (parcel.level < 2) return null;
+  if (parcel.shape === 'rect' && parcel.spanU === 2 && parcel.spanV === 2) return '2x2';
+  if (parcel.shape === 'bigTriangle' && parcel.spanU === 3) return 'Q3';
+  return null;
 }
 
 export function generateCity(N, seed = 11, publicLayout = 'spread', linked = false) {
@@ -293,6 +315,13 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   const result = generateParcels({ N, roads, water, slopes, zones, density, seed });
   const traffic = computeTraffic(result.parcels, roads, N);
   const coverage = coverageOf(result.parcels, result.services, roads, N);
+
+  // 外观在规格之外单独选，同规格的相邻物业不重复；外观不影响面积、容量和结算。
+  const buildings = result.parcels.filter((parcel) => parcel.shape === 'rect' || parcel.shape === 'diagonal' || parcel.shape === 'bigTriangle');
+  const lookBefore = repeatedNeighbors(buildings, (parcel) => parcel.variant);
+  const looks = chooseLooks(buildings, seed, (parcel) => (modularSize(parcel) ? COMBOS.length : 2));
+  for (const parcel of buildings) if (!modularSize(parcel)) parcel.variant = looks.get(parcel.id);
+  const lookAfter = repeatedNeighbors(buildings, (parcel) => looks.get(parcel.id));
 
   const ground = [];
   const overlays = [];
@@ -325,28 +354,6 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   for (const { key, x, y } of sprites.bridges) addObject(key, x + 0.5, y + 0.5, 0, cellSquare(x, y));
   for (const { key, x, y, level } of sprites.planned) addObject(key, x + 0.5, y + 0.5, level, cellSquare(x, y));
 
-  for (const id of [...roads.keys()].sort((a, b) => a - b)) {
-    const { road, highway } = roads.get(id);
-    const x = id % N;
-    const y = Math.floor(id / N);
-    const spokes = spokesOf(road | highway);
-    if (isWater(x, y) || !isFlat(x, y)) continue;
-    if (spokes.length === 2 && (spokes[0] + 4) % 8 === spokes[1] && hash2(seed, x, y) < 0.26) {
-      const pick = hash2(seed + 1, x, y);
-      const dir = pick < 0.5 ? spokes[0] : spokes[1];
-      const axis = Math.min(dir, (dir + 4) % 8);
-      const [dx, dy] = DIRECTIONS[dir];
-      const length = Math.hypot(dx, dy);
-      const ox = (-dy / length) * 0.12;
-      const oy = (dx / length) * 0.12;
-      const rotation = (8 - axis) % 8;
-      const kind = hash2(seed + 2, x, y) < 0.12 ? `bus-${String(rotation)}` : `car-${String(Math.floor(hash2(seed + 3, x, y) * 4))}-${String(rotation)}`;
-      const px = x + 0.5 + ox;
-      const py = y + 0.5 + oy;
-      addObject(kind, px, py, levelOf(x, y), [[px - 0.1, py - 0.1], [px + 0.1, py - 0.1], [px + 0.1, py + 0.1], [px - 0.1, py + 0.1]]);
-    }
-  }
-
   const crops = valueNoise(41);
   for (const parcel of result.parcels) {
     const level = levelOf(Math.floor(parcel.px), Math.floor(parcel.py));
@@ -359,7 +366,9 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
         overlays.push({ key: `f-${String(crop)}-${axis}`, x, y, level: levelOf(x, y) });
       }
     } else {
-      addObject(specKey(parcel), parcel.px, parcel.py, level, parcel.polygon, { footprintKey: footprintKey(parcel), parcel: parcel.id, festive: isFestive(parcel) });
+      const size = modularSize(parcel);
+      const modules = size ? modulesOf(COMBOS[looks.get(parcel.id)], size, Number(parcel.orient) || 0) : null;
+      addObject(specKey(parcel), parcel.px, parcel.py, level, parcel.polygon, { footprintKey: footprintKey(parcel), parcel: parcel.id, festive: isFestive(parcel), modules });
     }
   }
 
@@ -414,9 +423,12 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
     cornersOf,
     isFlat,
     isWater,
+    looks: { before: lookBefore, after: lookAfter, modular: objects.filter((object) => object.modules).length },
   };
 }
 
 export function keysOf(city) {
-  return [...city.ground, ...city.overlays, ...city.walks, ...city.curbs, ...city.decks, ...city.neighbors, ...city.objects].map((entry) => entry.key);
+  const keys = [...city.ground, ...city.overlays, ...city.walks, ...city.curbs, ...city.decks, ...city.neighbors, ...city.objects].map((entry) => entry.key);
+  for (const object of city.objects) for (const part of object.modules ?? []) keys.push(part.key);
+  return keys;
 }

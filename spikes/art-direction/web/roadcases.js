@@ -72,7 +72,18 @@ export const CASES = [
   { name: '高速', focus: [6, 3], sheetVariant: 1, variants: [
     { N: 12, draw: (w) => w('highway', row(c)) },
     { N: 12, draw: (w) => w('highway', [[1, 2], [4, 2], [8, 6], [8, 11]]) },
-    { N: 12, draw: (w) => { w('highway', row(c)); w('road', [[c, c], [c, 11]]); } },
+  ] },
+  { name: '双向四车道', focus: [6, 6], sheetVariant: 2, variants: [
+    { N: 12, draw: (w) => w('arterial', row(c)) },
+    { N: 12, draw: (w) => w('arterial', [[1, c], [c, c], [c + 4, c + 4]]) },
+    { N: 12, draw: (w) => { w('arterial', row(c)); w('arterial', column(c)); } },
+    { N: 12, draw: (w) => { w('arterial', row(c)); w('road', column(c)); } },
+  ] },
+  { name: '四车道接两车道', focus: [6, 6], variants: [
+    { N: 12, draw: (w) => { w('arterial', [[1, c], [c, c]]); w('road', [[c, c], [11, c]]); } },
+    { N: 12, draw: (w) => { w('road', [[1, c], [c, c]]); w('arterial', [[c, c], [11, c]]); } },
+    { N: 12, draw: (w) => { w('arterial', [[c, 1], [c, c]]); w('road', [[c, c], [c, 11]]); } },
+    { N: 12, draw: (w) => { w('arterial', [[2, 2], [c, c]]); w('road', [[c, c], [10, 10]]); } },
   ] },
   { name: '边界未打通·普通路', focus: [8, 11], variants: [
     { N: 12, draw: (w) => w('road', [[8, 3], [8, 11]]), gates: [{ x: 8, y: 11, kind: 'road', inward: 6, axis: 'z' }] },

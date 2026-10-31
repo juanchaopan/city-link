@@ -1,4 +1,5 @@
-import { polygonDistance, worldPolylines } from './network.js';
+import { polygonDistance, ROAD_SPEC, worldPolylines } from './network.js';
+import { atomTable, partitionLand } from './partition.js';
 import { placeServices } from './services.js';
 import { RATE, ZONE } from './zones.js';
 
@@ -10,21 +11,10 @@ import { RATE, ZONE } from './zones.js';
 // 容量 = 原子数 × 该分区该等级的费率。任何形状都没有办法用更少的面积拿到同样的容量。
 //
 // 一个地块就是一个物业：一个出入口、一份容量。楼、停车场和绿化都画在同一个物业里，不增加容量。
-// 形状完整优先：先让三角形空地整块成为一个物业，再排斜向带和直角地块，最后才用小三角收边。
+// 物业的出入口只能接普通道路（双向两车道、双向四车道），不贴普通道路的土地不能成为独立物业。
+// 街区的切分在 partition.js 里；切不干净的边角只作为绿地，没有容量，也没有出入口。
 
 export { RATE, ZONE };
-
-const AXIS_SPECS = [
-  [3, 3],
-  [2, 3],
-  [3, 2],
-  [2, 2],
-  [1, 3],
-  [3, 1],
-  [1, 2],
-  [2, 1],
-  [1, 1],
-];
 
 const PUBLIC_SPECS = [
   [3, 3],
@@ -39,6 +29,9 @@ const PUBLIC_SPECS = [
 const TRIANGLE_LEGS = [4, 3, 2];
 const LOT_INSET = 0.05;
 const CLEARANCE = 0.02;
+const FRONT_REACH = 0.42;
+const BLOCK_DEPTH = 7;
+const GREEN_USES = ['flower', 'bench', 'pond', 'statue', 'rocks', 'pavilion'];
 
 function mix(seed, a, b) {
   let h = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b);
@@ -64,25 +57,34 @@ function atomCentroid(id, N) {
   return [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3];
 }
 
-/** 不被路压到、不在水里和坡上的原子才能建设。 */
-function freeAtoms({ N, roads, water, slopes }) {
-  const lines = worldPolylines(roads, N);
+function linesByCell(lines) {
   const byCell = new Map();
   for (const line of lines) {
     if (!byCell.has(line.cell)) byCell.set(line.cell, []);
     byCell.get(line.cell).push(line);
   }
+  return byCell;
+}
+
+function nearbyLines(byCell, N, x, y, reach = 2) {
+  const nearby = [];
+  for (let j = y - reach; j <= y + reach; j += 1) {
+    for (let i = x - reach; i <= x + reach; i += 1) {
+      if (i >= 0 && j >= 0 && i < N && j < N) nearby.push(...(byCell.get(j * N + i) ?? []));
+    }
+  }
+  return nearby;
+}
+
+/** 不被路压到、不在水里和坡上的原子才能建设。 */
+function freeAtoms({ N, roads, water, slopes, reserved }) {
+  const byCell = linesByCell(worldPolylines(roads, N));
   const free = new Uint8Array(N * N * 4);
   for (let y = 0; y < N; y += 1) {
     for (let x = 0; x < N; x += 1) {
       const cell = y * N + x;
-      if (water.has(cell) || slopes.has(cell) || roads.has(cell)) continue;
-      const nearby = [];
-      for (let j = y - 2; j <= y + 2; j += 1) {
-        for (let i = x - 2; i <= x + 2; i += 1) {
-          if (i >= 0 && j >= 0 && i < N && j < N) nearby.push(...(byCell.get(j * N + i) ?? []));
-        }
-      }
+      if (water.has(cell) || slopes.has(cell) || roads.has(cell) || reserved?.has(cell)) continue;
+      const nearby = nearbyLines(byCell, N, x, y);
       for (let q = 0; q < 4; q += 1) {
         const id = cell * 4 + q;
         const polygon = atomPolygon(id, N);
@@ -93,26 +95,6 @@ function freeAtoms({ N, roads, water, slopes }) {
     }
   }
   return free;
-}
-
-function atomsInRect(N, u0, u1, v0, v1) {
-  const atoms = [];
-  const minX = Math.floor((u0 + v0) / 2) - 2;
-  const maxX = Math.ceil((u1 + v1) / 2) + 2;
-  const minY = Math.floor((u0 - v1) / 2) - 2;
-  const maxY = Math.ceil((u1 - v0) / 2) + 2;
-  for (let y = Math.max(0, minY); y <= Math.min(N - 1, maxY); y += 1) {
-    for (let x = Math.max(0, minX); x <= Math.min(N - 1, maxX); x += 1) {
-      for (let q = 0; q < 4; q += 1) {
-        const id = (y * N + x) * 4 + q;
-        const [cx, cy] = atomCentroid(id, N);
-        const u = cx + cy;
-        const v = cx - cy;
-        if (u > u0 && u < u1 && v > v0 && v < v1) atoms.push(id);
-      }
-    }
-  }
-  return atoms;
 }
 
 const QUADRANTS = [
@@ -223,37 +205,6 @@ function trianglePolygon(x, y, q, legs) {
   ]);
 }
 
-/** 斜路所在的直线：沿 u 走的路 v 不变，沿 v 走的路 u 不变。 */
-function diagonalRuns(roads, N) {
-  const runs = new Map();
-  const add = (axis, line, from, to) => {
-    const key = `${axis}${String(line)}`;
-    const entry = runs.get(key) ?? { axis, line, spans: [] };
-    entry.spans.push([from, to]);
-    runs.set(key, entry);
-  };
-  for (const id of [...roads.keys()].sort((a, b) => a - b)) {
-    const mask = roads.get(id).road | roads.get(id).highway;
-    const x = id % N;
-    const y = Math.floor(id / N);
-    if (mask & (1 << 1)) add('u', x - y, x + y + 1, x + y + 3);
-    if (mask & (1 << 3)) add('v', x + y + 1, x - y - 2, x - y);
-  }
-  const result = [];
-  for (const key of [...runs.keys()].sort()) {
-    const { axis, line, spans } = runs.get(key);
-    spans.sort((a, b) => a[0] - b[0]);
-    const merged = [];
-    for (const span of spans) {
-      const last = merged[merged.length - 1];
-      if (last && span[0] <= last[1]) last[1] = Math.max(last[1], span[1]);
-      else merged.push([...span]);
-    }
-    for (const [from, to] of merged) result.push({ axis, line, from, to });
-  }
-  return result;
-}
-
 function rectPolygon(x, y, w, h, inset) {
   return [
     [x + inset, y + inset],
@@ -277,10 +228,12 @@ function uvPolygon(u0, u1, v0, v1, inset) {
   ];
 }
 
+/** 出入口：离这些点最近的普通道路格。快速路和高速不能接物业。 */
 function nearestRoad(roads, N, points) {
   let best = -1;
   let bestDistance = Infinity;
   for (const id of [...roads.keys()].sort((a, b) => a - b)) {
+    if (!roads.get(id).road) continue;
     const x = id % N;
     const y = Math.floor(id / N);
     for (const [px, py] of points) {
@@ -309,119 +262,153 @@ function cellAtoms(x, y, w, h, N) {
   return atoms;
 }
 
-function placeTriangles({ N, seed }, tools) {
-  const { open, zoneAt, levelAt, claim } = tools;
-  for (const land of triangleLands(N, open, zoneAt)) {
-    const { x, y, q, legs, atoms, zone } = land;
-    const [sx, sy] = QUADRANTS[q];
+/**
+ * 每个原子贴普通道路的边长。一条边的另一侧不能建设，并且离普通道路足够近，才算沿街。
+ * 只贴高速的边不算，所以高速两侧的空地长不出物业。斜边贴路的长度单独记下来。
+ */
+function frontageOf({ N, roads }, isLand, table) {
+  const local = worldPolylines(roads, N).filter((line) => ROAD_SPEC[line.kind].access);
+  const byCell = linesByCell(local);
+  const front = new Float32Array(N * N * 4);
+  const diagonalFront = new Float32Array(N * N * 4);
+  for (let id = 0; id < front.length; id += 1) {
+    if (!isLand(id)) continue;
+    const q = id & 3;
+    const cell = id >> 2;
+    const x = cell % N;
+    const y = Math.floor(cell / N);
+    const [a, b, center] = atomPolygon(id, N);
+    const edges = [
+      { from: a, to: b, across: table.neighbors(id)[2] ?? -1, length: 1 },
+      { from: b, to: center, across: cell * 4 + ((q + 1) % 4), length: Math.SQRT1_2 },
+      { from: center, to: a, across: cell * 4 + ((q + 3) % 4), length: Math.SQRT1_2 },
+    ];
+    const nearby = nearbyLines(byCell, N, x, y);
+    for (const { from, to, across, length } of edges) {
+      if (across >= 0 && isLand(across)) continue;
+      const middle = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+      const square = [[middle[0] - 0.01, middle[1] - 0.01], [middle[0] + 0.01, middle[1] - 0.01], [middle[0] + 0.01, middle[1] + 0.01], [middle[0] - 0.01, middle[1] + 0.01]];
+      const touching = nearby.some((line) => polygonDistance(square, line.points) <= line.half + FRONT_REACH);
+      if (!touching) continue;
+      front[id] += length;
+      if (length < 1) diagonalFront[id] += length;
+    }
+  }
+  return { front, diagonalFront };
+}
+
+/** 离街太远的内陆不进街区，留作原野，所以乡野的大片空地不会被切成一堆碎块。 */
+function withinReach(land, front, table) {
+  const depth = new Map();
+  const queue = [];
+  for (const id of land) {
+    if (front[id] > 0) {
+      depth.set(id, 0);
+      queue.push(id);
+    }
+  }
+  const member = new Set(land);
+  for (let head = 0; head < queue.length; head += 1) {
+    const id = queue[head];
+    const next = depth.get(id) + 1;
+    if (next > BLOCK_DEPTH) continue;
+    for (const other of table.neighbors(id)) {
+      if (member.has(other) && !depth.has(other)) {
+        depth.set(other, next);
+        queue.push(other);
+      }
+    }
+  }
+  return land.filter((id) => depth.has(id));
+}
+
+function placeBlocks(input, tools) {
+  const { N, seed } = input;
+  const { open, zoneAt, levelAt, claim, table } = tools;
+  const land = [];
+  for (let id = 0; id < N * N * 4; id += 1) {
+    const zone = zoneAt(id);
+    if (open(id) && (zone === ZONE.residential || zone === ZONE.commercial || zone === ZONE.industrial)) land.push(id);
+  }
+  const member = new Set(land);
+  const { front, diagonalFront } = frontageOf(input, (id) => member.has(id), table);
+  const reached = withinReach(land, front, table);
+  const result = partitionLand(reached, table, front, diagonalFront);
+  for (const piece of result.pieces) {
+    const { atoms, spec } = piece;
+    const zone = majorityZone(atoms, zoneAt);
     const level = levelAt(atoms[Math.floor(atoms.length / 2)]);
-    claim(atoms, {
-      shape: 'bigTriangle',
-      orient: String(q),
-      spanU: legs,
-      spanV: legs,
-      zone,
-      level,
-      variant: mix(seed, x, y) % 2,
-      px: x + (sx * legs) / 2,
-      py: y + (sy * legs) / 2,
-      polygon: trianglePolygon(x, y, q, legs),
-      capacity: capacityOf(atoms.length, zone, level),
-    });
-  }
-}
-
-function placeDiagonalBands({ N, roads, seed }, tools) {
-  const { open, zoneAt, levelAt, claim } = tools;
-  for (const { axis, line, from, to } of diagonalRuns(roads, N)) {
-    for (const side of [1, -1]) {
-      let t = from;
-      while (t < to) {
-        const roll = mix(seed, line * 7 + t, side + 3);
-        const lengths = [[2, 3, 1], [3, 2, 1], [1, 2, 3]][roll % 3];
-        const depths = [[2, 3, 1], [3, 2, 1], [2, 1, 3]][(roll >>> 8) % 3];
-        let placed = false;
-        for (const depth of depths) {
-          for (const length of lengths) {
-            if (t + length > to) continue;
-            const near = line + side;
-            const far = line + side * (1 + depth);
-            const [c0, c1] = side > 0 ? [near, far] : [far, near];
-            const [u0, u1, v0, v1] = axis === 'u' ? [t, t + length, c0, c1] : [c0, c1, t, t + length];
-            const atoms = atomsInRect(N, u0, u1, v0, v1);
-            if (atoms.length !== length * depth * 2 || !atoms.every(open)) continue;
-            const zone = zoneAt(atoms[0]);
-            if (zone === ZONE.none || zone === ZONE.farm || zone === ZONE.public) continue;
-            if (!atoms.every((a) => zoneAt(a) === zone)) continue;
-            const level = levelAt(atoms[0]);
-            const center = uvPoint((u0 + u1) / 2, (v0 + v1) / 2);
-            claim(atoms, {
-              shape: 'diagonal',
-              orient: axis,
-              spanU: u1 - u0,
-              spanV: v1 - v0,
-              zone,
-              level,
-              variant: (roll >>> 16) % 2,
-              px: center[0],
-              py: center[1],
-              polygon: uvPolygon(u0, u1, v0, v1, LOT_INSET),
-              capacity: capacityOf(atoms.length, zone, level),
-            });
-            t += length;
-            placed = true;
-            break;
-          }
-          if (placed) break;
-        }
-        if (!placed) t += 1;
-      }
+    const frontPoints = atoms.filter((id) => front[id] > 0).map((id) => atomCentroid(id, N));
+    const common = { zone, level, accessFrom: frontPoints, front: piece.front, diagonalFront: piece.diagonalFront };
+    if (spec.shape === 'rect') {
+      const { x, y, w, h } = spec;
+      claim(atoms, {
+        ...common,
+        shape: 'rect',
+        orient: 'a',
+        spanU: w,
+        spanV: h,
+        variant: mix(seed, x, y) % 2,
+        px: x + w / 2,
+        py: y + h / 2,
+        polygon: rectPolygon(x, y, w, h, LOT_INSET),
+        capacity: capacityOf(atoms.length, zone, level),
+      });
+    } else if (spec.shape === 'diagonal') {
+      const { u0, u1, v0, v1 } = spec;
+      const center = uvPoint((u0 + u1) / 2, (v0 + v1) / 2);
+      claim(atoms, {
+        ...common,
+        shape: 'diagonal',
+        orient: 'u',
+        spanU: u1 - u0,
+        spanV: v1 - v0,
+        variant: mix(seed, u0, v0) % 2,
+        px: center[0],
+        py: center[1],
+        polygon: uvPolygon(u0, u1, v0, v1, LOT_INSET),
+        capacity: capacityOf(atoms.length, zone, level),
+      });
+    } else if (spec.legs === 1) {
+      const { x, y, q } = spec;
+      const [sx, sy] = QUADRANTS[q];
+      claim(atoms, {
+        ...common,
+        shape: 'triangle',
+        orient: String(q),
+        spanU: 1,
+        spanV: 1,
+        use: 'shop',
+        zone: ZONE.commercial,
+        level: 1,
+        variant: mix(seed, x, y) % 2,
+        px: x + sx / 2,
+        py: y + sy / 2,
+        polygon: trianglePolygon(x, y, q, 1),
+        capacity: capacityOf(atoms.length, ZONE.commercial, 1),
+      });
+    } else {
+      const { x, y, q, legs } = spec;
+      const [sx, sy] = QUADRANTS[q];
+      claim(atoms, {
+        ...common,
+        shape: 'bigTriangle',
+        orient: String(q),
+        spanU: legs,
+        spanV: legs,
+        variant: mix(seed, x, y) % 2,
+        px: x + (sx * legs) / 2,
+        py: y + (sy * legs) / 2,
+        polygon: trianglePolygon(x, y, q, legs),
+        capacity: capacityOf(atoms.length, zone, level),
+      });
     }
   }
-}
-
-function placeRectangles({ N, zones, density, seed }, tools) {
-  const { cellOpen, nearRoad, claim } = tools;
-  for (let y = 0; y < N; y += 1) {
-    for (let x = 0; x < N; x += 1) {
-      if (!cellOpen(x, y)) continue;
-      const zone = zones[y * N + x];
-      if (zone === ZONE.none || zone === ZONE.farm || zone === ZONE.public) continue;
-      const roll = mix(seed, x, y);
-      // 形状完整优先：大规格排在前面，放不下才退到小规格。
-      for (let k = 0; k < AXIS_SPECS.length; k += 1) {
-        const [w, h] = AXIS_SPECS[k];
-        if (k < 4 && ((roll >>> k) & 3) === 0) continue;
-        let fits = nearRoad(x, y, w, h);
-        for (let j = y; fits && j < y + h; j += 1) {
-          for (let i = x; fits && i < x + w; i += 1) {
-            fits = cellOpen(i, j) && zones[j * N + i] === zone;
-          }
-        }
-        if (!fits) continue;
-        const atoms = cellAtoms(x, y, w, h, N);
-        const level = density[y * N + x] || 1;
-        claim(atoms, {
-          shape: 'rect',
-          orient: 'a',
-          spanU: w,
-          spanV: h,
-          zone,
-          level,
-          variant: (roll >>> 12) % 2,
-          px: x + w / 2,
-          py: y + h / 2,
-          polygon: rectPolygon(x, y, w, h, LOT_INSET),
-          capacity: capacityOf(atoms.length, zone, level),
-        });
-        break;
-      }
-    }
-  }
+  return { ...result, blockAtoms: reached.length };
 }
 
 function placeFarmland({ N, zones, seed }, tools) {
-  const { cellOpen, claim } = tools;
+  const { cellOpen, nearRoad, claim } = tools;
   const fieldCells = new Set();
   for (let y = 0; y < N; y += 1) {
     for (let x = 0; x < N; x += 1) {
@@ -431,7 +418,7 @@ function placeFarmland({ N, zones, seed }, tools) {
   const farmhouses = [...fieldCells].filter((cell) => {
     const x = cell % N;
     const y = Math.floor(cell / N);
-    return x % 7 === 3 && y % 6 === 2 && mix(seed, x, y) % 4 !== 0;
+    return nearRoad(x, y, 1, 1) && (x + y) % 5 === 0 && mix(seed, x, y) % 4 !== 0;
   });
   for (const cell of farmhouses) {
     const x = cell % N;
@@ -447,6 +434,7 @@ function placeFarmland({ N, zones, seed }, tools) {
       variant: mix(seed, x, y) % 3,
       px: x + 0.5,
       py: y + 0.5,
+      accessFrom: [[x + 0.5, y + 0.5]],
       polygon: rectPolygon(x, y, 1, 1, LOT_INSET),
       capacity: capacityOf(4, ZONE.farm, 1),
     });
@@ -473,25 +461,27 @@ function placeFarmland({ N, zones, seed }, tools) {
     cells.sort((a, b) => a - b);
     const atoms = cells.flatMap((c) => [c * 4, c * 4 + 1, c * 4 + 2, c * 4 + 3]);
     const middle = cells[Math.floor(cells.length / 2)];
+    const roadside = cells.filter((c) => nearRoad(c % N, Math.floor(c / N), 1, 1));
     claim(atoms, {
       shape: 'field',
       orient: 'a',
       spanU: 0,
       spanV: 0,
+      use: roadside.length > 0 ? undefined : 'fallow',
       zone: ZONE.farm,
       level: 1,
       variant: 0,
       px: (middle % N) + 0.5,
       py: Math.floor(middle / N) + 0.5,
-      accessFrom: cells.map((c) => [(c % N) + 0.5, Math.floor(c / N) + 0.5]),
+      accessFrom: roadside.length > 0 ? roadside.map((c) => [(c % N) + 0.5, Math.floor(c / N) + 0.5]) : null,
       polygon: null,
       cells,
-      capacity: capacityOf(atoms.length, ZONE.farm, 1),
+      capacity: roadside.length > 0 ? capacityOf(atoms.length, ZONE.farm, 1) : 0,
     });
   }
 }
 
-/** 公共用地没用完的部分长成小公园和广场，不留空格。 */
+/** 公共用地没用完的部分长成小公园和广场，不留空格。公园不是建筑，不贴路也可以。 */
 function fillPublicLand({ N, zones, seed }, tools) {
   const { cellOpen, nearRoad, claim } = tools;
   for (let y = 0; y < N; y += 1) {
@@ -505,7 +495,8 @@ function fillPublicLand({ N, zones, seed }, tools) {
           }
         }
         if (!fits) continue;
-        const use = nearRoad(x, y, w, h) && mix(seed, x, y) % 3 === 0 ? 'plaza' : 'park';
+        const roadside = nearRoad(x, y, w, h);
+        const use = roadside && mix(seed, x, y) % 3 === 0 ? 'plaza' : 'park';
         claim(cellAtoms(x, y, w, h, N), {
           shape: 'public',
           orient: 'a',
@@ -517,6 +508,7 @@ function fillPublicLand({ N, zones, seed }, tools) {
           variant: mix(seed, y, x) % 2,
           px: x + w / 2,
           py: y + h / 2,
+          accessFrom: roadside ? [[x + w / 2, y + h / 2]] : null,
           polygon: rectPolygon(x, y, w, h, LOT_INSET),
           capacity: 0,
         });
@@ -526,14 +518,34 @@ function fillPublicLand({ N, zones, seed }, tools) {
   }
 }
 
-/** 收边：只处理残缺的格子。整格空地不切成小三角，留作绿地。 */
-function placeSmallTriangles({ N, zones, seed }, tools) {
+/** 兜底的绿地：切分后剩下的边角。只有景观小品，没有容量，也没有出入口。 */
+function placeGreen({ N, zones, seed }, tools, residual) {
   const { open, cellOpen, claim } = tools;
+  const leftover = new Set(residual.map((id) => id >> 2));
   for (let y = 0; y < N; y += 1) {
     for (let x = 0; x < N; x += 1) {
-      const base = (y * N + x) * 4;
-      const zone = zones[y * N + x];
-      if (zone === ZONE.none || cellOpen(x, y)) continue;
+      const cell = y * N + x;
+      const base = cell * 4;
+      if (zones[cell] === ZONE.none) continue;
+      if (cellOpen(x, y)) {
+        if (!leftover.has(cell)) continue;
+        claim(cellAtoms(x, y, 1, 1, N), {
+          shape: 'green',
+          orient: 'a',
+          spanU: 1,
+          spanV: 1,
+          use: 'lawn',
+          zone: ZONE.public,
+          level: 1,
+          variant: mix(seed, x, y) % 2,
+          px: x + 0.5,
+          py: y + 0.5,
+          accessFrom: null,
+          polygon: rectPolygon(x, y, 1, 1, LOT_INSET),
+          capacity: 0,
+        });
+        continue;
+      }
       for (let q = 0; q < 4; q += 1) {
         const a = base + q;
         const b = base + ((q + 1) % 4);
@@ -549,25 +561,20 @@ function placeSmallTriangles({ N, zones, seed }, tools) {
           py + (center[1] - py) * 0.14,
         ]);
         const roll = mix(seed, x * 3 + q, y);
-        const farm = zone === ZONE.farm;
-        const publicLand = zone === ZONE.public;
-        const kinds = zone === ZONE.commercial ? ['shop', 'parking', 'shop'] : zone === ZONE.residential ? ['garden', 'shop', 'parking'] : ['parking', 'garden', 'parking'];
-        const use = farm ? 'crop' : publicLand ? 'garden' : kinds[roll % 3];
-        const earns = use === 'shop' || use === 'crop';
-        const earnZone = farm ? ZONE.farm : ZONE.commercial;
         claim([a, b], {
-          shape: 'triangle',
+          shape: 'green',
           orient: String(q),
           spanU: 1,
           spanV: 1,
-          use,
-          zone: earns ? earnZone : zone,
+          use: GREEN_USES[roll % GREEN_USES.length],
+          zone: ZONE.public,
           level: 1,
           variant: (roll >>> 9) % 2,
           px: x + 0.5,
           py: y + 0.5,
+          accessFrom: null,
           polygon: inner,
-          capacity: earns ? capacityOf(2, earnZone, 1) : 0,
+          capacity: 0,
         });
       }
     }
@@ -576,13 +583,15 @@ function placeSmallTriangles({ N, zones, seed }, tools) {
 
 export function generateParcels(input) {
   const { N, roads, water, slopes, zones, density } = input;
-  const free = freeAtoms({ N, roads, water, slopes });
+  const free = freeAtoms({ N, roads, water, slopes, reserved: input.reserved });
   const buildableAtoms = free.reduce((sum, value) => sum + value, 0);
   const used = new Int32Array(N * N * 4).fill(-1);
   const parcels = [];
+  const table = atomTable(N);
 
   const open = (atom) => free[atom] === 1 && used[atom] < 0;
   const tools = {
+    table,
     open,
     zoneAt: (atom) => zones[atom >> 2],
     levelAt: (atom) => density[atom >> 2] || 1,
@@ -595,7 +604,7 @@ export function generateParcels(input) {
       for (let j = y - 1; j <= y + h; j += 1) {
         for (let i = x - 1; i <= x + w; i += 1) {
           if (i >= x && i < x + w && j >= y && j < y + h) continue;
-          if (i >= 0 && j >= 0 && i < N && j < N && roads.has(j * N + i)) return true;
+          if (i >= 0 && j >= 0 && i < N && j < N && roads.get(j * N + i)?.road) return true;
         }
       }
       return false;
@@ -604,7 +613,7 @@ export function generateParcels(input) {
       const id = parcels.length;
       for (const atom of atoms) used[atom] = id;
       const { accessFrom, ...rest } = parcel;
-      const access = nearestRoad(roads, N, accessFrom ?? [[parcel.px, parcel.py]]);
+      const access = accessFrom === null ? -1 : nearestRoad(roads, N, accessFrom ?? [[parcel.px, parcel.py]]);
       parcels.push({ id, atoms: atoms.length, area: atoms.length / 4, access, ...rest });
     },
     placeService(service, { x, y, w, h }) {
@@ -625,16 +634,14 @@ export function generateParcels(input) {
     },
   };
 
-  placeTriangles(input, tools);
-  placeDiagonalBands(input, tools);
-  placeRectangles(input, tools);
+  const partition = placeBlocks(input, tools);
   placeFarmland(input, tools);
   const services = placeServices(input, tools, parcels);
   fillPublicLand(input, tools);
-  placeSmallTriangles(input, tools);
+  placeGreen(input, tools, partition.residual);
 
   const usedAtoms = used.reduce((sum, value) => sum + (value >= 0 ? 1 : 0), 0);
-  return { parcels, buildableAtoms, usedAtoms, atomOwner: used, free, services };
+  return { parcels, buildableAtoms, usedAtoms, atomOwner: used, free, services, partition };
 }
 
 /**

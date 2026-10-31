@@ -4,8 +4,8 @@ import { ZONE } from './zones.js';
 // 道路负担。每个地块的出入口接到一个路段，流量只算到路段，不模拟单辆车。
 // 住宅是出行的起点，商业和工业是终点：起点的出行量按终点容量除以距离平方分配，沿最短路累加到每个路段。
 
-const CAPACITY = { road: 900, highway: 3600 };
-const SPEED = { road: 1, highway: 0.5 };
+const CAPACITY = { road: 900, arterial: 1800, express: 3000, highway: 3600 };
+const SPEED = { road: 1, arterial: 0.8, express: 0.6, highway: 0.5 };
 
 export function buildGraph(roads, N) {
   const nodes = [...roads.keys()].sort((a, b) => a - b);
@@ -13,7 +13,7 @@ export function buildGraph(roads, N) {
   const edges = [];
   const adjacency = nodes.map(() => []);
   nodes.forEach((id, i) => {
-    const { road, highway } = roads.get(id);
+    const { road, highway, arterial = 0 } = roads.get(id);
     const x = id % N;
     const y = Math.floor(id / N);
     for (const dir of spokesOf(road | highway)) {
@@ -22,9 +22,10 @@ export function buildGraph(roads, N) {
       if (!index.has(other)) continue;
       const j = index.get(other);
       if (j < i) continue;
-      const kind = highway & (1 << dir) ? 'highway' : 'road';
+      const bit = 1 << dir;
+      const kind = highway & bit ? 'highway' : arterial & bit ? 'arterial' : 'road';
       const length = Math.hypot(dx, dy);
-      const edge = { from: id, to: other, kind, length, load: 0, cost: length * SPEED[kind] };
+      const edge = { from: id, to: other, dir, kind, length, load: 0, cost: length * SPEED[kind] };
       const number = edges.length;
       edges.push(edge);
       adjacency[i].push({ to: j, edge: number });

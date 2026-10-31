@@ -4,9 +4,11 @@ import { sortByDepth } from './sim/order.js';
 // 把图集和城市数据拼成 Pixi 场景。
 // 地面分层绘制：地表、田块、人行道、路缘、车道，路面的层序保证人行道不会盖到车道上。
 // 物体按拓扑排序后的顺序画；亮窗和节日层紧跟在所属建筑后面，都在同一张纹理上，不增加换纹理的次数。
+// 模块拼装的物业由几张精灵叠成，从下往上画，每张抬高整数像素。
 
 const CHUNK = 16;
 const BATCH = 3000;
+const MODULE_FLOOR_LEVELS = 0.5;
 export const TILE_HALF_W = 64;
 export const TILE_HALF_H = 32;
 export const LEVEL_PIXELS = 32;
@@ -133,10 +135,11 @@ function underlay(city, palette) {
 /**
  * 拼出一个世界。dynamicTint 为真时物体的颜色逐粒子更新，亮窗才能不受夜色影响。
  * bare 为真时不垫底，露底检查用它看精灵本身有没有缝。
+ * stress 大于 1 时每个物业多画几遍，用来量全城都走模块拼装时的开销。
  */
-export function buildWorld(atlas, city, { layers, festival, dynamicTint, palette, bare = false }) {
+export function buildWorld(atlas, city, { layers, festival, dynamicTint, palette, bare = false, stress = 1 }) {
   const { N } = city;
-  const area = new Rectangle(-N * 80, -200, N * 160, N * 80 + 400);
+  const area = new Rectangle(-N * 80, -400, N * 160, N * 80 + 800);
   const groundLayer = new Container();
   const lit = [];
   const bodies = [];
@@ -174,18 +177,29 @@ export function buildWorld(atlas, city, { layers, festival, dynamicTint, palette
       objectLayer.addChild(batchContainer(atlas, current, dynamicTint, area));
       current = [];
     };
-    for (const object of sorted) {
-      const { sx, sy } = screenOf(object.px, object.py, object.level);
-      const body = particleFor(atlas, object.key, sx, sy);
+    const addSprite = (key, sx, sy) => {
+      const body = particleFor(atlas, key, sx, sy);
       bodies.push(body);
       current.push(body);
-      const glowKey = `${object.key}~g`;
+      const glowKey = `${key}~g`;
       if (dynamicTint && atlas.frames[glowKey]) {
         const glow = particleFor(atlas, glowKey, sx, sy);
         glow.alpha = 0;
         lit.push(glow);
         current.push(glow);
       }
+    };
+    for (const object of sorted) {
+      const parts = object.modules ?? [{ key: object.key, lift: 0, dx: 0, dy: 0 }];
+      for (const { key, lift, dx, dy } of parts) {
+        const { sx, sy } = screenOf(object.px + dx, object.py + dy, object.level + lift * MODULE_FLOOR_LEVELS);
+        addSprite(key, sx, sy);
+      }
+      if (stress > 1 && object.parcel !== undefined && !object.modules) {
+        const { sx, sy } = screenOf(object.px, object.py, object.level);
+        for (let i = 1; i < stress; i += 1) addSprite(object.key, sx, sy);
+      }
+      const { sx, sy } = screenOf(object.px, object.py, object.level);
       const decoration = `fx-${object.footprintKey}`;
       if (festival && object.footprintKey && object.festive && atlas.frames[decoration]) {
         const layer = particleFor(atlas, decoration, sx, sy);

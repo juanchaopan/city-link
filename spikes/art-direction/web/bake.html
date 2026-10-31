@@ -12,6 +12,7 @@
       import { Baker } from './kit/bake.js';
       import { palettes } from './kit/palettes.js';
       import { generateCity, keysOf } from './sim/city.js';
+      import { generateRoadDemo } from './sim/roaddemo.js';
       import { bakeKey, EXTRA_KEYS, specFor } from './kit/catalog.js';
 
       const baker = new Baker();
@@ -59,13 +60,14 @@
       window.keysFor = (sizes) => {
         const keys = new Set(EXTRA_KEYS);
         const footprints = new Set();
+        const collect = (city) => {
+          for (const key of keysOf(city)) keys.add(key);
+          for (const object of city.objects) if (object.footprintKey) footprints.add(object.footprintKey);
+        };
         for (const N of sizes) {
-          for (const [layout, linked] of [['spread', false], ['spread', true], ['concentrated', false]]) {
-            const city = generateCity(N, 11, layout, linked);
-            for (const key of keysOf(city)) keys.add(key);
-            for (const object of city.objects) if (object.footprintKey) footprints.add(object.footprintKey);
-          }
+          for (const [layout, linked] of [['spread', false], ['spread', true], ['concentrated', false]]) collect(generateCity(N, 11, layout, linked));
         }
+        collect(generateRoadDemo());
         return { keys: [...keys].sort(), footprints: [...footprints].sort() };
       };
 

@@ -12,7 +12,7 @@ function pick(list, random) {
   return list[Math.floor(random() * list.length) % list.length];
 }
 
-function plate(b, points, color) {
+export function plate(b, points, color) {
   const top = points.map(([x, z]) => [x, LOT_Y, z]);
   b.poly(top, color);
   const centerX = points.reduce((sum, p) => sum + p[0], 0) / points.length;
@@ -27,7 +27,7 @@ function plate(b, points, color) {
   }
 }
 
-function rectangle(cx, cz, sx, sz) {
+export function rectangle(cx, cz, sx, sz) {
   return [
     [cx - sx / 2, cz - sz / 2],
     [cx + sx / 2, cz - sz / 2],
@@ -57,7 +57,7 @@ function pane(b, points, normal, P, solidColor) {
 }
 
 /** 四面开窗，只给朝向相机的面画，所以旋转 45° 的楼也能用同一个函数。 */
-function windows(b, sx, sz, y0, floors, P, spacing = FLOOR, size = 0.52, cell = 0.13) {
+export function windows(b, sx, sz, y0, floors, P, spacing = FLOOR, size = 0.52, cell = 0.13) {
   const paneH = spacing * 0.5;
   for (const sign of [1, -1]) {
     if (visibleX(b, sign)) {
@@ -87,7 +87,7 @@ function windows(b, sx, sz, y0, floors, P, spacing = FLOOR, size = 0.52, cell = 
   }
 }
 
-function tree(b, x, z, P, scale = 1, y = LOT_Y) {
+export function tree(b, x, z, P, scale = 1, y = LOT_Y) {
   const leaf = linear(pick(P.tree.leaf, b.random));
   const trunk = linear(P.tree.trunk);
   const h = (0.1 + b.random() * 0.05) * scale;
@@ -189,7 +189,7 @@ function houseGroup(b, sx, sz, P, seed) {
   }
 }
 
-function slab(b, cx, cz, sx, sz, floors, wall, accent, P) {
+export function slab(b, cx, cz, sx, sz, floors, wall, accent, P) {
   const h = floors * FLOOR;
   b.at(cx, LOT_Y, cz, 0, (c) => {
     c.box(0, 0, 0, sx, h, sz, wall, { top: shade(wall, 0.9) });
@@ -200,7 +200,7 @@ function slab(b, cx, cz, sx, sz, floors, wall, accent, P) {
   });
 }
 
-function glassTower(b, cx, cz, sx, sz, floors, seed, P) {
+export function glassTower(b, cx, cz, sx, sz, floors, seed, P) {
   const glass = linear(P.wall.glass);
   const dark = linear(P.wall.glassDark);
   const frame = linear(seed % 2 === 0 ? P.wall.cool : P.wall.concrete);
@@ -229,7 +229,7 @@ function glassTower(b, cx, cz, sx, sz, floors, seed, P) {
   });
 }
 
-function roundTower(b, cx, cz, r, floors, seed, P) {
+export function roundTower(b, cx, cz, r, floors, seed, P) {
   const glass = linear(P.wall.glass);
   const dark = linear(P.wall.glassDark);
   const frame = linear(P.wall.cool);
@@ -246,7 +246,7 @@ function roundTower(b, cx, cz, r, floors, seed, P) {
   b.cylinder(cx, y, cz, r * 0.5, 0, 0.1, 10, linear(P.zones.commercial[seed % 4]));
 }
 
-function shopHall(b, cx, cz, sx, sz, floors, seed, P) {
+export function shopHall(b, cx, cz, sx, sz, floors, seed, P) {
   const wall = linear([P.wall.warm, P.wall.cool, P.wall.brick][seed % 3]);
   const accent = linear(P.zones.commercial[seed % P.zones.commercial.length]);
   const white = linear('#ffffff');
@@ -302,7 +302,7 @@ function sawtooth(b, cx, cz, sx, sz, seed, P) {
   }
 }
 
-function wallOf(seed, P) {
+export function wallOf(seed, P) {
   return [
     linear(P.wall.warm),
     linear(P.wall.cool),
@@ -374,9 +374,32 @@ const QUADRANTS = [
   [1, -1],
 ];
 
+/** 斜边朝街的三角形物业：长楼沿斜边摆，楼身是 45° 的，后面的直角一侧是院子。 */
+function hypotenuseBlock(b, toLocal, sx, sz, legs, zone, level, seed, P) {
+  const inset = 0.42 + legs * 0.1;
+  const [cx, cz] = toLocal(legs / 2 - inset, legs / 2 - inset);
+  const long = legs * Math.SQRT2 * 0.56;
+  const deep = Math.min(0.72, legs * 0.24);
+  const rotation = Math.atan2(sz, sx);
+  const accent = linear(zone === 'r' ? P.zones.residential[seed % 4] : P.zones.commercial[seed % 4]);
+  b.at(cx, 0, cz, rotation, (c) => {
+    if (zone === 'r') slab(c, 0, 0, long, deep, level === 1 ? 2 : level === 2 ? 5 : 10, wallOf(seed, P), accent, P);
+    else if (zone === 'c') {
+      if (level === 3) glassTower(c, 0, 0, long, deep, 11 + seed % 5, seed + 1, P);
+      else shopHall(c, 0, 0, long, deep, level + 1, seed, P);
+    } else sawtooth(c, 0, 0, long, deep, seed, P);
+  });
+  const [gx, gz] = toLocal(legs * 0.24, legs * 0.24);
+  const size = legs * 0.3;
+  if (zone === 'c') parking(b, gx, gz, size, size, P, 'x');
+  else if (zone === 'i') yard(b, gx, gz, size, size, P);
+  else garden(b, gx, gz, size, size, P, 2 + legs);
+}
+
 /**
  * 大三角形物业。楼不是三角形：主体是矩形或 L 形，贴着两条直角边，
  * 剩下的斜边一侧用停车场、庭院、堆场和一排树填满，整块地仍是一个物业。
+ * 变体 1 把长楼沿斜边摆，斜路边的物业就有了沿街的斜向立面。
  */
 function propertyQ(b, name, P) {
   const [, zoneLevel, legsText, orient, variant] = name.split('-');
@@ -390,6 +413,11 @@ function propertyQ(b, name, P) {
   const shrink = 0.07;
   const lotColor = linear(zone === 'r' ? P.ground.lawn : zone === 'c' ? P.road.walk : P.road.yard);
   plate(b, [toLocal(shrink, shrink), toLocal(legs - shrink * 2.4, shrink), toLocal(shrink, legs - shrink * 2.4)], lotColor);
+
+  if (variant === '1' && legs >= 3) {
+    hypotenuseBlock(b, toLocal, sx, sz, legs, zone, level, seed, P);
+    return;
+  }
 
   const margin = 0.14;
   const arm = Math.max(0.5, legs * 0.19);
@@ -626,7 +654,53 @@ function publicLand(b, use, sx, sz, P) {
   }
 }
 
-/** 半格三角：小店、花园、停车场和收边的小块农田。 */
+/** 收边的小品。这些都不是建筑：没有容量，也没有出入口，只是让边角不空着。 */
+const SMALL_FEATURES = {
+  flower(b, x, z, P) {
+    const colors = [P.tree.autumn, P.zones.residential[0], '#ffffff', P.zones.residential[3]];
+    for (let i = 0; i < 9; i += 1) {
+      const px = x + (b.random() - 0.5) * 0.3;
+      const pz = z + (b.random() - 0.5) * 0.24;
+      b.blob(px, LOT_Y + 0.014, pz, 0.026, 0.02, 0.026, linear(colors[i % colors.length]));
+    }
+  },
+  bench(b, x, z, P) {
+    const wood = linear(P.wood);
+    for (const offset of [-0.09, 0.09]) {
+      b.box(x + offset, LOT_Y, z, 0.13, 0.03, 0.05, wood);
+      b.box(x + offset, LOT_Y + 0.03, z - 0.022, 0.13, 0.034, 0.008, shade(wood, 0.86));
+    }
+    b.cylinder(x + 0.2, LOT_Y, z - 0.03, 0.012, 0.01, 0.11, 5, linear(P.wall.concrete));
+    b.blob(x + 0.2, LOT_Y + 0.125, z - 0.03, 0.022, 0.022, 0.022, linear(P.window.lit));
+  },
+  pond(b, x, z, P) {
+    b.cylinder(x, LOT_Y, z, 0.17, 0.16, 0.012, 9, linear(P.wall.concrete), linear(P.water.mid));
+    b.blob(x + 0.06, LOT_Y + 0.016, z - 0.03, 0.03, 0.008, 0.024, linear(P.tree.leaf[1]));
+    b.blob(x - 0.07, LOT_Y + 0.016, z + 0.05, 0.022, 0.008, 0.02, linear(P.tree.leaf[0]));
+  },
+  statue(b, x, z, P) {
+    b.box(x, LOT_Y, z, 0.14, 0.05, 0.14, linear(P.wall.concrete));
+    b.box(x, LOT_Y + 0.05, z, 0.09, 0.04, 0.09, shade(linear(P.wall.concrete), 0.92));
+    b.cylinder(x, LOT_Y + 0.09, z, 0.03, 0.018, 0.11, 6, linear(P.wall.glassDark));
+    b.blob(x, LOT_Y + 0.215, z, 0.024, 0.024, 0.024, linear(P.wall.glassDark));
+  },
+  rocks(b, x, z, P) {
+    const stone = linear(P.wall.concrete);
+    b.blob(x - 0.06, LOT_Y + 0.03, z, 0.075, 0.05, 0.06, stone);
+    b.blob(x + 0.07, LOT_Y + 0.02, z + 0.04, 0.05, 0.034, 0.05, shade(stone, 0.9));
+    b.blob(x + 0.02, LOT_Y + 0.02, z - 0.07, 0.04, 0.028, 0.04, shade(stone, 1.06));
+    tree(b, x + 0.14, z - 0.1, P, 0.5);
+  },
+  pavilion(b, x, z, P) {
+    const wood = linear(P.wood);
+    for (const [dx, dz] of [[-0.09, -0.09], [0.09, -0.09], [0.09, 0.09], [-0.09, 0.09]]) {
+      b.box(x + dx, LOT_Y, z + dz, 0.014, 0.12, 0.014, wood);
+    }
+    b.cylinder(x, LOT_Y + 0.12, z, 0.17, 0, 0.09, 6, linear(P.zones.residential[0]));
+  },
+};
+
+/** 半格三角。shop 是贴路的小店，其余是收边的绿地和小品。 */
 function smallTriangle(b, name, P) {
   const [, use, orient] = name.split('-');
   const q = Number(orient);
@@ -635,22 +709,16 @@ function smallTriangle(b, name, P) {
   const cx = (points[0][0] + points[1][0] + points[2][0]) / 3;
   const cz = (points[0][1] + points[1][1] + points[2][1]) / 3;
   const inner = points.map(([x, z]) => [x + (cx - x) * 0.14, z + (cz - z) * 0.14]);
-  if (use === 'parking') {
-    plate(b, inner, linear(P.road.yard));
-    b.box(cx * 0.8, LOT_Y, cz * 0.8, 0.1, 0.024, 0.052, linear(pick(P.cars, b.random)));
-  } else if (use === 'shop') {
+  if (use === 'shop') {
     plate(b, inner, linear(P.road.walk));
     b.at(cx * 0.95, LOT_Y, cz * 0.95, 0, (c) => {
       c.box(0, 0, 0, 0.22, 0.13, 0.2, linear(P.wall.warm), { top: linear(P.zones.commercial[q % 4]) });
       windows(c, 0.22, 0.2, 0.02, 1, P, 0.13, 0.6, 0.11);
     });
-  } else if (use === 'crop') {
-    plate(b, inner, linear(P.field.greens));
-  } else {
-    plate(b, inner, linear(P.ground.lawn));
-    tree(b, cx, cz, P, 0.8);
-    b.blob(cx * 0.4, LOT_Y + 0.02, cz * 1.2, 0.05, 0.03, 0.05, linear(P.tree.leaf[1]));
+    return;
   }
+  plate(b, inner, linear(P.ground.lawn));
+  SMALL_FEATURES[use](b, cx, cz, P);
 }
 
 function farmhouse(b, P, seed) {
@@ -676,6 +744,7 @@ function forest(b, P, seed, density) {
   }
 }
 
+/** 车头灯画在发光层上，夜里单独显示。 */
 function car(b, P, seed, rotation) {
   const body = linear(P.cars[seed % P.cars.length]);
   const glass = linear(P.window.day);
@@ -685,6 +754,12 @@ function car(b, P, seed, rotation) {
     c.box(-0.012, 0.058, 0, 0.11, 0.032, 0.088, glass, { top: body });
     for (const [x, z] of [[0.06, 0.05], [-0.06, 0.05], [0.06, -0.05], [-0.06, -0.05]]) {
       c.box(x, 0, z, 0.038, 0.024, 0.012, wheel);
+    }
+    const lamp = linear(P.window.lit);
+    const tail = linear(P.road.rail);
+    for (const z of [-0.032, 0.032]) {
+      c.box(0.102, 0.024, z, 0.008, 0.016, 0.02, lamp, { glow: true });
+      c.box(-0.102, 0.024, z, 0.008, 0.016, 0.02, tail, { glow: true });
     }
   });
 }
@@ -696,6 +771,7 @@ function bus(b, P, rotation) {
     c.box(0, 0.02, 0, 0.36, 0.09, 0.11, body, { top: linear('#ffffff') });
     c.box(0, 0.052, 0.056, 0.32, 0.032, 0.002, glass);
     c.box(0.181, 0.052, 0, 0.002, 0.032, 0.09, glass);
+    for (const z of [-0.036, 0.036]) c.box(0.183, 0.026, z, 0.006, 0.016, 0.02, linear(P.window.lit), { glow: true });
   });
 }
 
@@ -728,6 +804,17 @@ function dock(b, P) {
   b.box(-0.04, 0.01, 0.24, 0.14, 0.09, 0.1, linear(P.road.rail));
 }
 
+/** 信号灯的灯杆和灯头。灯头是一个白点，运行时染成红、黄、绿。 */
+function signalPole(b, P) {
+  const steel = linear(P.wall.glassDark);
+  b.cylinder(0, 0, 0, 0.012, 0.01, 0.2, 5, steel);
+  b.box(0, 0.17, 0, 0.05, 0.05, 0.05, linear('#2f3238'));
+}
+
+function signalLamp(b) {
+  b.blob(0, 0.195, 0.028, 0.018, 0.018, 0.012, linear('#ffffff'), 0);
+}
+
 /** 名字决定画法。B、Q、S、P、t 开头的是物业规格，其余是场景物体。 */
 export function buildObject(name, P) {
   const parts = name.split('-');
@@ -748,6 +835,8 @@ export function buildObject(name, P) {
   else if (kind === 'bus') bus(b, P, (Number(parts[1]) * Math.PI) / 4);
   else if (kind === 'boat') boat(b, P, (Number(parts[1]) * Math.PI) / 4);
   else if (kind === 'dock') dock(b, P);
+  else if (kind === 'pole') signalPole(b, P);
+  else if (kind === 'lamp') signalLamp(b);
   else throw new Error(`没有这种物体：${name}`);
   return b;
 }
@@ -780,7 +869,7 @@ function polygonOfFootprint(footprint) {
 }
 
 /**
- * 节日装饰层。每种占地规格一张，沿朝向相机的地块边缘放灯笼杆、彩旗串和红绸。
+ * 节日装饰层。每种占地规格一张，只装饰地块最靠近相机的一条边：两端各一根灯笼杆，中间一条横幅。
  * 它只依赖占地，不依赖分区、等级和风格，所以任何风格都能直接叠加。不用任何国家标志。
  */
 export function buildFestival(footprint, P) {
@@ -789,8 +878,9 @@ export function buildFestival(footprint, P) {
   const center = polygon.reduce((sum, [x, z]) => [sum[0] + x / polygon.length, sum[1] + z / polygon.length], [0, 0]);
   const red = linear(P.festival.red);
   const gold = linear(P.festival.gold);
-  const colors = P.festival.bunting.map(linear);
-  const poleHeight = 0.3;
+  const poleHeight = 0.34;
+  let front = null;
+  let frontness = -Infinity;
   for (let i = 0; i < polygon.length; i += 1) {
     const [x0, z0] = polygon[i];
     const [x1, z1] = polygon[(i + 1) % polygon.length];
@@ -802,37 +892,26 @@ export function buildFestival(footprint, P) {
       nx = -nx;
       nz = -nz;
     }
-    if (nx + nz <= 0.01) continue;
     const length = Math.hypot(x1 - x0, z1 - z0);
-    const spans = Math.max(1, Math.round(length / 0.62));
-    for (let s = 0; s <= spans; s += 1) {
-      const t = s / spans;
-      const px = x0 + (x1 - x0) * t;
-      const pz = z0 + (z1 - z0) * t;
-      b.cylinder(px, LOT_Y, pz, 0.009, 0.007, poleHeight, 5, gold);
-      b.blob(px, LOT_Y + poleHeight - 0.03, pz, 0.05, 0.062, 0.05, red, 0.02);
-      b.box(px, LOT_Y + poleHeight - 0.105, pz, 0.016, 0.022, 0.016, gold);
-      if (s === spans) continue;
-      const flags = 5;
-      const qx = x0 + ((x1 - x0) * (s + 1)) / spans;
-      const qz = z0 + ((z1 - z0) * (s + 1)) / spans;
-      for (let f = 0; f < flags; f += 1) {
-        const a = (f + 0.15) / flags;
-        const c = (f + 0.85) / flags;
-        const middle = (a + c) / 2;
-        const sag = (u) => 4 * u * (1 - u) * 0.05;
-        const top = LOT_Y + poleHeight - 0.05;
-        const ax = px + (qx - px) * a;
-        const az = pz + (qz - pz) * a;
-        const cx = px + (qx - px) * c;
-        const cz = pz + (qz - pz) * c;
-        const mxx = px + (qx - px) * middle;
-        const mzz = pz + (qz - pz) * middle;
-        b.poly([[ax, top - sag(a), az], [cx, top - sag(c), cz], [mxx, top - sag(middle) - 0.06, mzz]], colors[(s + f) % colors.length], [nx, 0, nz]);
-      }
+    const facing = (nx + nz) / length;
+    if (facing > frontness) {
+      frontness = facing;
+      front = { x0, z0, x1, z1, nx, nz, length };
     }
-    // 红绸：沿地块边缘的一条低矮绸带。
-    b.poly([[x0, LOT_Y + 0.05, z0], [x1, LOT_Y + 0.05, z1], [x1, LOT_Y + 0.082, z1], [x0, LOT_Y + 0.082, z0]], red, [nx, 0, nz]);
   }
+  const { x0, z0, x1, z1, nx, nz, length } = front;
+  const inset = Math.min(0.14, length * 0.15) / length;
+  const ax = x0 + (x1 - x0) * inset;
+  const az = z0 + (z1 - z0) * inset;
+  const cx = x1 - (x1 - x0) * inset;
+  const cz = z1 - (z1 - z0) * inset;
+  for (const [px, pz] of [[ax, az], [cx, cz]]) {
+    b.cylinder(px, LOT_Y, pz, 0.01, 0.008, poleHeight, 5, gold);
+    b.blob(px, LOT_Y + poleHeight - 0.03, pz, 0.052, 0.064, 0.052, red, 0.02);
+    b.box(px, LOT_Y + poleHeight - 0.11, pz, 0.016, 0.022, 0.016, gold);
+  }
+  const low = LOT_Y + poleHeight - 0.15;
+  const high = LOT_Y + poleHeight - 0.09;
+  b.poly([[ax, low, az], [cx, low, cz], [cx, high, cz], [ax, high, az]], red, [nx, 0, nz]);
   return b;
 }
