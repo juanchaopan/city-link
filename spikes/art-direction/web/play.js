@@ -1,9 +1,11 @@
-import { Application, Color, Container, Graphics, Text } from 'pixi.js';
+import { Application, Color, Container, Graphics } from 'pixi.js';
 import { generateCity } from './sim/city.js';
 import { generateRoadDemo } from './sim/roaddemo.js';
 import { resolveStyle } from './sim/packs.js';
-import { SERVICES } from './sim/services.js';
+import { createServiceIcons } from './serviceicons.js';
+import { createTrafficView } from './trafficview.js';
 import { createVehicles } from './vehicles.js';
+import { coverageView, metroView } from './views.js';
 import {
   applyTime,
   buildWorld,
@@ -15,7 +17,7 @@ import {
 } from './world.js';
 import { palettes } from './kit/palettes.js';
 
-// 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图、和邻城打通的开关，
+// 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图、已打通的开关，
 // 以及四级道路的立交场景。车流和红绿灯是纯视觉层，不改变任何结算结果。
 
 const params = new URLSearchParams(location.search);
@@ -23,15 +25,16 @@ const sceneName = params.get('scene') ?? 'city';
 const mode = params.get('mode') ?? 'layer';
 const seam = params.get('seam') === '1';
 const seamBackground = params.get('backdrop');
-const festivalOn = params.get('festival') === '1';
 const linked = params.get('linked') === '1';
 const view = params.get('view') ?? 'city';
 const publicLayout = params.get('public') ?? 'spread';
 const hudOn = params.get('ui') === '1';
 const controlsOn = params.get('controls') !== '0';
+const iconsOn = params.get('icons') !== '0';
 const carCap = Number(params.get('cars') ?? 300);
 const carsFull = params.get('full') === '1';
 const stress = Number(params.get('stress') ?? 1);
+const TAP_DISTANCE = 6;
 
 // 风格解析和存档无关：缺包时退回标准风格。样张里只装了标准风格。
 const installedStyles = { standard: { id: 'standard', atlas: 'sunny' } };
@@ -57,19 +60,18 @@ const city =
     ? generateRoadDemo()
     : generateCity(Number(params.get('n') ?? 64), 11, publicLayout, linked);
 const { N } = city;
-const atlas = await loadAtlas(style.atlas, festivalOn ? 'national-day' : null);
+const atlas = await loadAtlas(style.atlas);
 const layers = seam ? ['ground'] : ['ground', 'overlays', 'objects'];
 const bare = params.get('bare') === '1';
 const scene = buildWorld(atlas, city, {
   layers,
-  festival: festivalOn,
   dynamicTint: mode === 'layer',
   palette,
   bare,
   stress,
 });
 const vehicles =
-  !seam && carCap > 0 && atlas.frames.lamp
+  !seam && carCap > 0 && atlas.frames['car-0-0']
     ? createVehicles(atlas, city, scene, { cap: carCap, full: carsFull })
     : null;
 
@@ -77,10 +79,9 @@ const camera = new Container();
 camera.addChild(scene.world);
 let second = null;
 if (mode === 'atlas2') {
-  const duskAtlas = await loadAtlas('dusk', null);
+  const duskAtlas = await loadAtlas('dusk');
   second = buildWorld(duskAtlas, city, {
     layers,
-    festival: false,
     dynamicTint: false,
     palette: palettes.dusk,
   });
@@ -128,134 +129,28 @@ const ground = (px, py) => {
   return screenOf(px, py, level);
 };
 
-function label(text, x, y, size, anchorY = 0) {
-  const item = new Text({
-    text,
-    resolution: 2,
-    style: {
-      fontFamily: 'Microsoft YaHei',
-      fontSize: size,
-      fontWeight: '700',
-      fill: '#ffffff',
-      stroke: { color: '#1f3a4d', width: size / 5 },
-    },
-  });
-  item.anchor.set(0.5, anchorY);
-  item.position.set(x, y);
-  return item;
-}
-
-function loadColor(load) {
-  if (load < 0.5) return (Math.round(70 + 340 * load) << 16) | (190 << 8) | 90;
-  return (235 << 16) | (Math.round(190 - 340 * (load - 0.5)) << 8) | 50;
-}
-
-function trafficView() {
-  scene.world.alpha = 0.55;
-  const g = new Graphics();
-  for (const edge of city.traffic.edges) {
-    const a = ground((edge.from % N) + 0.5, Math.floor(edge.from / N) + 0.5);
-    const c = ground((edge.to % N) + 0.5, Math.floor(edge.to / N) + 0.5);
-    const load = Math.min(1, edge.ratio / 0.8);
-    g.moveTo(a.sx, a.sy)
-      .lineTo(c.sx, c.sy)
-      .stroke({ color: loadColor(load), width: 16 + load * 44, cap: 'round' });
-  }
-  for (const parcel of city.parcels.parcels) {
-    if (
-      parcel.access < 0 ||
-      parcel.capacity === 0 ||
-      parcel.shape === 'field' ||
-      parcel.shape === 'farmhouse'
-    )
-      continue;
-    const from = ground(parcel.px, parcel.py);
-    const to = ground((parcel.access % N) + 0.5, Math.floor(parcel.access / N) + 0.5);
-    g.moveTo(from.sx, from.sy)
-      .lineTo(to.sx, to.sy)
-      .stroke({ color: 0x1f3a4d, width: 4, alpha: 0.7 });
-    g.circle(from.sx, from.sy, 10).fill(0x1f3a4d);
-  }
-  return g;
-}
-
-const SERVICE_COLORS = {
-  hospital: 0x2e9e6b,
-  school: 0xd9744a,
-  police: 0x2f5fa8,
-  fire: 0xd6372f,
-  water: 0x3a9fc8,
-  power: 0xe0a92e,
-};
-
-function coverageView() {
-  scene.world.alpha = 0.4;
-  const g = new Graphics();
-  const missing = new Map(city.coverage.rows.map((row) => [row.parcel, row.missing.length]));
-  for (const parcel of city.parcels.parcels) {
-    if (!parcel.polygon || !missing.has(parcel.id)) continue;
-    const count = missing.get(parcel.id);
-    const color =
-      count === 0 ? 0x2fae6c : count === 1 ? 0xf0c040 : count === 2 ? 0xf08a3c : 0xe03c34;
-    const points = parcel.polygon.flatMap(([px, py]) => {
-      const { sx, sy } = ground(px, py);
-      return [sx, sy];
-    });
-    g.poly(points).fill({ color, alpha: 0.9 });
-  }
-  for (const parcel of city.parcels.parcels) {
-    if (parcel.shape !== 'service') continue;
-    const { sx, sy } = ground(parcel.px, parcel.py);
-    g.circle(sx, sy, 40).fill(SERVICE_COLORS[parcel.use]).stroke({ color: 0xffffff, width: 7 });
-    const name = SERVICES.find((service) => service.id === parcel.use).name;
-    g.addChild(label(name, sx, sy + 44, 52));
-  }
-  return g;
-}
-
-function metroView() {
-  scene.world.alpha = 0.22;
-  const g = new Graphics();
-  const at = ([x, y]) => screenOf(x + 0.5, y + 0.5, 0);
-  for (const line of city.metro.lines) {
-    const start = at(line.points[0]);
-    g.moveTo(start.sx, start.sy);
-    for (const point of line.points.slice(1)) {
-      const { sx, sy } = at(point);
-      g.lineTo(sx, sy);
-    }
-    g.stroke({ color: line.color, width: 26, join: 'round', cap: 'round' });
-  }
-  for (const line of city.metro.lines) {
-    for (const station of line.stations) {
-      const { sx, sy } = at(station);
-      g.circle(sx, sy, 24).fill(0xffffff).stroke({ color: line.color, width: 10 });
-    }
-    const head = at(line.points[0]);
-    const badge = new Graphics();
-    badge.circle(head.sx, head.sy - 74, 50).fill(line.color);
-    g.addChild(badge);
-    g.addChild(label(String(line.id), head.sx, head.sy - 74, 64, 0.5));
-  }
-  for (const crossing of city.metro.crossings) {
-    const { sx, sy } = at([crossing.x, crossing.y]);
-    if (crossing.interchange) {
-      g.circle(sx, sy, 40).fill(0xffffff).stroke({ color: 0x1f3a4d, width: 12 });
-      g.circle(sx, sy, 16).fill(0x1f3a4d);
-    }
-    g.addChild(label(crossing.interchange ? '换乘站' : '穿过，不设站', sx, sy + 48, 46));
-  }
-  return g;
-}
-
 const LEGENDS = {
-  traffic: '线越粗越红，路段负担越重。黑点是物业，黑线连到它的出入口路段。',
+  traffic:
+    '路面的颜色是负荷，绿到红越来越堵；箭头是车流，跑得越慢越堵。点一个物业看它的车走哪些路。',
   coverage: `绿：六种服务都到位；黄、橙、红：缺 1、2、3 种以上。住宅盲区 ${String(Math.round(city.coverage.blindShare * 100))}%。${city.parcels.services.shortages.length > 0 ? `缺少用地：${[...new Set(city.parcels.services.shortages.map((item) => item.name))].join('、')}` : ''}`,
   metro: '三条线，两个换乘站，一处穿过不设站。每条线是一根线或一个环，不分叉。',
 };
 
-const views = { traffic: trafficView, coverage: coverageView, metro: metroView };
-if (views[view]) camera.addChild(views[view]());
+const SCENE_ALPHA = { traffic: 0.45, coverage: 0.4, metro: 0.22 };
+const trafficView =
+  view === 'traffic' ? createTrafficView({ city, renderer: app.renderer, screenOf }) : null;
+if (trafficView) {
+  camera.addChild(trafficView.root);
+  app.ticker.add((ticker) => trafficView.step(Math.min(0.05, ticker.deltaMS / 1000)));
+}
+if (view === 'coverage') camera.addChild(coverageView(city, ground));
+if (view === 'metro') camera.addChild(metroView(city));
+if (SCENE_ALPHA[view]) scene.world.alpha = SCENE_ALPHA[view];
+const icons =
+  iconsOn && !seam && city.icons?.length > 0 && view !== 'traffic' && view !== 'metro'
+    ? createServiceIcons(atlas, city)
+    : null;
+if (icons) camera.addChild(icons.layer);
 app.stage.addChild(camera);
 const legend = document.getElementById('legend');
 if (legend && LEGENDS[view]) {
@@ -275,12 +170,16 @@ function applyCamera() {
     window.innerWidth / 2 - sx * zoom + offset.x,
     window.innerHeight / 2 - sy * zoom + offset.y,
   );
-  vehicles?.setView({
+  const box = {
     left: -camera.position.x / zoom,
     right: (window.innerWidth - camera.position.x) / zoom,
     top: -camera.position.y / zoom,
     bottom: (window.innerHeight - camera.position.y) / zoom,
-  });
+  };
+  vehicles?.setView(box);
+  scene.setView(box);
+  icons?.setZoom(zoom);
+  if (!vehicles) scene.compose([]);
 }
 applyCamera();
 
@@ -298,7 +197,7 @@ function setTime(next) {
     const night = hour < 6 || hour > 20.5;
     const tint = night ? 0x7a82b8 : 0xffffff;
     second.groundLayer.tint = tint;
-    second.objectLayer.tint = tint;
+    for (const body of second.bodies) body.tint = tint;
   }
   const clock = document.getElementById('clock');
   if (clock)
@@ -318,9 +217,38 @@ if (hudOn) {
   );
 }
 
+/** 屏幕上一点对应的地面坐标，按零层算。 */
+function groundAt(clientX, clientY) {
+  const wx = (clientX - camera.position.x) / zoom;
+  const wy = (clientY - camera.position.y) / zoom;
+  const difference = wx / TILE_HALF_W;
+  const sum = wy / TILE_HALF_H + 1;
+  return [(sum + difference) / 2, (sum - difference) / 2];
+}
+
+function insidePolygon(polygon, x, y) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const [ax, ay] = polygon[i];
+    const [bx, by] = polygon[j];
+    if (ay > y !== by > y && x < ((bx - ax) * (y - ay)) / (by - ay) + ax) inside = !inside;
+  }
+  return inside;
+}
+
+/** 选中这一点上的物业，返回它的车走的路段数。 */
+function pickParcel(px, py) {
+  const parcel = city.parcels.parcels.find(
+    ({ polygon, capacity }) => polygon && capacity > 0 && insidePolygon(polygon, px, py),
+  );
+  return trafficView?.select(parcel)?.length ?? null;
+}
+window.pickParcel = pickParcel;
+
 // 拖动和缩放。
 const pointers = new Map();
 let pinch = null;
+let pressed = null;
 const canvas = app.canvas;
 const zoomAt = (factor, cx, cy) => {
   const next = Math.max(0.05, Math.min(1.4, zoom * factor));
@@ -332,6 +260,7 @@ const zoomAt = (factor, cx, cy) => {
 };
 canvas.addEventListener('pointerdown', (event) => {
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  pressed = { x: event.clientX, y: event.clientY };
   canvas.setPointerCapture(event.pointerId);
 });
 canvas.addEventListener('pointermove', (event) => {
@@ -353,7 +282,14 @@ const release = (event) => {
   pointers.delete(event.pointerId);
   pinch = null;
 };
-canvas.addEventListener('pointerup', release);
+canvas.addEventListener('pointerup', (event) => {
+  const tapped =
+    pressed &&
+    pointers.size === 1 &&
+    Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) < TAP_DISTANCE;
+  release(event);
+  if (tapped && trafficView) pickParcel(...groundAt(event.clientX, event.clientY));
+});
 canvas.addEventListener('pointercancel', release);
 canvas.addEventListener(
   'wheel',
@@ -399,17 +335,13 @@ if (panel && controlsOn) {
     url.searchParams.delete('zoom');
     location.href = url.toString();
   });
-  const toggle = (id, name, value) => {
-    const box = document.getElementById(id);
-    box.checked = value;
-    box.addEventListener('change', () => {
-      const url = new URL(location.href);
-      url.searchParams.set(name, box.checked ? '1' : '0');
-      location.href = url.toString();
-    });
-  };
-  toggle('festival', 'festival', festivalOn);
-  toggle('linked', 'linked', linked);
+  const linkedBox = document.getElementById('linked');
+  linkedBox.checked = linked;
+  linkedBox.addEventListener('change', () => {
+    const url = new URL(location.href);
+    url.searchParams.set('linked', linkedBox.checked ? '1' : '0');
+    location.href = url.toString();
+  });
 }
 
 /** 实际在用的显卡。笔记本有两块显卡，帧率要写清楚是哪一块跑的。 */
@@ -423,6 +355,8 @@ window.sceneStats = {
   sprites: scene.count.sprites + (second?.count.sprites ?? 0),
   atlas: [atlas.width, atlas.height],
   gpu: rendererName(),
+  arrows: trafficView?.arrowCount ?? 0,
+  icons: icons?.count ?? 0,
 };
 window.trafficStats = () =>
   vehicles
@@ -431,6 +365,7 @@ window.trafficStats = () =>
         wanted: vehicles.wanted(),
         stopped: vehicles.stopped(),
         signals: vehicles.signals,
+        sortMs: vehicles.sortMs(),
       }
     : null;
 

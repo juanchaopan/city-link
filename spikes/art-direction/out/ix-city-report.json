@@ -1,0 +1,95 @@
+{
+  "rows": [
+    {
+      "name": "默认城市·sidediamond",
+      "levelCrossings": 0,
+      "examples": [
+        [
+          "转角",
+          "北向出口"
+        ],
+        [
+          "侧面",
+          "北向入口",
+          25,
+          -1,
+          1.33,
+          25.4,
+          20.11
+        ]
+      ],
+      "piers": 12,
+      "piersOnRoad": 0,
+      "worstTurn": 11.1,
+      "sharpRamps": 1,
+      "sideSamples": 49,
+      "sideGaps": 1,
+      "driveSamples": 1280,
+      "driveBlocked": 0,
+      "driveHoles": 0,
+      "openingSamples": 336,
+      "curbInOpening": 0,
+      "carSamples": 0,
+      "carsOffCenter": 0,
+      "worstCarOffset": 0,
+      "pass": false
+    },
+    {
+      "name": "默认城市·spur",
+      "levelCrossings": 0,
+      "examples": [],
+      "piers": 0,
+      "piersOnRoad": 0,
+      "worstTurn": 7.8,
+      "sharpRamps": 0,
+      "sideSamples": 0,
+      "sideGaps": 0,
+      "driveSamples": 246,
+      "driveBlocked": 0,
+      "driveHoles": 0,
+      "openingSamples": 650,
+      "curbInOpening": 0,
+      "carSamples": 7,
+      "carsOffCenter": 0,
+      "worstCarOffset": 0.03,
+      "pass": true
+    },
+    {
+      "name": "默认城市·tee",
+      "levelCrossings": 0,
+      "examples": [
+        [
+          "侧面",
+          "西转南",
+          89,
+          1,
+          1.47,
+          34.3,
+          4.95
+        ]
+      ],
+      "piers": 13,
+      "piersOnRoad": 0,
+      "worstTurn": 6,
+      "sharpRamps": 0,
+      "sideSamples": 184,
+      "sideGaps": 1,
+      "driveSamples": 892,
+      "driveBlocked": 0,
+      "driveHoles": 0,
+      "openingSamples": 1256,
+      "curbInOpening": 0,
+      "carSamples": 16,
+      "carsOffCenter": 0,
+      "worstCarOffset": 0.03,
+      "pass": false
+    }
+  ],
+  "cells": {
+    "cells": 11,
+    "piersOnRoad": 0,
+    "lowOverRoad": 0,
+    "lotsUnder": 0,
+    "examples": []
+  }
+}

@@ -3,13 +3,16 @@ import {
   ELEVATED,
   footprintCells,
   LANE,
+  pierObject,
   rampLinks,
   template,
-  templateObject,
+  templateParts,
+  viaductKey,
 } from './interchange.js';
-import { footprintKey, specKey, traceRoads } from './city.js';
+import { specKey, traceRoads } from './city.js';
 import { generateParcels, ZONE } from './parcels.js';
-import { roadSprites } from './roadsprites.js';
+import { ringFootprint } from './roundabout.js';
+import { roadWorld } from './terrainworld.js';
 import { computeTraffic } from './traffic.js';
 
 // 四级道路样张：一块平地上放齐三种快速路立交、一段高架、四车道接两车道的过渡，周围用普通路和物业填满。
@@ -27,6 +30,7 @@ const EXPRESS_B = 30;
 const DESCENT_START = 41;
 const DESCENT_END = 44.5;
 const GROUND_ROW = 44;
+const PIER_MIN = 0.55;
 
 /** 高架主线：向南、向北各一条 lane，高度沿 y 变化。 */
 function expressLanes(x, y0, y1, heightAt) {
@@ -43,7 +47,7 @@ function expressLanes(x, y0, y1, heightAt) {
   };
 }
 
-export function generateRoadDemo(seed = 11) {
+function demoRoads() {
   const { roads, walk } = traceRoads(N);
   walk('highway', [
     [0, HIGHWAY_ROW],
@@ -78,6 +82,57 @@ export function generateRoadDemo(seed = 11) {
     [EXPRESS_B, GROUND_ROW],
     [EXPRESS_B, N - 1],
   ]);
+  return roads;
+}
+
+const square = (x, y) => [
+  [x, y],
+  [x + 1, y],
+  [x + 1, y + 1],
+  [x, y + 1],
+];
+
+function demoGround() {
+  const ground = [];
+  for (let y = 0; y < N; y += 1) {
+    for (let x = 0; x < N; x += 1) {
+      ground.push({ key: `g-0-0000-${String((x * 7 + y * 13) % 3)}`, x, y, level: 0 });
+      if (x === N - 1) ground.push({ key: 'sk-x-0', x, y, level: 0 });
+      if (y === N - 1) ground.push({ key: 'sk-z-0', x, y, level: 0 });
+    }
+  }
+  return ground;
+}
+
+/** 高架主线的格子：桥面一格一个物体，路格里不立桥墩，隔一格立一根。 */
+function viaductObjects(viaducts, roads) {
+  const objects = [];
+  for (const { x, y, h0, h1 } of viaducts) {
+    objects.push({
+      key: viaductKey(h0, h1),
+      px: x + 0.5,
+      py: y + 0.5,
+      level: 0,
+      base: Math.min(h0, h1),
+      footprint: square(x, y),
+    });
+    const middle = (h0 + h1) / 2;
+    if (!roads.has(y * N + x) && y % 2 === 0 && middle >= PIER_MIN)
+      objects.push(pierObject({ x: 0, z: 0, h: middle, nx: 1, nz: 0 }, x, y));
+  }
+  return objects;
+}
+
+export function generateRoadDemo(seed = 11) {
+  const roads = demoRoads();
+  const flat = {
+    cornersOf: () => [0, 0, 0, 0],
+    levelOf: () => 0,
+    isFlat: () => true,
+    isWater: () => false,
+  };
+  const road = roadWorld({ N, roads, ...flat, gates: [], linked: false });
+  const { sprites, rings } = road;
 
   const placed = [
     ['cloverleaf', EXPRESS_A, HIGHWAY_ROW],
@@ -85,7 +140,7 @@ export function generateRoadDemo(seed = 11) {
     ['diamond', EXPRESS_A, ARTERIAL_ROW],
     ['diamond', EXPRESS_B, ARTERIAL_ROW],
   ];
-  const reserved = new Set();
+  const reserved = new Set(rings.flatMap((ring) => ringFootprint(ring, N)));
   for (const [name, cx, cy] of placed) {
     for (const [x, y] of footprintCells(name, cx, cy, N)) reserved.add(y * N + x);
   }
@@ -129,7 +184,6 @@ export function generateRoadDemo(seed = 11) {
       density[y * N + x] = 1 + ((x + y) % 2);
     }
   }
-  const flat = () => [0, 0, 0, 0];
   const result = generateParcels({
     N,
     roads,
@@ -141,39 +195,9 @@ export function generateRoadDemo(seed = 11) {
     reserved,
   });
   const traffic = computeTraffic(result.parcels, roads, N, links);
-  const sprites = roadSprites({
-    N,
-    roads,
-    cornersOf: flat,
-    isFlat: () => true,
-    levelOf: () => 0,
-    isWater: () => false,
-  });
 
-  const ground = [];
-  for (let y = 0; y < N; y += 1) {
-    for (let x = 0; x < N; x += 1) {
-      ground.push({ key: `g-0-0000-${String((x * 7 + y * 13) % 3)}`, x, y, level: 0 });
-      if (x === N - 1) ground.push({ key: 'sk-x-0', x, y, level: 0 });
-      if (y === N - 1) ground.push({ key: 'sk-z-0', x, y, level: 0 });
-    }
-  }
-  const objects = placed.map(([name, cx, cy]) => templateObject(name, cx, cy));
-  const square = (x, y) => [
-    [x, y],
-    [x + 1, y],
-    [x + 1, y + 1],
-    [x, y + 1],
-  ];
-  for (const { x, y, h0, h1 } of viaducts) {
-    objects.push({
-      key: `ev-z-${String(Math.round(h0 * 100))}-${String(Math.round(h1 * 100))}`,
-      px: x + 0.5,
-      py: y + 0.5,
-      level: 0,
-      footprint: square(x, y),
-    });
-  }
+  const parts = placed.map(([name, cx, cy]) => templateParts(name, cx, cy));
+  const objects = [...parts.flatMap(({ high }) => high), ...viaductObjects(viaducts, roads)];
   for (const parcel of result.parcels) {
     if (parcel.shape === 'field') continue;
     objects.push({
@@ -182,29 +206,31 @@ export function generateRoadDemo(seed = 11) {
       py: parcel.py,
       level: 0,
       footprint: parcel.polygon,
-      footprintKey: footprintKey(parcel),
       parcel: parcel.id,
-      festive: false,
     });
   }
   return {
     N,
-    ground,
+    ground: demoGround(),
     overlays: [],
     objects,
+    icons: [],
     walks: sprites.walks,
     curbs: sprites.curbs,
-    decks: sprites.decks,
-    neighbors: [],
+    decks: [...sprites.decks, ...parts.flatMap(({ low }) => low)],
+    marks: road.marks,
+    surface: road.surface,
+    rings,
+    junctions: road.junctions,
     lanes,
     links,
     parcels: result,
     traffic,
     roads,
     reserved,
-    levelOf: () => 0,
+    ...flat,
     plan: { gates: [] },
     coverage: { rows: [], blindShare: 0 },
-    metro: { lines: [], crossings: [] },
+    metro: { lines: [], crossings: [], halls: [] },
   };
 }

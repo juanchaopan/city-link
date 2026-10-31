@@ -1,5 +1,5 @@
 // 路口验收的场景。每格都是一小块城市：路、灯杆、斑马线和车都按真实流程生成。
-// focus 是样张裁剪的中心格。
+// focus 是样张裁剪的中心格。buses 为真时样张里的车全是公交，看长车在相邻路口怎么停。
 
 const c = 8;
 const size = 16;
@@ -38,6 +38,16 @@ export const JUNCTION_CASES = [
   {
     name: '相邻路口',
     focus: [c, c],
+    draw: (w) => {
+      w('road', row(c));
+      w('road', column(c));
+      w('road', row(c + 1));
+    },
+  },
+  {
+    name: '相邻路口·公交',
+    focus: [c, c],
+    buses: true,
     draw: (w) => {
       w('road', row(c));
       w('road', column(c));

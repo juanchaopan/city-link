@@ -1,7 +1,12 @@
 import { DIRECTIONS } from './network.js';
 import { ZONE } from './parcels.js';
+import { viaductRoute } from './viaduct.js';
 
 // 示例城市写死的布局：地形、河流、路网和分区。城市生成的流程在 city.js。
+
+const BLOCKS_SMALL = [5, 4, 6, 5];
+const BLOCKS = [5, 4, 6, 5, 4, 6, 5];
+const LARGE_REPEAT = 3;
 
 function hash2(seed, x, y) {
   let h = Math.imul(x * 374761393 + y * 668265263 + seed, 1274126177);
@@ -129,15 +134,22 @@ export function traceRoads(N) {
   return { roads, walk };
 }
 
+/** 街区宽度的序列。比 64 更大的图把序列重复几遍，路网的密度不变，城区跟着变大。 */
+function blockSteps(N) {
+  if (N <= 32) return BLOCKS_SMALL;
+  if (N <= 64) return BLOCKS;
+  return Array.from({ length: LARGE_REPEAT }, () => BLOCKS).flat();
+}
+
 /**
  * 街区宽度 3、4、5 交替。行线取列线的镜像，斜大道就正好穿过每个街区的两个角，切出整块的大三角。
- * 大地图上高速离城区留出丁字立交的进深，南北向的四车道主干伸到立交，路网从这里上高速。
- * 小地图放不下立交，高速只从城边经过。
+ * 大地图上高速离城区留出丁字立交的进深，南北向的四车道主干伸到立交，路网从这里上高速；
+ * 一条高架快速路从高速南下穿过城区。小地图放不下这两样，高速只从城边经过。
  */
 export function buildRoads(N, s, center, riverAt) {
   const { roads, walk } = traceRoads(N);
 
-  const steps = N > 32 ? [5, 4, 6, 5, 4, 6, 5] : [5, 4, 6, 5];
+  const steps = blockSteps(N);
   const width = steps.reduce((a, b) => a + b, 0);
   const left = center - Math.round(width / 2);
   const columns = [left];
@@ -220,6 +232,8 @@ export function buildRoads(N, s, center, riverAt) {
     { x: bridgeColumn, y: N - 1, kind: 'road', inward: 6, axis: 'z' },
   ];
   const interchange = linked ? { name: 'tee', cx: bridgeColumn, cy: ringRow } : null;
+  const viaduct = linked ? viaductRoute(columns, usableRows, ringRow) : null;
+  if (viaduct) for (const stub of viaduct.stubs) walk('arterial', stub);
   return {
     roads,
     columns,
@@ -234,6 +248,7 @@ export function buildRoads(N, s, center, riverAt) {
     climbTo,
     gates,
     interchange,
+    viaduct,
   };
 }
 

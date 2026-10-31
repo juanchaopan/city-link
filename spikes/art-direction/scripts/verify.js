@@ -1,8 +1,9 @@
 // 验收检查：地块生成器的确定性、面积和容量、地块不压路、街区划分、物业出入口、立交和路网连通、公共服务覆盖、
-// 地铁规则、交通守恒、遮挡顺序、风格包回退，以及四级道路样张。这些都是纯计算，不需要显卡，用 node 直接运行。
-// 容量规则、物业出入口和立交的检查不通过时退出码是 1。
+// 地铁规则、公交站、交通分配、遮挡顺序、风格包回退，以及四级道路样张。这些都是纯计算，不需要显卡，用 node 直接运行。
+// 容量规则、物业出入口、立交、地铁和公交站的检查不通过时退出码是 1。
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { palettes } from '../web/kit/palettes.js';
 import { polygonArea, polygonDistance, ROAD_SPEC, worldPolylines } from '../web/sim/network.js';
 import {
   atomPolygon,
@@ -13,9 +14,10 @@ import {
 } from '../web/sim/parcels.js';
 import { atomTable, specOf } from '../web/sim/partition.js';
 import { generateCity } from '../web/sim/city.js';
+import { quote, progressAt } from '../web/sim/expropriate.js';
 import { intersectionRule, templateFootprint, templateNames } from '../web/sim/interchange.js';
-import { metroCheck } from '../web/sim/metro.js';
-import { countViolations, prepareItems, sortByDepth } from '../web/sim/order.js';
+import { MIN_RADIUS, metroCheck, railLine, tightestRadius } from '../web/sim/metro.js';
+import { countViolations, prepareItem, sortByDepth } from '../web/sim/order.js';
 import { generateRoadDemo } from '../web/sim/roaddemo.js';
 import { buildGraph, componentsOf, computeTraffic } from '../web/sim/traffic.js';
 import { activeFestival, resolveDecoration, resolveSpec, resolveStyle } from '../web/sim/packs.js';
@@ -23,6 +25,9 @@ import { activeFestival, resolveDecoration, resolveSpec, resolveStyle } from '..
 const SIZES = [32, 64];
 const report = {};
 const problems = [];
+const MIN_COLOR_DISTANCE = 45;
+const HALL_REACH = 1.6;
+const SHORT_LEG = 3;
 
 function digest(value) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
@@ -237,7 +242,7 @@ function screenBox(item) {
     Math.max(...item.footprint.map(([x, y]) => Math.abs((x + y - item.px - item.py) * 32))) + 8;
   const tall = /^[BQS]-/.test(item.key)
     ? 460
-    : /^(ix|ev)-/.test(item.key)
+    : /^(ixp|ev|pr)-/.test(item.key)
       ? 120
       : item.key.startsWith('forest')
         ? 90
@@ -248,7 +253,7 @@ function screenBox(item) {
 function orderCheck(city) {
   const items = city.objects.map((object) => ({ ...object, ...screenBox(object) }));
   const { sorted, cycles } = sortByDepth(items);
-  const byCenter = prepareItems(items).sort((a, b) => a.px + a.py - b.px - b.py);
+  const byCenter = items.map(prepareItem).sort((a, b) => a.px + a.py - b.px - b.py);
   return {
     items: items.length,
     cycles,
@@ -268,6 +273,109 @@ function propertyCheck(city) {
     largeProperties: parcels.filter((parcel) => parcel.area >= 2).length,
     services: kinds,
   };
+}
+
+function rgbOf(hex) {
+  return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+}
+
+/** 公共服务专用色和普通物业的分区颜色分得开：RGB 距离不小于上限。把分区色当服务色放进来，这一项就会失败。 */
+function serviceColorCheck(P) {
+  const zones = Object.values(P.zones).flat();
+  const services = ['hospital', 'school', 'police', 'fire', 'water', 'power'].map(
+    (id) => P.service[id],
+  );
+  let nearest = Infinity;
+  for (const service of services) {
+    for (const zone of zones) {
+      const [a, b] = [rgbOf(service), rgbOf(zone)];
+      nearest = Math.min(nearest, Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]));
+    }
+  }
+  return { nearest: Math.round(nearest), tooClose: nearest < MIN_COLOR_DISTANCE ? 1 : 0 };
+}
+
+/** 地铁：线路的最小半径、站厅不重叠不压路，站厅在线路旁边。 */
+function metroGeometryCheck(city) {
+  const { N, roads, metro, reserved } = city;
+  const hallCells = metro.halls.map(({ id }) => id);
+  const linePoints = (hall) => {
+    const line = metro.lines.find(({ id }) => id === hall.line);
+    return Math.min(
+      ...line.path.map(([x, y]) => Math.hypot(x - hall.x - 0.5, y - hall.y - 0.5)),
+    );
+  };
+  const radii = metro.lines.map(({ path }) => tightestRadius(path));
+  const brokenLine = railLine(
+    [
+      [0, 0],
+      [SHORT_LEG, 0],
+      [SHORT_LEG, 1],
+    ],
+    false,
+  );
+  return {
+    tightestRadius: Math.min(...radii),
+    linesBelowRadius: radii.filter((radius) => radius < MIN_RADIUS - 0.05).length,
+    halls: metro.halls.length,
+    hallsOverlapping: hallCells.length - new Set(hallCells).size,
+    hallsOnRoad: hallCells.filter((id) => roads.has(id)).length,
+    hallsOffLine: metro.halls.filter((hall) => linePoints(hall) > HALL_REACH).length,
+    hallsOutsideReserved: hallCells.filter((id) => !reserved.has(id)).length,
+    entrancesWithoutRoad: metro.halls.filter(({ x, y, side }) => {
+      const [dx, dy] = [
+        [1, 0],
+        [0, 1],
+        [-1, 0],
+        [0, -1],
+      ][side];
+      return !roads.has((y + dy) * N + x + dx);
+    }).length,
+    tightCorners: metro.lines.reduce((sum, { tight }) => sum + tight.length, 0),
+    tightCornerCaught: brokenLine.tight.length > 0,
+    polylineRadiusIsZero: tightestRadius(metro.lines[1].points.map(([x, y]) => [x, y])) === Infinity,
+  };
+}
+
+/** 公交站：不占格子，站台在人行道上，地块和站台不重叠，和路口隔开。 */
+function busStopCheck(city) {
+  const { N, roads, busStops, parcels } = city;
+  const cells = new Set(busStops.map(({ cell }) => cell));
+  const onCell = parcels.atomOwner.reduce((sum, owner, atom) => {
+    return sum + (owner >= 0 && cells.has(atom >> 2) ? 1 : 0);
+  }, 0);
+  const notOnRoad = busStops.filter(({ cell }) => !roads.has(cell)).length;
+  const clusterCells = new Set(city.junctions.clusters.flatMap(({ cells: own }) => [...own]));
+  const inJunction = busStops.filter(({ cell }) => clusterCells.has(cell)).length;
+  return { stops: busStops.length, notOnRoad, inJunction, atomsTaken: onCell, cells: N };
+}
+
+/** 征收：账目按整块物业算，确认后一个游戏日搬完才能开工。 */
+function expropriationCheck(city) {
+  const { parcels } = city.parcels;
+  const owner = parcels.find(({ capacity, cells }) => capacity > 0 && (cells?.length ?? 0) > 1);
+  if (!owner) return { sample: null };
+  const account = quote([owner.cells[0]], parcels);
+  return {
+    sample: account,
+    wholeBlock: account.cells === owner.cells.length,
+    halfwayRemaining: progressAt(account, 0.5).remaining,
+    canBuildAtOnce: progressAt(account, 0).canBuild,
+    canBuildAfterDay: progressAt(account, 1).canBuild,
+  };
+}
+
+/** 快路上的负荷：长距离走快路，所以高速、快速路和匝道上都要有流量。 */
+function assignmentCheck(city) {
+  const byKind = {};
+  for (const edge of city.traffic.edges) {
+    const entry = (byKind[edge.kind] ??= { segments: 0, load: 0, busiest: 0 });
+    entry.segments += 1;
+    entry.load += edge.load * edge.length;
+    entry.busiest = Math.max(entry.busiest, Math.round(edge.ratio * 100) / 100);
+  }
+  for (const entry of Object.values(byKind)) entry.load = Math.round(entry.load);
+  return byKind;
 }
 
 function styleCheck() {
@@ -346,6 +454,23 @@ function judge(label, { capacity, access, reserved }) {
   });
 }
 
+function judgeTransit(label, { metroGeometry, busStops: stops, serviceColors }) {
+  expectZero(`${label}.metro`, {
+    linesBelowRadius: metroGeometry.linesBelowRadius,
+    hallsOverlapping: metroGeometry.hallsOverlapping,
+    hallsOnRoad: metroGeometry.hallsOnRoad,
+    hallsOffLine: metroGeometry.hallsOffLine,
+    entrancesWithoutRoad: metroGeometry.entrancesWithoutRoad,
+    tightCorners: metroGeometry.tightCorners,
+  });
+  expectZero(`${label}.busStops`, {
+    notOnRoad: stops.notOnRoad,
+    inJunction: stops.inJunction,
+    atomsTaken: stops.atomsTaken,
+  });
+  expectZero(`${label}.colors`, { tooClose: serviceColors.tooClose });
+}
+
 for (const N of SIZES) {
   const started = performance.now();
   const city = generateCity(N);
@@ -364,7 +489,7 @@ for (const N of SIZES) {
   });
   const table = capacityTable(city.parcels.parcels);
   const { traffic } = city;
-  const repeat = computeTraffic(city.parcels.parcels, city.roads, N, city.links);
+  const repeat = computeTraffic(city.parcels.parcels, city.roads, N, city.links, city.gateCells);
   const shape = (list) =>
     list.filter((p) => p.shape !== 'x').map((p) => [p.shape, p.px, p.py, p.capacity, p.access]);
   report[N] = {
@@ -397,6 +522,11 @@ for (const N of SIZES) {
       },
     },
     metro: metroCheck(city.metro),
+    metroGeometry: metroGeometryCheck(city),
+    busStops: busStopCheck(city),
+    serviceColors: serviceColorCheck(palettes.sunny),
+    expropriation: expropriationCheck(city),
+    assignment: assignmentCheck(city),
     roads: roadClearance(city),
     traffic: {
       segments: traffic.edges.length,
@@ -410,6 +540,7 @@ for (const N of SIZES) {
     order: orderCheck(city),
   };
   judge(String(N), report[N]);
+  judgeTransit(String(N), report[N]);
   if (N > 32) {
     const { connection } = report[N];
     if (connection.partsWithRamps !== 1 || !connection.highwayMeetsArterial)

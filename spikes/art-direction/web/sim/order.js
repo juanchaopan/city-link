@@ -1,8 +1,10 @@
 // 遮挡顺序。多格建筑和斜向建筑不能简单按中心点排序：一栋长楼的中心可能比它身后的小楼更靠前。
-// 物体都是竖直立在地面上的凸棱柱，互不重叠，沿视线方向 (1, 1) 看，"谁在谁后面"的关系没有环，
-// 所以两两比较后做一次拓扑排序就是正确的绘制顺序。
+// 物体都是竖直立在地面上的凸棱柱，沿视线方向 (1, 1) 看，平面上分得开的两个物体，靠近观众的后画。
+// 平面上重叠的只有上下两层：高架和它下面的路、车和它脚下的桥面，这时低的先画。
+// 这些关系没有环，所以两两比较后做一次拓扑排序就是正确的绘制顺序。
 
 const EPS = 1e-6;
+const CELL = 256;
 
 function viewCoordinates(polygon) {
   return polygon.map(([x, y]) => [x + y, x - y]);
@@ -39,44 +41,49 @@ export function compareDepth(a, b) {
   const spanB = spanAt(b.view, middle);
   if (spanA[1] <= spanB[0] + EPS) return -1;
   if (spanB[1] <= spanA[0] + EPS) return 1;
+  const baseA = a.base ?? 0;
+  const baseB = b.base ?? 0;
+  if (Math.abs(baseA - baseB) > EPS) return baseA < baseB ? -1 : 1;
   return (spanA[0] + spanA[1]) / 2 < (spanB[0] + spanB[1]) / 2 ? -1 : 1;
 }
 
-export function prepareItems(items) {
-  return items.map((item) => {
-    const view = viewCoordinates(item.footprint);
-    const us = view.map((p) => p[0]);
-    const vs = view.map((p) => p[1]);
-    return {
-      ...item,
-      view,
-      depth: us.reduce((sum, u) => sum + u, 0) / us.length,
-      minV: Math.min(...vs),
-      maxV: Math.max(...vs),
-    };
-  });
+/** 给物体算好比较要用的视线坐标。footprint 是平面上的凸多边形。 */
+export function prepareItem(item) {
+  const view = viewCoordinates(item.footprint);
+  let sum = 0;
+  let minV = Infinity;
+  let maxV = -Infinity;
+  for (const [u, v] of view) {
+    sum += u;
+    minV = Math.min(minV, v);
+    maxV = Math.max(maxV, v);
+  }
+  return { ...item, view, depth: sum / view.length, minV, maxV };
 }
 
-function overlapBoxes(a, b) {
+export function overlapBoxes(a, b) {
   return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+}
+
+/** 屏幕网格：一个物体落在哪几个格子里。 */
+export function eachBin(item, visit) {
+  const x0 = Math.floor(item.left / CELL);
+  const x1 = Math.floor(item.right / CELL);
+  const y0 = Math.floor(item.top / CELL);
+  const y1 = Math.floor(item.bottom / CELL);
+  for (let y = y0; y <= y1; y += 1) {
+    for (let x = x0; x <= x1; x += 1) visit((x + 2048) * 8192 + y + 2048);
+  }
 }
 
 /** 用屏幕网格只比较可能重叠的物体。 */
 function candidatePairs(items) {
-  const CELL = 256;
   const bins = new Map();
   items.forEach((item, index) => {
-    const x0 = Math.floor(item.left / CELL);
-    const x1 = Math.floor(item.right / CELL);
-    const y0 = Math.floor(item.top / CELL);
-    const y1 = Math.floor(item.bottom / CELL);
-    for (let y = y0; y <= y1; y += 1) {
-      for (let x = x0; x <= x1; x += 1) {
-        const key = `${String(x)},${String(y)}`;
-        if (!bins.has(key)) bins.set(key, []);
-        bins.get(key).push(index);
-      }
-    }
+    eachBin(item, (key) => {
+      if (!bins.has(key)) bins.set(key, []);
+      bins.get(key).push(index);
+    });
   });
   const pairs = new Set();
   const size = items.length;
@@ -92,25 +99,9 @@ function candidatePairs(items) {
   return pairs;
 }
 
-export function sortByDepth(rawItems) {
-  const items = prepareItems(rawItems);
+/** 拓扑排序。after[i] 是必须画在 i 后面的物体，blockers[i] 是 i 前面还没画的物体数；同时可以画的先画靠后的。 */
+export function topological(items, after, blockers) {
   const size = items.length;
-  const after = items.map(() => []);
-  const blockers = new Int32Array(size);
-  for (const pair of candidatePairs(items)) {
-    const a = Math.floor(pair / size);
-    const b = pair % size;
-    if (!overlapBoxes(items[a], items[b])) continue;
-    const order = compareDepth(items[a], items[b]);
-    if (order < 0) {
-      after[a].push(b);
-      blockers[b] += 1;
-    } else if (order > 0) {
-      after[b].push(a);
-      blockers[a] += 1;
-    }
-  }
-
   const ready = [];
   const insert = (index) => {
     let low = 0;
@@ -143,6 +134,28 @@ export function sortByDepth(rawItems) {
     const placed = new Set(order);
     for (let i = 0; i < size; i += 1) if (!placed.has(i)) order.push(i);
   }
+  return { order, cycles };
+}
+
+export function sortByDepth(rawItems) {
+  const items = rawItems.map(prepareItem);
+  const size = items.length;
+  const after = items.map(() => []);
+  const blockers = new Int32Array(size);
+  for (const pair of candidatePairs(items)) {
+    const a = Math.floor(pair / size);
+    const b = pair % size;
+    if (!overlapBoxes(items[a], items[b])) continue;
+    const order = compareDepth(items[a], items[b]);
+    if (order < 0) {
+      after[a].push(b);
+      blockers[b] += 1;
+    } else if (order > 0) {
+      after[b].push(a);
+      blockers[a] += 1;
+    }
+  }
+  const { order, cycles } = topological(items, after, blockers);
   return { sorted: order.map((index) => items[index]), cycles };
 }
 

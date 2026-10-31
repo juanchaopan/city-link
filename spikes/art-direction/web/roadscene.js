@@ -12,6 +12,8 @@ import { roadWorld, terrainOf } from './sim/terrainworld.js';
 
 // 路面验收用的场景：把路面按游戏里的方式烘焙成精灵，再按游戏里的层序拼到一张画布上。
 // mode 为 legacy 时用保留的旧着色器和逐格绘制的旧层序，用来证明检查抓得到用户报告过的错误。
+// region 只拼地图的一块，整张 64×64 的遮罩要吃掉一两 GB 内存，查局部时不值得。
+// world.low 是贴地的匝道路面，和路面同一层，画在车道上面。
 
 /** 遮罩配色：车道红、人行道绿、路缘蓝、标线黄，其余路基构件是灰，一个像素属于哪一层是读出来的。 */
 export const MASK = {
@@ -115,29 +117,36 @@ export function worldOfCity(city, linked) {
   return { N, roads, ...road, cornersOf, levelOf, isFlat, isWater, gates, linked };
 }
 
-/** 画布坐标：格子中心 (px, py)、高度 level 对应的画布像素。 */
-export function placer(N) {
-  const originX = N * 64 + PAD;
-  const originY = PAD;
+/** 画布坐标：格子中心 (px, py)、高度 level 对应的画布像素。region 是 [x0, y0, x1, y1]，默认整张地图。 */
+export function placer(N, region = [0, 0, N, N]) {
+  const [x0, y0, x1, y1] = region;
+  const left = (x0 - y1) * 64;
+  const right = (x1 - y0) * 64;
+  const top = (x0 + y0 - 1) * 32;
+  const bottom = (x1 + y1) * 32;
+  const originX = PAD - left;
+  const originY = PAD - top;
   return {
-    width: N * 128 + PAD * 2,
-    height: N * 64 + PAD * 2,
+    width: right - left + PAD * 2,
+    height: bottom - top + PAD * 2,
     at: (px, py, level) => [originX + (px - py) * 64, originY + (px + py - 1) * 32 - level * 32],
   };
 }
 
-export function compose(world, palette, mode, { withGround }) {
-  const { N, sprites } = world;
-  const place = placer(N);
+export function compose(world, palette, mode, { withGround, region }) {
+  const { N, sprites, low = [] } = world;
+  const place = placer(N, region);
   const canvas = new OffscreenCanvas(place.width, place.height);
   const context = canvas.getContext('2d', { willReadFrequently: true });
+  const [x0, y0, x1, y1] = region ?? [0, 0, N, N];
+  const inside = (x, y) => x >= x0 && x < x1 && y >= y0 && y < y1;
   const stamp = (sprite, x, y, level) => {
     const [sx, sy] = place.at(x + 0.5, y + 0.5, level);
     context.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - sprite.ay));
   };
   if (withGround) {
-    for (let y = 0; y < N; y += 1) {
-      for (let x = 0; x < N; x += 1) {
+    for (let y = y0; y < y1; y += 1) {
+      for (let x = x0; x < x1; x += 1) {
         const level = world.levelOf(x, y);
         const shape = shapeOf(world.cornersOf(x, y), level);
         const key = world.isWater(x, y)
@@ -173,12 +182,19 @@ export function compose(world, palette, mode, { withGround }) {
       );
     }
   } else {
-    for (const list of [sprites.walks, sprites.curbs, sprites.decks]) {
-      for (const { key, x, y, level } of list) stamp(spriteOf(key, palette), x, y, level);
+    for (const list of [sprites.walks, sprites.curbs, sprites.decks, low]) {
+      for (const { key, x, y, level } of list) {
+        if (inside(x, y)) stamp(spriteOf(key, palette), x, y, level);
+      }
     }
   }
-  for (const { key, x, y } of sprites.bridges) stamp(spriteOf(key, palette), x, y, 0);
-  if (withGround)
-    for (const { key, x, y, level } of sprites.planned) stamp(spriteOf(key, palette), x, y, level);
+  for (const { key, x, y } of sprites.bridges) {
+    if (inside(x, y)) stamp(spriteOf(key, palette), x, y, 0);
+  }
+  if (withGround) {
+    for (const { key, x, y, level } of sprites.planned) {
+      if (inside(x, y)) stamp(spriteOf(key, palette), x, y, level);
+    }
+  }
   return { canvas, context, place };
 }

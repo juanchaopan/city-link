@@ -1,22 +1,25 @@
-// 立交模板。玩家只画线，路线相交时系统按相交道路的等级自动选一个模板：
+import { piecesOf } from './ixpieces.js';
+import { ROAD_SPEC } from './network.js';
+import { pierSpots } from './piers.js';
+import { ELEVATED, MAIN_LANE, stationsOf } from './rampline.js';
+import { TEMPLATES } from './ramptemplates.js';
+
+// 立交的规则和接线。玩家只画线，路线相交时系统按相交道路的等级自动选一个模板：
 //   同级普通路 → 平交路口（信号灯）
 //   快速路 × 双向四车道 → 菱形（diamond）
 //   高速 × 快速路（穿过）→ 苜蓿叶（cloverleaf）
 //   高速 × 快速路（到头）→ 喇叭形（trumpet）
 //   高速 × 双向四车道（到头）→ 丁字形（tee），普通城市的四车道主干就从这里上高速
-// 匝道只接高速、快速路和双向四车道，双向两车道不能直接上匝道。
-// 模板占固定大小的地：footprint 是相对中心格的范围，含匝道的外缘。这块地不能再建物业。
-// 约定快速路走高架，沿 z 方向穿过模板中心；高速和干道在地面沿 x 方向。靠右行驶：
-// 向南的车在快速路西侧（x - LANE），向东的车在高速南侧（z + LANE）。
-// 匝道的点是 [x, z, h]，坐标相对中心格的中心，h 是层数。
+// 匝道只接高速、快速路和双向四车道，双向两车道不能直接上匝道。模板的线形在 ramptemplates.js。
+// 占地里匝道没有压到的格子是圈内空地，放绿地；这些格子不接路，不能放要进出车的物业。
 
-export const ELEVATED = 2;
-export const LANE = 0.22;
+export { ELEVATED };
+export const LANE = MAIN_LANE;
 
-const ARTERIAL_LANE = 0.17;
-const TEE_FOOT = 4.5;
-const TEE_LAND = 3.6;
-const TEE_BRIDGE = 1;
+const PIER_HALF = 0.07;
+const PIER_ANGLES = 12;
+const FREE_CLEARANCE = 0.75;
+const GREEN_VARIANTS = 2;
 
 const INTERSECTION_RULES = {
   'road|road': 'signal',
@@ -36,278 +39,6 @@ export function intersectionRule(a, b, endsHere = false) {
   return rule === 'cloverleaf' && endsHere ? 'trumpet' : rule;
 }
 
-function lengths(points) {
-  const out = [0];
-  for (let i = 1; i < points.length; i += 1) {
-    out.push(
-      out[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]),
-    );
-  }
-  return out;
-}
-
-/** 把折线的角磨圆，两端的点不动，匝道和主线的接点就不变。 */
-function rounded(points, passes = 2) {
-  let line = points;
-  for (let pass = 0; pass < passes; pass += 1) {
-    const next = [line[0]];
-    for (let i = 0; i < line.length - 1; i += 1) {
-      const [ax, az] = line[i];
-      const [bx, bz] = line[i + 1];
-      if (i > 0) next.push([ax * 0.75 + bx * 0.25, az * 0.75 + bz * 0.25]);
-      if (i < line.length - 2) next.push([ax * 0.25 + bx * 0.75, az * 0.25 + bz * 0.75]);
-    }
-    next.push(line[line.length - 1]);
-    line = next;
-  }
-  return line;
-}
-
-/** 给一条平面折线配上高度：两端缓和，中间匀速爬升。 */
-function graded(points, h0, h1) {
-  const along = lengths(points);
-  const total = along[along.length - 1];
-  return points.map(([x, z], i) => {
-    const t = along[i] / total;
-    return [x, z, h0 + (h1 - h0) * (t * t * (3 - 2 * t))];
-  });
-}
-
-/** 两点之间等分成几段，高度曲线才有足够的点。 */
-function straight([ax, az], [bx, bz], steps = 8) {
-  const points = [];
-  for (let i = 0; i <= steps; i += 1)
-    points.push([ax + ((bx - ax) * i) / steps, az + ((bz - az) * i) / steps]);
-  return points;
-}
-
-/** 接起几段带高度的线，相邻两段共用的端点只留一个。 */
-function joined(...parts) {
-  return parts.flatMap((part, index) => (index === 0 ? part : part.slice(1)));
-}
-
-function arc(cx, cz, r, from, to, steps = 18) {
-  const points = [];
-  for (let i = 0; i <= steps; i += 1) {
-    const a = from + ((to - from) * i) / steps;
-    points.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]);
-  }
-  return points;
-}
-
-function rotate([x, z, h], quarter) {
-  let px = x;
-  let pz = z;
-  for (let i = 0; i < quarter; i += 1) [px, pz] = [-pz, px];
-  return [px, pz, h];
-}
-
-/** 四份里只写第 0 份。旋转奇数次后，这条匝道的起点在高架上、终点在地面，高度要翻过来。 */
-function turned(points, quarter) {
-  return points.map((point) => {
-    const [x, z, h] = rotate(point, quarter);
-    return [x, z, quarter % 2 === 0 ? h : ELEVATED - h];
-  });
-}
-
-/** 外侧斜匝道：向东的高速右转向南上快速路。 */
-function outerRamp(quarter, extent) {
-  const inner = extent - 1;
-  return turned(
-    graded(
-      rounded([
-        [-extent, LANE],
-        [-inner, LANE + 0.5],
-        [-1.5, inner],
-        [-LANE, extent - 0.2],
-      ]),
-      0,
-      ELEVATED,
-    ),
-    quarter,
-  );
-}
-
-/** 环形匝道：向东的高速过了桥，右转绕一圈，向北上快速路。 */
-function cloverleafLoop(quarter) {
-  const c = 2 + LANE;
-  return turned(graded(arc(c, c, 2, -Math.PI / 2, Math.PI, 18), 0, ELEVATED), quarter);
-}
-
-/** 向西的高速绕环到高架，跨过高速，落回地面并入向南的四车道。 */
-function teeLoopSouth() {
-  const c = -2 - LANE;
-  const climb = graded(
-    [[-1.51, -LANE], ...arc(c, c, 2, Math.PI / 2, 2 * Math.PI, 22), [-LANE, -TEE_BRIDGE]],
-    0,
-    ELEVATED,
-  );
-  const bridge = straight([-LANE, -TEE_BRIDGE], [-LANE, TEE_BRIDGE], 4).map(([x, z]) => [
-    x,
-    z,
-    ELEVATED,
-  ]);
-  const landing = graded(straight([-LANE, TEE_BRIDGE], [-ARTERIAL_LANE, TEE_LAND]), ELEVATED, 0);
-  return joined(climb, bridge, landing, [
-    [-ARTERIAL_LANE, TEE_LAND, 0],
-    [-ARTERIAL_LANE, TEE_FOOT, 0],
-  ]);
-}
-
-/** 向北的四车道爬上高架，跨过高速，绕到环的外面，落回地面并入向西的高速。 */
-function teeLoopWest() {
-  const rise = graded(straight([ARTERIAL_LANE, TEE_LAND], [LANE, TEE_BRIDGE]), 0, ELEVATED);
-  const bridge = straight([LANE, TEE_BRIDGE], [LANE, -2.6], 6).map(([x, z]) => [x, z, ELEVATED]);
-  const around = graded(
-    rounded(
-      [
-        ...arc(-2.4, -2.6, 2.62, 0, -Math.PI, 16),
-        [-5.02, -1.4],
-        [-5.6, -0.5],
-        [-6.6, -LANE],
-        [-7.51, -LANE],
-      ],
-      1,
-    ),
-    ELEVATED,
-    0,
-  );
-  return joined(
-    [
-      [ARTERIAL_LANE, TEE_FOOT - 0.01, 0],
-      [ARTERIAL_LANE, TEE_LAND, 0],
-    ],
-    rise,
-    bridge,
-    around,
-  );
-}
-
-const TEMPLATES = {
-  /** 快速路在高架上，干道从下面穿过。四条匝道落到两条短街上，短街也是四车道，在干道上做成两个信号路口。 */
-  diamond: {
-    footprint: [-4, -7, 4, 7],
-    mainline: [
-      [0, -7.5],
-      [0, 7.5],
-    ],
-    stubs: [-3, 3],
-    ramps() {
-      const descend = (sign, zSign, down) => {
-        const high = [sign * (LANE + 0.1), zSign * 6.8];
-        const middle = [sign * 1.7, zSign * 4.8];
-        const foot = [sign * 3, zSign * 3];
-        const end = [sign * 3, zSign * 2];
-        const line = graded(rounded([high, middle, foot, end]), ELEVATED, 0);
-        return down ? line : line.slice().reverse();
-      };
-      return [
-        { name: '南向出口', points: descend(-1, -1, true) },
-        { name: '南向入口', points: descend(-1, 1, false) },
-        { name: '北向出口', points: descend(1, 1, true) },
-        { name: '北向入口', points: descend(1, -1, false) },
-      ];
-    },
-  },
-  /** 高速在地面，快速路在高架。四条外侧匝道管右转，四个环管左转。 */
-  cloverleaf: {
-    footprint: [-8, -8, 8, 8],
-    mainline: [
-      [0, -8.5],
-      [0, 8.5],
-    ],
-    stubs: [],
-    ramps() {
-      const extent = 7.8;
-      return [
-        { name: '东转南', points: outerRamp(0, extent) },
-        { name: '南转西', points: outerRamp(1, extent) },
-        { name: '西转北', points: outerRamp(2, extent) },
-        { name: '北转东', points: outerRamp(3, extent) },
-        { name: '东转北', points: cloverleafLoop(0) },
-        { name: '南转东', points: cloverleafLoop(1) },
-        { name: '西转南', points: cloverleafLoop(2) },
-        { name: '北转西', points: cloverleafLoop(3) },
-      ];
-    },
-  },
-  /** 快速路到头接高速。环形匝道和包在外面的匝道组成喇叭口，南边两条斜匝道管右转。 */
-  trumpet: {
-    footprint: [-8, -6, 8, 8],
-    mainline: [
-      [0, 1],
-      [0, 8.5],
-    ],
-    stubs: [],
-    ramps() {
-      const extent = 7.8;
-      const loopX = -2 - LANE;
-      const loopZ = -2.4;
-      const westToSouth = graded(
-        [
-          ...arc(loopX, loopZ, 2, Math.PI / 2, Math.PI, 8),
-          ...arc(loopX, loopZ, 2, Math.PI, 2 * Math.PI, 14).slice(1),
-          [-LANE, 1],
-        ],
-        0,
-        ELEVATED,
-      );
-      const northToWest = graded(
-        [
-          [LANE, 1],
-          [LANE, -3],
-          ...arc(-2.4, -3, 2.62, 0, -Math.PI, 16),
-          [-7.6, -2.2],
-          [-extent, -LANE],
-        ],
-        ELEVATED,
-        0,
-      );
-      return [
-        { name: '东转南', points: outerRamp(0, extent) },
-        { name: '北转东', points: outerRamp(3, extent) },
-        { name: '西转南', points: westToSouth },
-        { name: '北转西', points: northToWest },
-      ];
-    },
-  },
-  /**
-   * 四车道到头接高速。没有快速路主线：四条匝道的一头在高速上，另一头在四车道的头上。
-   * 右转的两条贴地，左转的两条各绕半个喇叭，在高架上跨过高速。
-   * 匝道的端点都压在格子边界上，车从普通路网上下匝道时位置是连续的。
-   */
-  tee: {
-    footprint: [-8, -6, 8, 4],
-    mainline: [],
-    stubs: [],
-    ramps() {
-      const side = ARTERIAL_LANE;
-      const eastToSouth = rounded([
-        [-8.49, LANE],
-        [-7, 0.24],
-        [-3, 1.6],
-        [-1, 3.1],
-        [-side, 4],
-        [-side, TEE_FOOT],
-      ]);
-      const northToEast = rounded([
-        [side, TEE_FOOT - 0.01],
-        [side, 4],
-        [1, 3.1],
-        [3, 1.6],
-        [7, 0.24],
-        [8.5, LANE],
-      ]);
-      return [
-        { name: '东转南', points: eastToSouth.map(([x, z]) => [x, z, 0]) },
-        { name: '北转东', points: northToEast.map(([x, z]) => [x, z, 0]) },
-        { name: '西转南', points: teeLoopSouth() },
-        { name: '北转西', points: teeLoopWest() },
-      ];
-    },
-  },
-};
-
 export function template(name) {
   return TEMPLATES[name];
 }
@@ -316,12 +47,92 @@ export function templateNames() {
   return Object.keys(TEMPLATES);
 }
 
-/** 模板的占地，格数和面积。素材张数：每个模板一张高架和匝道的精灵，地面部分用普通路面精灵。 */
+/** 一格高架精灵的名字。高度是层，名字里写百分之一层。 */
+export function viaductKey(h0, h1) {
+  return `ev-z-${String(Math.round(h0 * 100))}-${String(Math.round(h1 * 100))}`;
+}
+
+/** 主线的中心线，带高度。丁字形没有主线。 */
+export function mainlineOf(name) {
+  const { mainline } = TEMPLATES[name];
+  if (mainline.length === 0) return [];
+  const [[ax, az], [bx, bz]] = mainline;
+  const steps = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.5);
+  const out = [];
+  for (let i = 0; i <= steps; i += 1) {
+    const t = i / steps;
+    out.push([ax + (bx - ax) * t, az + (bz - az) * t, ELEVATED]);
+  }
+  return out;
+}
+
+const pierCache = new Map();
+
+/** 模板的全部桥墩。主线和匝道一起选位，这样桥墩不会落在任何一条更低的路面上。 */
+export function piersOf(name) {
+  if (pierCache.has(name)) return pierCache.get(name);
+  const main = mainlineOf(name);
+  const lines = TEMPLATES[name].ramps().map(({ name: id, center }) => ({
+    id,
+    points: center,
+    wide: 0.34,
+    spacing: 1.5,
+    half: ROAD_SPEC.ramp.walk / 2,
+  }));
+  if (main.length > 0)
+    lines.unshift({
+      id: 'main',
+      points: main,
+      wide: 0.8,
+      spacing: 1.3,
+      half: ROAD_SPEC.express.walk / 2,
+    });
+  const surfaces = [
+    ...lines,
+    ...TEMPLATES[name].ground.map((ground, index) => ({ id: `ground${String(index)}`, ...ground })),
+  ];
+  const piers = lines.flatMap((line) => pierSpots(line, surfaces));
+  pierCache.set(name, piers);
+  return piers;
+}
+
+/** 占地里匝道和主线都没有压到的格子。 */
+export function freeCells(name) {
+  const { footprint, ramps, ground } = TEMPLATES[name];
+  const [x0, z0, x1, z1] = footprint;
+  const taken = [
+    ...ramps().flatMap(({ center }) => center),
+    ...mainlineOf(name),
+    ...ground.flatMap(({ points }) => {
+      const [[ax, az], [bx, bz]] = points;
+      const steps = Math.ceil(Math.hypot(bx - ax, bz - az));
+      return Array.from({ length: steps + 1 }, (_, i) => [
+        ax + ((bx - ax) * i) / steps,
+        az + ((bz - az) * i) / steps,
+      ]);
+    }),
+  ];
+  const cells = [];
+  for (let z = z0; z <= z1; z += 1) {
+    for (let x = x0; x <= x1; x += 1) {
+      if (taken.every(([px, pz]) => Math.hypot(px - x, pz - z) > FREE_CLEARANCE)) cells.push([x, z]);
+    }
+  }
+  return cells;
+}
+
+/** 模板的占地，格数和面积。usable 是圈内空地的格数。 */
 export function templateFootprint(name) {
   const [x0, z0, x1, z1] = TEMPLATES[name].footprint;
   const w = x1 - x0 + 1;
   const h = z1 - z0 + 1;
-  return { w, h, cells: w * h, ramps: TEMPLATES[name].ramps().length };
+  return {
+    w,
+    h,
+    cells: w * h,
+    usable: freeCells(name).length,
+    ramps: TEMPLATES[name].ramps().length,
+  };
 }
 
 /** 模板占地的格子，超出地图的部分不算。 */
@@ -336,21 +147,70 @@ export function footprintCells(name, cx, cy, N) {
   return cells;
 }
 
-/** 立交在地图上的物体：一张精灵，占地就是模板的范围。 */
-export function templateObject(name, cx, cy) {
-  const [x0, z0, x1, z1] = TEMPLATES[name].footprint;
+/** 桥墩精灵的名字：高度到十分之一层，横梁方向到 15°。 */
+function pierKey(h, nx, nz) {
+  const angle = ((Math.atan2(nz, nx) % Math.PI) + Math.PI) % Math.PI;
+  const index = Math.round((angle / Math.PI) * PIER_ANGLES) % PIER_ANGLES;
+  return `pr-${String(Math.round(h * 10))}-${String(index)}`;
+}
+
+/** 一根桥墩是一个单独的物体，x、z 相对格子中心 (cx, cy)。 */
+export function pierObject({ x, z, h, nx, nz }, cx, cy, wide = 0.8) {
+  const px = x + cx + 0.5;
+  const py = z + cy + 0.5;
   return {
-    key: `ix-${name}`,
-    px: cx + 0.5,
-    py: cy + 0.5,
+    key: pierKey(h, nx, nz),
+    wide,
+    px,
+    py,
     level: 0,
+    base: 0,
     footprint: [
-      [cx + x0, cy + z0],
-      [cx + x1 + 1, cy + z0],
-      [cx + x1 + 1, cy + z1 + 1],
-      [cx + x0, cy + z1 + 1],
+      [px - PIER_HALF, py - PIER_HALF],
+      [px + PIER_HALF, py - PIER_HALF],
+      [px + PIER_HALF, py + PIER_HALF],
+      [px - PIER_HALF, py + PIER_HALF],
     ],
   };
+}
+
+function greenObject(x, y, variant) {
+  return {
+    key: `P-park-1x1-${String(variant % GREEN_VARIANTS)}`,
+    px: x + 0.5,
+    py: y + 0.5,
+    level: 0,
+    footprint: [
+      [x, y],
+      [x + 1, y],
+      [x + 1, y + 1],
+      [x, y + 1],
+    ],
+  };
+}
+
+/** 立交落到地图上：low 是路面层的精灵，high 是参加遮挡排序的路面块、桥墩和圈内绿地。 */
+export function templateParts(name, cx, cy) {
+  const low = [];
+  const high = [];
+  piecesOf(name).forEach((piece, index) => {
+    const key = `ixp-${name}-${String(index)}`;
+    const x = cx + piece.cell[0];
+    const y = cy + piece.cell[1];
+    if (piece.low) low.push({ key, x, y, level: 0 });
+    else
+      high.push({
+        key,
+        px: x + 0.5,
+        py: y + 0.5,
+        level: 0,
+        base: piece.base,
+        footprint: piece.outline.map(([a, b]) => [a + cx + 0.5, b + cy + 0.5]),
+      });
+  });
+  for (const pier of piersOf(name)) high.push(pierObject(pier, cx, cy));
+  freeCells(name).forEach(([x, z], index) => high.push(greenObject(cx + x, cy + z, index)));
+  return { low, high };
 }
 
 function station(lane, x, y) {
@@ -369,8 +229,9 @@ function station(lane, x, y) {
 /**
  * 把模板的匝道接到主线和地面路网上：端点高度为 0 的一头接地面，在高架上的一头接主线。
  * main 是快速路主线的两条 lane；模板没有主线时不传，它的匝道两头都在地面。
+ * spine 逐条匝道写明它是主线的延续：from 是流进这条匝道的主线，to 是这条匝道流进的主线。
  */
-export function connectRamps({ name, cx, cy, N, main, lanes }) {
+export function connectRamps({ name, cx, cy, N, main, lanes, spine = [] }) {
   const cellOf = ([x, y]) => Math.floor(y) * N + Math.floor(x);
   template(name)
     .ramps()
@@ -379,13 +240,23 @@ export function connectRamps({ name, cx, cy, N, main, lanes }) {
       const first = points[0];
       const last = points[points.length - 1];
       const mainOf = ([x]) => (x < cx + 0.5 ? main.south : main.north);
-      const lane = { id: `${name}${String(cx)}-${String(index)}`, kind: 'ramp', points, exits: [] };
-      if (first[2] < 0.5) lane.fromCell = cellOf(first);
+      const lane = {
+        id: `${name}${String(cx)}-${String(index)}`,
+        kind: 'ramp',
+        points,
+        exits: [],
+        speeds: ramp.speeds,
+        free: ramp.free,
+      };
+      const flow = spine[index];
+      if (flow?.from) flow.from.merge = { lane: lane.id, at: 0 };
+      else if (first[2] < 0.5) lane.fromCell = cellOf(first);
       else {
         const line = mainOf(first);
         line.exits.push({ at: station(line, first[0], first[1]), lane: lane.id });
       }
-      if (last[2] < 0.5) lane.toCell = cellOf(last);
+      if (flow?.to) lane.merge = { lane: flow.to.id, at: 0 };
+      else if (last[2] < 0.5) lane.toCell = cellOf(last);
       else {
         const line = mainOf(last);
         lane.merge = { lane: line.id, at: station(line, last[0], last[1]) };
@@ -398,9 +269,10 @@ export function connectRamps({ name, cx, cy, N, main, lanes }) {
 export function rampLinks(lanes) {
   return lanes
     .filter(({ fromCell, toCell }) => fromCell !== undefined && toCell !== undefined)
-    .map(({ fromCell, toCell, points }) => ({
+    .map(({ id, fromCell, toCell, points }) => ({
       from: fromCell,
       to: toCell,
-      length: lengths(points).pop(),
+      length: stationsOf(points).pop(),
+      lanes: [id],
     }));
 }

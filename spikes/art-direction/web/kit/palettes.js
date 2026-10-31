@@ -1,21 +1,18 @@
 // 配色。模型里只引用这里的颜色名，换配色时几何完全不变。
 // 灯光也算配色的一部分：太阳方向决定影子长短，太阳和天空的颜色决定冷暖。
 // sunny 是白天的素材，夜里靠调色和亮窗层；dusk 用来和"两套图集"的方案做对比。
-
-const festival = {
-  red: '#d42f2a',
-  gold: '#e8b93c',
-  bunting: ['#d42f2a', '#e8b93c', '#3f8bd8', '#3aa56b', '#f4f0e6'],
-};
+// service 是公共服务的专用色，饱和度比分区颜色高，普通物业不用，checkServiceColors 核对它们和分区颜色分得开。
 
 const service = {
-  hospital: '#2e9e6b',
-  school: '#d9744a',
-  police: '#2f5fa8',
-  fire: '#d6372f',
-  water: '#3a9fc8',
-  power: '#e0a92e',
+  hospital: '#00b37a',
+  school: '#ff7a1a',
+  police: '#1248c8',
+  fire: '#ff1f1f',
+  water: '#00a8e8',
+  power: '#ffc400',
   track: '#c9644a',
+  bus: '#16a3a3',
+  metro: '#b0167a',
 };
 
 export const palettes = {
@@ -89,7 +86,6 @@ export const palettes = {
     },
     cars: ['#e0483e', '#efc030', '#3f8bd8', '#f4f4f0'],
     service,
-    festival,
   },
   dusk: {
     id: 'dusk',
@@ -161,6 +157,5 @@ export const palettes = {
     },
     cars: ['#e8493f', '#f2c230', '#5a8fe0', '#f4f0e8'],
     service,
-    festival,
   },
 };

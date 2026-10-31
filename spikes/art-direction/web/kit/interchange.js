@@ -1,186 +1,67 @@
-import { LEVEL } from './bake.js';
 import { Builder, hashString, linear, shade } from './builder.js';
-import { LAYER, MAX_SEGMENTS, roadMesh } from './roadshader.js';
-import { ELEVATED, template } from '../sim/interchange.js';
-import { ROAD_SPEC } from '../sim/network.js';
+import { drawMainFrames, drawPier, drawRampFrames, drawSurfaceFrames, framesOf } from './ribbon.js';
+import { linesOf, piecesOf } from '../sim/ixpieces.js';
 
-// 高架和立交的精灵。路面还是距离场，只是抬到半空；桥墩和梁画成低多边形，这样才有投影。
-// 一个立交的所有匝道画在一张图里，这张图是物体层的一个物体，和建筑一起排遮挡顺序。
+// 高架和立交的精灵。路面、侧面和桥墩都是多边形。
+// 立交切成小块，每块是一张精灵；高架一格一张，桥墩单独一张，车才能插到桥面和桥墩中间。
 
-const RAMP_RESOLUTION = 200;
-const CHUNK_SEGMENTS = 5;
-const CHUNKS_PER_MESH = Math.floor(MAX_SEGMENTS / CHUNK_SEGMENTS);
+const RAMP_LIFT = 0.003;
+const LIFT_STEP = 0.002;
+const VIADUCT_STEPS = 4;
+const VIADUCT_REACH = 0.008;
+const SEAM_OVERLAP = 2;
+const CROSS_ANGLE = Math.PI / 12;
+const WIDE_ABOVE = 1;
 
-function pierAt(b, x, z, top, wide, P) {
-  const concrete = linear(P.road.wall);
-  b.box(x, 0, z, 0.1, top - 0.05, 0.1, shade(concrete, 0.92));
-  b.box(x, top - 0.09, z, wide, 0.05, 0.14, concrete);
-}
-
-function along(points) {
-  const out = [0];
-  for (let i = 1; i < points.length; i += 1) {
-    out.push(
-      out[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]),
-    );
-  }
-  return out;
-}
-
-/** 水平面上离折线最近的点，它的高度就是这块路面的高度。 */
-function heightOnLine(points, x, z) {
-  let best = Infinity;
-  let height = 0;
-  for (let i = 0; i < points.length - 1; i += 1) {
-    const [ax, az, ah] = points[i];
-    const [bx, bz, bh] = points[i + 1];
-    const dx = bx - ax;
-    const dz = bz - az;
-    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
-    const d = Math.hypot(x - ax - t * dx, z - az - t * dz);
-    if (d < best) {
-      best = d;
-      height = ah + (bh - ah) * t;
-    }
-  }
-  return height * LEVEL;
-}
-
-/** 梁：路面下面一条薄薄的侧边，让高架看起来有厚度。 */
-function beam(b, points, halfWidth, P) {
-  const color = shade(linear(P.road.wall), 0.9);
-  for (let i = 0; i < points.length - 1; i += 1) {
-    const [ax, az, ah] = points[i];
-    const [bx, bz, bh] = points[i + 1];
-    if (ah < 0.15 && bh < 0.15) continue;
-    const dx = bx - ax;
-    const dz = bz - az;
-    const length = Math.hypot(dx, dz);
-    const nx = -dz / length;
-    const nz = dx / length;
-    for (const side of [1, -1]) {
-      const px = nx * side * halfWidth;
-      const pz = nz * side * halfWidth;
-      const ay = ah * LEVEL;
-      const by = bh * LEVEL;
-      b.poly(
-        [
-          [ax + px, ay - 0.05, az + pz],
-          [bx + px, by - 0.05, bz + pz],
-          [bx + px, by, bz + pz],
-          [ax + px, ay, az + pz],
-        ],
-        color,
-        [nx * side, 0, nz * side],
-      );
-    }
-  }
-}
-
-/**
- * 路面。着色器的裁剪面是按整条路算的，环形匝道转过 270° 时，终点的裁剪面会切掉环的另一半，
- * 所以长路面切成短段，每段的转角都不大，段和段之间靠裁剪面的一点重叠接上。
- * 一块网格装不下的长匝道分成几块，每块都不超过着色器的段数上限。
- */
-function deckMeshes(points, kind, P, span) {
-  const flat = points.map(([x, z]) => [x, z]);
-  const paths = [];
-  for (let i = 0; i < flat.length - 1; i += CHUNK_SEGMENTS) {
-    paths.push({
-      points: flat.slice(i, Math.min(flat.length, i + CHUNK_SEGMENTS + 1)),
-      kind,
-      clipStart: true,
-      clipEnd: true,
-      cross: -1,
-      chained: true,
-    });
-  }
-  const meshes = [];
-  for (let i = 0; i < paths.length; i += CHUNKS_PER_MESH) {
-    const group = paths.slice(i, i + CHUNKS_PER_MESH);
-    meshes.push(
-      roadMesh(group, P, (x, z) => heightOnLine(points, x, z), LAYER.both, span, RAMP_RESOLUTION),
-    );
-  }
-  return meshes;
-}
-
-function piersAlong(b, points, wide, P, spacing = 1.3) {
-  const distance = along(points);
-  const total = distance[distance.length - 1];
-  for (let s = spacing / 2; s < total; s += spacing) {
-    let i = 0;
-    while (i < points.length - 2 && distance[i + 1] < s) i += 1;
-    const t = (s - distance[i]) / (distance[i + 1] - distance[i] || 1);
-    const x = points[i][0] + (points[i + 1][0] - points[i][0]) * t;
-    const z = points[i][1] + (points[i + 1][1] - points[i][1]) * t;
-    const h = (points[i][2] + (points[i + 1][2] - points[i][2]) * t) * LEVEL;
-    if (h > 0.24) pierAt(b, x, z, h, wide, P);
-  }
-}
-
-/** 一格高架。h0、h1 是这一格两端的路面高度（层），可以是坡。axis 是走向，下方的地面可以通路。 */
+/** 一格高架。h0、h1 是这一格两端的路面高度（层），可以是坡。 */
 export function buildViaduct(axis, h0, h1, P) {
-  const points =
-    axis === 'x'
-      ? [
-          [-0.5, 0, h0],
-          [0.5, 0, h1],
-        ]
-      : [
-          [0, -0.5, h0],
-          [0, 0.5, h1],
-        ];
-  const halfWidth = ROAD_SPEC.express.walk / 2;
+  const end = 0.5 + VIADUCT_REACH;
+  const points = [];
+  for (let i = 0; i <= VIADUCT_STEPS; i += 1) {
+    const t = i / VIADUCT_STEPS;
+    const along = -end + 2 * end * t;
+    const h = h0 + (h1 - h0) * t;
+    points.push(axis === 'x' ? [along, 0, h] : [0, along, h]);
+  }
+  const band = points.map(() => ({ l: 0.4, r: 0.4, sl: 0.05, sr: 0.05, tone: 1, dash: false }));
   const build = () => {
     const b = new Builder(hashString(`viaduct${axis}${String(h0)}${String(h1)}`));
-    beam(b, points, halfWidth, P);
-    const middle = ((h0 + h1) / 2) * LEVEL;
-    if (middle > 0.24) {
-      const concrete = linear(P.road.wall);
-      b.box(0, 0, 0, 0.12, middle - 0.05, 0.12, shade(concrete, 0.92));
-      b.box(
-        0,
-        middle - 0.09,
-        0,
-        axis === 'x' ? 0.14 : 0.8,
-        0.05,
-        axis === 'x' ? 0.8 : 0.14,
-        concrete,
-      );
-    }
+    drawMainFrames(b, framesOf(points, band), P);
     return b;
   };
-  return { build, extra: () => deckMeshes(points, 'express', P, 3.6) };
+  return { build };
 }
 
-/** 梁和桥墩，没有路面，所以不用显卡，不开浏览器的预览也能用。 */
-export function interchangeFrame(name, P) {
-  const shape = template(name);
-  const main = shape.mainline.map(([x, z]) => [x, z, ELEVATED]);
-  const b = new Builder(hashString(`interchange${name}`));
-  if (main.length > 0) {
-    beam(b, main, ROAD_SPEC.express.walk / 2, P);
-    piersAlong(b, main, 0.8, P);
-  }
-  for (const { points } of shape.ramps()) {
-    beam(b, points, ROAD_SPEC.ramp.walk / 2, P);
-    piersAlong(b, points, 0.34, P, 1.6);
-  }
+/** 一根桥墩。height 是十分之一层，angle 是横梁方向，每份 15°。 */
+export function buildPierSprite(height, angle, P) {
+  const h = height / 10;
+  const a = angle * CROSS_ANGLE;
+  const wide = h > WIDE_ABOVE ? 0.8 : 0.34;
+  const b = new Builder(hashString(`pier${String(height)}${String(angle)}`));
+  drawPier(b, { x: 0, z: 0, h, wide, nx: Math.cos(a), nz: Math.sin(a) }, P);
   return b;
 }
 
-/** 整个立交：高架主线、全部匝道和桥墩。丁字形没有主线，只有匝道。 */
-export function buildInterchange(name, P) {
-  const shape = template(name);
-  const main = shape.mainline.map(([x, z]) => [x, z, ELEVATED]);
-  const [x0, z0, x1, z1] = shape.footprint;
-  const span = Math.max(x1 - x0, z1 - z0) + 6;
-  const extra = () => {
-    const ramps = shape.ramps().flatMap(({ points }) => deckMeshes(points, 'ramp', P, span));
-    return main.length > 0 ? [...deckMeshes(main, 'express', P, span), ...ramps] : ramps;
+/** 立交的一小块。线段两头多画几节，和相邻的块互相盖住。 */
+export function buildPiece(name, index, P) {
+  const piece = piecesOf(name)[index];
+  const lines = linesOf(name);
+  const [ox, oz] = piece.cell;
+  const build = () => {
+    const b = new Builder(hashString(`piece${name}${String(index)}`));
+    for (const { line: lineIndex, from, to } of piece.spans) {
+      const line = lines[lineIndex];
+      const lift = RAMP_LIFT + LIFT_STEP * lineIndex;
+      const frames = framesOf(line.center, line.band, lift)
+        .slice(Math.max(0, from - SEAM_OVERLAP), to + 1 + SEAM_OVERLAP)
+        .map((frame) => ({ ...frame, x: frame.x - ox, z: frame.z - oz }));
+      if (line.kind === 'main') drawMainFrames(b, frames, P);
+      else if (line.kind === 'pad') drawSurfaceFrames(b, frames, P);
+      else drawRampFrames(b, frames, P);
+    }
+    return b;
   };
-  return { build: () => interchangeFrame(name, P), extra };
+  return { build, low: piece.low };
 }
 
 /** 车头灯照在路面上的光斑，画在发光层上，夜里才显示。rotation 和车身的朝向一样。 */

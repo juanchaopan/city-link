@@ -20,9 +20,11 @@ const glowFactor = gen.sunny.pngBytes / gen.dayOnly.pngBytes;
 const shared = [
   { name: '地表、水面和河岸', count: 120, area: average('地表') },
   { name: '路面三层', count: 3 * 180, area: average('线路') },
-  { name: '立交和高架', count: 3 * 4 + 30, area: average('立交') / 3 },
+  { name: '立交和高架', count: groups['立交'].count + groups['高架'].count, area: average('立交') },
   { name: '公共服务', count: 18, area: average('公共服务') },
-  { name: '小品、树、车、信号灯', count: 140, area: average('树') / 2 },
+  { name: '公共设施', count: groups['公共设施'].count, area: average('公共设施') },
+  { name: '信号灯', count: groups['信号灯'].count, area: average('信号灯') },
+  { name: '小品、树、车', count: 140, area: average('树') / 2 },
 ];
 
 function totals(label, rows) {
@@ -77,7 +79,6 @@ const report = {
     sunny: gen.sunny.pngBytes,
     dayOnly: gen.dayOnly.pngBytes,
     dusk: gen.dusk.pngBytes,
-    festival: gen.festival,
   },
 };
 writeFileSync('out/budget-report.json', JSON.stringify(report, null, 2));
@@ -95,7 +96,5 @@ console.log(
     sunnyMb: gen.sunny.pngBytes / 1048576,
     dayOnlyMb: gen.dayOnly.pngBytes / 1048576,
     duskMb: gen.dusk.pngBytes / 1048576,
-    festivalKb: gen.festival.pngBytes / 1024,
-    festivalCount: gen.festival.count,
   }),
 );

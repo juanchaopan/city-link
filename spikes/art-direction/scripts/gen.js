@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import { COMBOS } from '../web/sim/combos.js';
 import { startServer } from './serve.js';
 
-const PORT = 4181;
+const PORT = 4194;
 const argv = process.argv.slice(2);
 const palettes = argv.length > 0 ? argv : ['sunny', 'dusk', 'dayOnly'];
 

@@ -1,5 +1,6 @@
 // 生成样张截图、拼缝检查和帧率测量。
 // 用法：node scripts/shots.js [截图名前缀...]；SEAM=1 时只跑拼缝和露底检查，FPS=1 时只测帧率，SOFT=1 时用软件渲染。
+// BIG=1 时只测 128×128 的地图，这个尺寸不是现有规格，只是量一量。
 // 截图脚本用自己的端口，不影响 4180 上正在运行的页面。
 // 每个场景开一个新页面并关掉上一个，图集纹理才会释放，连续跑几十个场景内存不会累积。
 // 显卡测帧率时关掉垂直同步和帧率上限，否则所有用例都只读得出屏幕刷新率。软件渲染不关，它不关上限也到不了刷新率，
@@ -28,7 +29,6 @@ const views = [
   { name: 'r6-traffic', query: `${base}&view=traffic&zoom=0.095&x=31&y=30` },
   { name: 'r6-coverage', query: `${base}&view=coverage&zoom=0.095&x=31&y=30` },
   { name: 'r6-metro', query: `${base}&view=metro&zoom=0.16&x=31&y=30` },
-  { name: 'r6-festival', query: `${base}&festival=1&zoom=0.3&x=30&y=31` },
   { name: 'r6-time-dawn', query: `${base}&zoom=0.3&x=31&y=30&t=6.5` },
   { name: 'r6-time-noon', query: `${base}&zoom=0.3&x=31&y=30&t=12` },
   { name: 'r6-time-dusk', query: `${base}&zoom=0.3&x=31&y=30&t=18.6` },
@@ -77,7 +77,7 @@ async function open(query) {
       console.error(message.text());
   });
   await page.goto(`http://localhost:${String(PORT)}/web/play.html?${query}`);
-  await page.waitForSelector('html[data-ready="true"]', { state: 'attached', timeout: 120000 });
+  await page.waitForSelector('html[data-ready="true"]', { state: 'attached', timeout: 180000 });
   await page.waitForTimeout(700);
 }
 
@@ -176,12 +176,7 @@ async function gridCheck() {
   return rows;
 }
 
-const report = {};
-if (process.env.SEAM) {
-  report.seams = await seamCheck();
-  report.grid = await gridCheck();
-  writeFileSync('out/seam-report.json', JSON.stringify(report, null, 2));
-} else if (process.env.FPS) {
+function fpsCases() {
   const game = 'n=64&controls=0&zoom=0.42&x=31&y=30&warm=300';
   const overview = 'n=64&controls=0&zoom=0.078&warm=300';
   const cases = [
@@ -223,21 +218,40 @@ if (process.env.SEAM) {
       cycle: true,
     },
     {
-      name: '节日叠加层',
-      query: 'n=64&controls=0&zoom=0.3&x=31&y=30&festival=1&cars=300&full=1&warm=300',
+      name: '交通视图，全城箭头',
+      query: 'n=64&controls=0&view=traffic&zoom=0.095&x=31&y=28&cars=0',
       cycle: false,
     },
+    { name: '公共服务图标，默认缩放', query: 'n=64&controls=0&cars=0', cycle: false },
+    { name: '不画公共服务图标，默认缩放', query: 'n=64&controls=0&cars=0&icons=0', cycle: false },
   ];
-  for (const { name, query, cycle } of cases) {
+  const big = 'n=128&controls=0&warm=100';
+  const bigCases = [
+    { name: '128，默认视野，无车', query: 'n=128&controls=0&cars=0', cycle: false },
+    { name: '128，游戏视角，满额 300 辆', query: `${big}&zoom=0.42&x=62&y=60&cars=300&full=1`, cycle: false },
+    { name: '128，游戏视角，满额 600 辆', query: `${big}&zoom=0.42&x=62&y=60&cars=600&full=1`, cycle: false },
+    { name: '128，全图缩小，满额 600 辆', query: `${big}&zoom=0.04&cars=600&full=1`, cycle: false },
+  ];
+  return process.env.BIG ? bigCases : cases;
+}
+
+const report = {};
+if (process.env.SEAM) {
+  report.seams = await seamCheck();
+  report.grid = await gridCheck();
+  writeFileSync('out/seam-report.json', JSON.stringify(report, null, 2));
+} else if (process.env.FPS) {
+  for (const { name, query, cycle } of fpsCases()) {
     await open(query);
     const stats = await page.evaluate(() => window.sceneStats);
     const fps = await page.evaluate((flag) => window.measureFps(5, flag), cycle);
     const cars = await page.evaluate(() => window.trafficStats());
-    report[name] = { gpu: stats.gpu, sprites: stats.sprites, atlas: stats.atlas, ...fps, cars };
+    report[name] = { gpu: stats.gpu, sprites: stats.sprites, atlas: stats.atlas, arrows: stats.arrows, icons: stats.icons, ...fps, cars };
     console.log(name, JSON.stringify(report[name]));
   }
+  const prefix = process.env.BIG ? 'fps-big' : 'fps';
   writeFileSync(
-    process.env.SOFT ? 'out/fps-soft-report.json' : 'out/fps-report.json',
+    process.env.SOFT ? `out/${prefix}-soft-report.json` : `out/${prefix}-report.json`,
     JSON.stringify(report, null, 2),
   );
 } else {

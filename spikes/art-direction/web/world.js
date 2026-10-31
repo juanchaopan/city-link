@@ -7,15 +7,18 @@ import {
   Rectangle,
   Texture,
 } from 'pixi.js';
-import { sortByDepth } from './sim/order.js';
+import { createDrawList } from './sim/drawlist.js';
+import { sceneItems } from './sim/sceneitems.js';
 
 // 把图集和城市数据拼成 Pixi 场景。
 // 地面分层绘制：地表、田块、人行道、路缘、车道、路面标记，路面的层序保证人行道不会盖到车道上。
-// 物体按拓扑排序后的顺序画；亮窗紧跟在所属建筑后面，在同一张纹理上，不增加换纹理的次数。
-// 模块拼装的物业由几张精灵叠成，从下往上画，每张抬高整数像素。
+// 路面以上的东西都在一串粒子里，按遮挡顺序画：建筑、灯杆、桥墩、桥面和车用同一条规则比较，
+// 所以灯杆不会被路面盖住，车从桥下穿过时被桥面挡住，车绕到楼后面时被楼挡住。
+// 这一串每帧重排，全部粒子共用一张图集，只有一次绘制调用；视野外的物体不进这一串。
+// 亮窗紧跟在所属建筑后面。模块拼装的物业由几张精灵叠成，从下往上画，每张抬高整数像素。
 
 const CHUNK = 16;
-const BATCH = 3000;
+const VIEW_PADDING = 300;
 const MODULE_FLOOR_LEVELS = 0.5;
 export const TILE_HALF_W = 64;
 export const TILE_HALF_H = 32;
@@ -66,16 +69,10 @@ function particleFor(atlas, key, sx, sy) {
   });
 }
 
-function batchContainer(atlas, particles, dynamicColor, area) {
+function batchContainer(particles, area) {
   const container = new ParticleContainer({
     texture: particles[0].texture,
-    dynamicProperties: {
-      position: false,
-      rotation: false,
-      uvs: false,
-      vertex: false,
-      color: dynamicColor,
-    },
+    dynamicProperties: { position: false, rotation: false, uvs: false, vertex: false, color: false },
   });
   for (const particle of particles) container.addParticle(particle);
   container.boundsArea = area;
@@ -98,17 +95,6 @@ function byChunk(entries) {
       list,
     }))
     .sort((a, b) => a.order - b.order);
-}
-
-function screenBox(atlas, object) {
-  const { sx, sy } = screenOf(object.px, object.py, object.level);
-  const frame = atlas.frames[object.key];
-  return {
-    left: sx - frame.ax,
-    right: sx - frame.ax + frame.w,
-    top: sy - frame.ay,
-    bottom: sy - frame.ay + frame.h,
-  };
 }
 
 /**
@@ -143,6 +129,96 @@ function underlay(city, palette) {
   return g;
 }
 
+/** 一个物体的全部粒子：楼身、模块和亮窗。 */
+function particlesOf(atlas, object, { dynamicTint, stress, bodies, lit }) {
+  const particles = [];
+  const addSprite = (key, sx, sy) => {
+    const body = particleFor(atlas, key, sx, sy);
+    bodies.push(body);
+    particles.push(body);
+    const glowKey = `${key}~g`;
+    if (dynamicTint && atlas.frames[glowKey]) {
+      const glow = particleFor(atlas, glowKey, sx, sy);
+      glow.alpha = 0;
+      lit.push(glow);
+      particles.push(glow);
+    }
+  };
+  const parts = object.modules ?? [{ key: object.key, lift: 0, dx: 0, dy: 0 }];
+  for (const { key, lift, dx, dy } of parts) {
+    const { sx, sy } = screenOf(
+      object.px + dx,
+      object.py + dy,
+      object.level + lift * MODULE_FLOOR_LEVELS,
+    );
+    addSprite(key, sx, sy);
+  }
+  if (stress > 1 && object.parcel !== undefined && !object.modules) {
+    const { sx, sy } = screenOf(object.px, object.py, object.level);
+    for (let i = 1; i < stress; i += 1) addSprite(object.key, sx, sy);
+  }
+  return particles;
+}
+
+/** 路面以上的场景：一串按遮挡顺序排好的粒子，车每帧插进去。 */
+function sceneLayerOf(atlas, city, options) {
+  const { sorted, cycles } = sceneItems(city, (key) => atlas.frames[key]);
+  const entries = sorted.map((item) => ({
+    item,
+    particles: particlesOf(atlas, item, options),
+    visible: true,
+  }));
+  const lamps = [];
+  for (const { item, particles } of entries) {
+    if (item.signal === undefined) continue;
+    const key = `lamp-${String(item.dir)}`;
+    if (!atlas.frames[key]) continue;
+    const { sx, sy } = screenOf(item.px, item.py, item.level);
+    const particle = particleFor(atlas, key, sx, sy);
+    particles.push(particle);
+    lamps.push({ signal: item.signal, phase: item.phase, particle });
+  }
+  const texture = atlas.textures[Object.keys(atlas.textures)[0]];
+  const layer = new ParticleContainer({
+    texture,
+    dynamicProperties: { position: true, rotation: true, uvs: true, vertex: true, color: true },
+  });
+  layer.boundsArea = options.area;
+  const drawList = createDrawList(sorted);
+
+  const compose = (cars) => {
+    const placed = drawList.placeCars(cars);
+    const list = [];
+    let next = 0;
+    for (let i = 0; i < entries.length; i += 1) {
+      while (next < placed.length && placed[next].slot <= i) {
+        list.push(...placed[next].particles);
+        next += 1;
+      }
+      if (entries[i].visible) list.push(...entries[i].particles);
+    }
+    while (next < placed.length) {
+      list.push(...placed[next].particles);
+      next += 1;
+    }
+    layer.particleChildren = list;
+    layer.update();
+  };
+
+  const setView = ({ left, right, top, bottom }) => {
+    for (const entry of entries) {
+      const { item } = entry;
+      entry.visible =
+        item.left < right + VIEW_PADDING &&
+        item.right > left - VIEW_PADDING &&
+        item.top < bottom + VIEW_PADDING &&
+        item.bottom > top - VIEW_PADDING;
+    }
+  };
+
+  return { layer, compose, setView, lamps, cycles };
+}
+
 /**
  * 拼出一个世界。dynamicTint 为真时物体的颜色逐粒子更新，亮窗才能不受夜色影响。
  * bare 为真时不垫底，露底检查用它看精灵本身有没有缝。
@@ -162,7 +238,7 @@ export function buildWorld(atlas, city, { layers, dynamicTint, palette, bare = f
         const { sx, sy } = screenOf(entry.x + 0.5, entry.y + 0.5, entry.level);
         return particleFor(atlas, entry.key, sx, sy);
       });
-      groundLayer.addChild(batchContainer(atlas, particles, false, area));
+      groundLayer.addChild(batchContainer(particles, area));
       count.sprites += particles.length;
     }
   };
@@ -178,51 +254,27 @@ export function buildWorld(atlas, city, { layers, dynamicTint, palette, bare = f
     addCells(city.marks);
   }
 
-  const objectLayer = new Container();
-  if (layers.includes('objects')) {
-    const items = city.objects.map((object) => ({ ...object, ...screenBox(atlas, object) }));
-    const { sorted } = sortByDepth(items);
-    let current = [];
-    const flush = () => {
-      if (current.length === 0) return;
-      objectLayer.addChild(batchContainer(atlas, current, dynamicTint, area));
-      current = [];
-    };
-    const addSprite = (key, sx, sy) => {
-      const body = particleFor(atlas, key, sx, sy);
-      bodies.push(body);
-      current.push(body);
-      const glowKey = `${key}~g`;
-      if (dynamicTint && atlas.frames[glowKey]) {
-        const glow = particleFor(atlas, glowKey, sx, sy);
-        glow.alpha = 0;
-        lit.push(glow);
-        current.push(glow);
-      }
-    };
-    for (const object of sorted) {
-      const parts = object.modules ?? [{ key: object.key, lift: 0, dx: 0, dy: 0 }];
-      for (const { key, lift, dx, dy } of parts) {
-        const { sx, sy } = screenOf(
-          object.px + dx,
-          object.py + dy,
-          object.level + lift * MODULE_FLOOR_LEVELS,
-        );
-        addSprite(key, sx, sy);
-      }
-      if (stress > 1 && object.parcel !== undefined && !object.modules) {
-        const { sx, sy } = screenOf(object.px, object.py, object.level);
-        for (let i = 1; i < stress; i += 1) addSprite(object.key, sx, sy);
-      }
-      if (current.length >= BATCH) flush();
-    }
-    flush();
-    count.sprites += bodies.length + lit.length;
-  }
-
   const world = new Container();
-  world.addChild(groundLayer, objectLayer);
-  return { world, groundLayer, objectLayer, bodies, lit, count };
+  world.addChild(groundLayer);
+  if (!layers.includes('objects')) {
+    const idle = () => {};
+    return { world, groundLayer, bodies, lit, count, lamps: [], compose: idle, setView: idle };
+  }
+  const scene = sceneLayerOf(atlas, city, { dynamicTint, stress, area, bodies, lit });
+  world.addChild(scene.layer);
+  count.sprites += bodies.length + lit.length;
+  scene.compose([]);
+  return {
+    world,
+    groundLayer,
+    bodies,
+    lit,
+    count,
+    lamps: scene.lamps,
+    compose: scene.compose,
+    setView: scene.setView,
+    cycles: scene.cycles,
+  };
 }
 
 const KEYFRAMES = [

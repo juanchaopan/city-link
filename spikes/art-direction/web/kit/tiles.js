@@ -10,8 +10,6 @@ import { cornerHeight, cornerPlane, hermite, smooth } from '../sim/surface.js';
 const BLEED = 0.013;
 const WATER_Y = -0.13;
 const BED_Y = -0.24;
-const NEIGHBOR_DEPTH = 3;
-const NEIGHBOR_HALF_WIDTH = 2.5;
 const EMBANKMENT_WIDTH = 0.2;
 const EMBANKMENT_FADE = 0.9;
 const FACE_MIN = 0.06;
@@ -483,114 +481,6 @@ export function buildPlannedEnd(kind, inward, P) {
     }
   });
   return b;
-}
-
-/**
- * 打通后露出的一小段邻城：地面、延续的道路和几栋远处的小房子。朝外的一端在 fadeNeighbor 里淡出，
- * 路看起来是一直通向远处，而不是被地图边缘切断。axis 是路穿出地图的方向。
- */
-export function buildNeighbor(axis, kind, P) {
-  const place = (u, v, y = 0) => (axis === 'x' ? [0.5 + u, y, v] : [v, y, 0.5 + u]);
-  const lateral = axis === 'x' ? [0, 0, 1] : [1, 0, 0];
-  const build = () => {
-    const b = new Builder(hashString(`neighbor${axis}${kind}`));
-    const land = mix(linear(P.ground.grass1), linear(P.backdrop), 0.32);
-    const cells = 2;
-    for (let i = 0; i < NEIGHBOR_DEPTH * cells; i += 1) {
-      for (let j = -NEIGHBOR_HALF_WIDTH * cells; j < NEIGHBOR_HALF_WIDTH * cells; j += 1) {
-        const u0 = i / cells;
-        const u1 = (i + 1) / cells;
-        const v0 = j / cells;
-        const v1 = (j + 1) / cells;
-        const shift = i === 0 ? -BLEED : 0;
-        b.poly(
-          [
-            place(u0 + shift, v0, -0.002),
-            place(u1, v0, -0.002),
-            place(u1, v1, -0.002),
-            place(u0 + shift, v1, -0.002),
-          ],
-          shade(land, 0.97 + b.random() * 0.06),
-        );
-      }
-    }
-    const side = (y0, y1, color) => {
-      const near = place(-BLEED, NEIGHBOR_HALF_WIDTH, y0);
-      const far = place(NEIGHBOR_DEPTH, NEIGHBOR_HALF_WIDTH, y0);
-      const farTop = place(NEIGHBOR_DEPTH, NEIGHBOR_HALF_WIDTH, y1);
-      const nearTop = place(-BLEED, NEIGHBOR_HALF_WIDTH, y1);
-      b.poly([near, far, farTop, nearTop], color, lateral);
-    };
-    side(-0.16, -0.002, linear(P.ground.soil));
-    side(-0.5, -0.16, linear(P.ground.plinth));
-    side(-0.54, -0.5, linear(P.ground.plinthDark));
-    const walk = ROAD_SPEC[kind].walk / 2;
-    const border = linear(P.wall.warm);
-    for (const sign of [-1, 1]) {
-      for (let v = walk + 0.12; v < NEIGHBOR_HALF_WIDTH; v += 0.22) {
-        const [ax, , az] = place(0.03, sign * v, 0.004);
-        const [cx, , cz] = place(0.03, sign * (v + 0.12), 0.004);
-        const [wx, wz] = axis === 'x' ? [0.018, 0] : [0, 0.018];
-        b.poly(
-          [
-            [ax - wx, 0.004, az - wz],
-            [cx - wx, 0.004, cz - wz],
-            [cx + wx, 0.004, cz + wz],
-            [ax + wx, 0.004, az + wz],
-          ],
-          border,
-        );
-      }
-      for (const [u, v, scale] of [
-        [0.55, 1.1, 1],
-        [1.2, 1.7, 0.9],
-        [1.75, 0.95, 1.1],
-      ]) {
-        const [x, , z] = place(u, sign * v);
-        b.cylinder(x, 0, z, 0.02, 0.014, 0.12, 5, linear(P.tree.trunk));
-        b.blob(
-          x,
-          0.2 * scale,
-          z,
-          0.11 * scale,
-          0.13 * scale,
-          0.11 * scale,
-          mix(linear(P.tree.leaf[0]), linear(P.backdrop), 0.25),
-        );
-      }
-      for (const [u, v, tall] of [
-        [1.45, 1.05, 0.34],
-        [1.9, 1.6, 0.5],
-        [2.2, 0.9, 0.26],
-      ]) {
-        const [x, , z] = place(u, sign * v);
-        const wall = mix(linear(P.wall.cool), linear(P.backdrop), 0.3);
-        b.box(x, 0, z, 0.34, tall, 0.34, wall, { top: shade(wall, 0.92) });
-      }
-    }
-    return b;
-  };
-  const start = axis === 'x' ? [0.5, 0] : [0, 0.5];
-  const end = axis === 'x' ? [0.5 + NEIGHBOR_DEPTH, 0] : [0, 0.5 + NEIGHBOR_DEPTH];
-  const paths = [{ points: [start, end], kind, clipStart: true, clipEnd: true, cross: -1 }];
-  return { build, extra: () => [roadMesh(paths, P, null, LAYER.both, 9)] };
-}
-
-/** 邻城朝外的一端淡出到桌面。sprite 是裁好的精灵，按像素反算回地面坐标。 */
-export function fadeNeighbor(sprite, axis) {
-  const { data, w, h, ax, ay } = sprite;
-  for (let py = 0; py < h; py += 1) {
-    for (let px = 0; px < w; px += 1) {
-      const dx = (px - ax) / 64;
-      const dy = (py - ay) / 32;
-      const x = (dx + dy) / 2;
-      const z = (dy - dx) / 2;
-      const u = (axis === 'x' ? x : z) - 0.5;
-      const t = Math.max(0, Math.min(1, (u - 1.3) / (NEIGHBOR_DEPTH - 1.5)));
-      data[(py * w + px) * 4 + 3] *= 1 - t * t * (3 - 2 * t);
-    }
-  }
-  return sprite;
 }
 
 const CROPS = ['wheat', 'greens', 'rape', 'furrow'];

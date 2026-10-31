@@ -1,21 +1,28 @@
 import { chooseLooks, repeatedNeighbors } from './appearance.js';
 import { buildRoads, makeZones, terrain, traceRoads, valueNoise } from './citymap.js';
 import { COMBOS, modulesOf } from './combos.js';
-import { connectRamps, footprintCells, rampLinks, templateObject } from './interchange.js';
+import { connectRamps, footprintCells, rampLinks, templateParts } from './interchange.js';
 import { clearLots } from './lotclear.js';
 import { DIRECTIONS } from './network.js';
-import { metroPlan } from './metro.js';
+import { metroPlan, placeHalls } from './metro.js';
 import { generateParcels, ZONE } from './parcels.js';
 import { ringFootprint } from './roundabout.js';
-import { coverageOf } from './services.js';
+import { coverageOf, SERVICES } from './services.js';
 import { shapeOf } from './surface.js';
 import { roadWorld, terrainOf } from './terrainworld.js';
 import { computeTraffic } from './traffic.js';
+import { busStops } from './transit.js';
+import { viaductWorld } from './viaduct.js';
 
 // 示例城市的生成流程：布局来自 citymap.js，地块和建筑规格全部由地块生成器长出来。
 // 这里只输出规格，不知道风格。规格到素材的映射在风格包里。
 
 export { traceRoads };
+
+const RAMP_CHANCE_FLOOR = 0.1;
+const RAMP_CHANCE_SCALE = 2;
+const RAMP_CHANCE_CEILING = 0.7;
+const ICON_LIFT = 1.4;
 
 function bits(list) {
   return list.map((v) => (v ? '1' : '0')).join('');
@@ -92,6 +99,24 @@ const cellSquare = (x, y) => [
   [x, y + 1],
 ];
 
+/** 把分配到的流量写回车道：负载比决定这条车道上该有多少车，也决定车上下匝道的概率。 */
+function applyFlows(lanes, traffic) {
+  for (const lane of lanes) {
+    lane.ratio = traffic.laneRatios.get(lane.id) ?? 0;
+    if (lane.kind !== 'ramp') continue;
+    const chance = RAMP_CHANCE_FLOOR + lane.ratio * RAMP_CHANCE_SCALE;
+    lane.chance = Math.min(RAMP_CHANCE_CEILING, chance);
+  }
+}
+
+/** 公共服务的图标牌，运行时按缩放保持屏幕大小。 */
+function serviceIcons(parcels) {
+  const uses = new Set(SERVICES.map(({ id }) => id));
+  return parcels
+    .filter(({ shape, use }) => shape === 'service' && uses.has(use))
+    .map(({ use, px, py }) => ({ key: `si-${use}`, use, px, py, level: ICON_LIFT }));
+}
+
 export function generateCity(N, seed = 11, publicLayout = 'spread', linked = false) {
   const s = N / 32;
   const center = Math.round(N / 2);
@@ -121,20 +146,37 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   }
   const road = roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates, linked });
   const { sprites, surface, rings, blockedRings, junctions, marks } = road;
+  const viaduct = plan.viaduct ? viaductWorld(plan.viaduct, roads, N) : null;
   const reserved = new Set([
     ...interchangeCells.map(([x, y]) => y * N + x),
     ...rings.flatMap((ring) => ringFootprint(ring, N)),
+    ...(viaduct?.reserved ?? []),
   ]);
   const lanes = [];
   if (interchange) connectRamps({ ...interchange, N, lanes });
-  const links = rampLinks(lanes);
+  if (viaduct) lanes.push(...viaduct.lanes);
+  const links = [...rampLinks(lanes), ...(viaduct?.links ?? [])];
+
+  const metro = metroPlan(plan);
+  const isFree = (x, y) =>
+    x > 0 &&
+    y > 0 &&
+    x < N - 1 &&
+    y < N - 1 &&
+    !roads.has(y * N + x) &&
+    !reserved.has(y * N + x) &&
+    !water.has(y * N + x) &&
+    isFlat(x, y);
+  for (const { id } of placeHalls(metro, { N, roads, isFree })) reserved.add(id);
 
   const usable = (x, y) =>
     x > 0 && y > 0 && x < N - 1 && y < N - 1 && !water.has(y * N + x) && isFlat(x, y);
   const { zones, density } = makeZones(N, s, center, riverAt, plan, usable, publicLayout);
   const result = generateParcels({ N, roads, water, slopes, zones, density, seed, reserved });
   const clearedLots = clearLots(result.parcels, junctions.field);
-  const traffic = computeTraffic(result.parcels, roads, N, links);
+  const gateCells = gates.map(({ x, y }) => y * N + x);
+  const traffic = computeTraffic(result.parcels, roads, N, links, gateCells);
+  applyFlows(lanes, traffic);
   const coverage = coverageOf(result.parcels, result.services, roads, N);
 
   // 外观在规格之外单独选，同规格的相邻物业不重复；外观不影响面积、容量和结算。
@@ -157,7 +199,15 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
     addObject(key, x + 0.5, y + 0.5, 0, cellSquare(x, y));
   for (const { key, x, y, level } of sprites.planned)
     addObject(key, x + 0.5, y + 0.5, level, cellSquare(x, y));
-  if (interchange) objects.push(templateObject(interchange.name, interchange.cx, interchange.cy));
+  const teeParts = interchange
+    ? templateParts(interchange.name, interchange.cx, interchange.cy)
+    : { low: [], high: [] };
+  const lowDecks = [...teeParts.low, ...(viaduct?.low ?? [])];
+  objects.push(...teeParts.high, ...(viaduct?.objects ?? []));
+  for (const { x, y, side } of metro.halls)
+    addObject(`ms-${String(side)}`, x + 0.5, y + 0.5, levelOf(x, y), cellSquare(x, y));
+  const stops = busStops({ N, roads, junctions, isFlat });
+  objects.push(...stops);
 
   const crops = valueNoise(41);
   for (const parcel of result.parcels) {
@@ -229,9 +279,11 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
     ground,
     overlays,
     objects,
+    icons: serviceIcons(result.parcels),
     walks: sprites.walks,
     curbs: sprites.curbs,
-    decks: sprites.decks,
+    decks: [...sprites.decks, ...lowDecks],
+    lowDecks,
     marks,
     roadCells: sprites.cells,
     grades: sprites.grades,
@@ -242,11 +294,14 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
     junctions,
     parcels: result,
     traffic,
+    gateCells,
     coverage,
-    metro: metroPlan(plan),
+    metro,
+    busStops: stops,
     roads,
     lanes,
     links,
+    viaduct,
     reserved,
     water,
     slopes,

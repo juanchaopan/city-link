@@ -1,6 +1,7 @@
 import { lightAt } from './junctions.js';
 import { DIRECTIONS, spokesOf } from './network.js';
 import { RING } from './roundabout.js';
+import { signalPoles } from './sceneitems.js';
 
 // 车流和红绿灯的模拟。这是纯视觉层：只读路段的负载比，不写任何东西，经济和拥堵的结算完全不知道它的存在。
 // 这里不依赖图形库，所以检查脚本可以不开画面直接跑；画车是 web/vehicles.js 的事。
@@ -15,9 +16,13 @@ import { RING } from './roundabout.js';
 // 过了停车线的车一路开走，全红时间按最长的通过路线算好，够它们清空。
 //
 // 环岛：车在斑马线外的让行线前看环上有没有车过来，没有才进；进环后逆时针绕到选定的出口。
+//
+// 匝道：每条 lane 带一组限速系数，弯急坡陡的地方车慢下来。上下匝道的概率跟着分配到这条匝道的流量走。
+//
+// 公交：经过站台的车停在格子中央，车门对着人行道上的站台，停够时间再走。后面的车在它后面等。
 
 const SPEED = { road: 1.1, arterial: 1.5, highway: 2.2, express: 2.2, ramp: 1.4 };
-const LANE_OFFSET = { road: 0.115, arterial: 0.17, highway: 0.2, express: 0.2, ramp: 0 };
+const LANE_OFFSET = { road: 0.115, arterial: 0.25, highway: 0.29, express: 0.29, ramp: 0 };
 export const BUS_LENGTH = 0.36;
 export const CAR_LENGTH = 0.2;
 const CLEARANCE = 0.08;
@@ -38,6 +43,9 @@ const RING_WATCH = 1.1;
 const RING_STEPS = 24;
 const RING_APRON = 1.62;
 const SPAWN_GAP = 0.5;
+const BUS_SHARE = 0.06;
+const BUS_DWELL = 2.5;
+const BAY_MARGIN = 0.03;
 
 function unitDirection(dir) {
   const [dx, dy] = DIRECTIONS[dir];
@@ -194,8 +202,11 @@ function ringRoute(ring, entry, exit, surface) {
   };
 }
 
-export function createFleet(city, { cap, full = false, highCap = 120, random = Math.random }) {
-  const { N, roads, surface, lanes = [] } = city;
+export function createFleet(
+  city,
+  { cap, full = false, highCap = 120, random = Math.random, busShare = BUS_SHARE },
+) {
+  const { N, roads, surface, lanes = [], busStops = [] } = city;
   const { clusters = [], stops = new Map() } = city.junctions ?? {};
   const rings = city.rings ?? [];
   const load = new Map();
@@ -216,12 +227,9 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
   const stopCells = new Set([...stops.values()].map(({ cell }) => cell));
   const ringOfCell = new Map();
   for (const ring of rings) for (const cell of ring.cells) ringOfCell.set(cell, ring);
+  const busStopAt = new Map(busStops.map((stop) => [`${String(stop.cell)}:${String(stop.from)}`, stop]));
 
-  const signals = clusters.flatMap(({ legs, signal }) =>
-    legs
-      .filter((leg) => leg.pole)
-      .map((leg) => ({ ...leg.pole, signal, phase: legs.indexOf(leg) })),
-  );
+  const signals = signalPoles(clusters);
 
   let time = 0;
   let viewBox = { left: -1e6, right: 1e6, top: -1e6, bottom: 1e6 };
@@ -235,6 +243,7 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
   const countHigh = () => cars.reduce((sum, car) => sum + (car.high ? 1 : 0), 0);
 
   const lengthOf = (car) => (car.bus ? BUS_LENGTH : CAR_LENGTH);
+  const rampChance = (lane) => lane.chance ?? RAMP_CHANCE;
 
   const weighted = (items, weightOf) => {
     const weights = items.map(weightOf);
@@ -267,6 +276,16 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     return true;
   };
 
+  const boardLane = (car, lane, s = 0) => {
+    car.mode = 'lane';
+    car.lane = lane;
+    car.path = lane.path;
+    car.s = s;
+    car.key = lane.id;
+    car.stop = null;
+    car.passed = null;
+  };
+
   const enterCell = (car, cell, from) => {
     const ring = ringOfCell.get(cell);
     if (ring) {
@@ -284,14 +303,12 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
       const length = Math.hypot(bx - ax, by - ay);
       return ((bx - ax) * heading[0] + (by - ay) * heading[1]) / length > 0.2;
     });
-    if (ramps?.length > 0 && (spokes.length === 0 || random() < RAMP_CHANCE)) {
-      car.mode = 'lane';
-      car.lane = ramps[Math.floor(random() * ramps.length)];
-      car.path = car.lane.path;
-      car.s = 0;
-      car.key = car.lane.id;
-      car.stop = null;
-      return true;
+    if (ramps?.length > 0) {
+      const lane = weighted(ramps, (item) => Math.max(0.02, rampChance(item)));
+      if (spokes.length === 0 || random() < rampChance(lane)) {
+        boardLane(car, lane);
+        return true;
+      }
     }
     if (spokes.length === 0) return false;
     const stop = stops.get(`${String(cell)}:${String(from)}`) ?? null;
@@ -328,6 +345,8 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     );
     car.s = 0;
     car.key = `${String(cell)}:${String(from)}`;
+    car.bay = car.bus ? (busStopAt.get(car.key) ?? null) : null;
+    car.dwell = car.bay ? BUS_DWELL : 0;
     return true;
   };
 
@@ -341,6 +360,8 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     tilt: 0,
     idle: 0,
     waiting: false,
+    dwell: 0,
+    bay: null,
   });
 
   /** 车只生成在路段中间：路口、环岛和停车线那一格不生成，也不生成在别的车身上。 */
@@ -351,7 +372,7 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     const entry = roads.get(cell);
     if (spokesOf(entry.road | entry.highway).length !== 2) return;
     if (ringOfCell.has(cell) || clusterCells.has(cell) || stopCells.has(cell)) return;
-    const car = newCar(random() < 0.06);
+    const car = newCar(random() < busShare);
     if (!enterCell(car, cell, from)) return;
     car.s = random() * car.path.length;
     const crowded = groups.get(car.key)?.some((other) => Math.abs(other.s - car.s) < SPAWN_GAP);
@@ -360,15 +381,12 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
 
   const spawnOnLane = (lane) => {
     if (countHigh() >= highCap) return;
-    cars.push({
-      ...newCar(false),
-      high: true,
-      mode: 'lane',
-      lane,
-      path: lane.path,
-      s: random() * lane.path.length,
-      key: lane.id,
-    });
+    const car = newCar(false);
+    boardLane(car, lane, random() * lane.path.length);
+    const crowded = groups.get(lane.id)?.some((other) => Math.abs(other.s - car.s) < SPAWN_GAP);
+    if (crowded) return;
+    car.high = true;
+    cars.push(car);
   };
 
   const refreshView = () => {
@@ -377,6 +395,7 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     visibleEdges = city.traffic.edges.filter(
       (edge) =>
         edge.kind !== 'ramp' &&
+        edge.kind !== 'express' &&
         inView(screenAt((edge.from % N) + 0.5, Math.floor(edge.from / N) + 0.5, 0)),
     );
     visibleLanes = [...laneById.values()].filter((lane) =>
@@ -384,7 +403,7 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     );
     const demand =
       visibleEdges.reduce((sum, edge) => sum + 0.18 + edge.ratio * 1.6, 0) +
-      visibleLanes.reduce((sum, lane) => sum + lane.path.length * 0.12, 0);
+      visibleLanes.reduce((sum, lane) => sum + lane.path.length * (0.04 + (lane.ratio ?? 0.1)), 0);
     wanted = full ? cap : Math.min(cap, Math.round(demand));
   };
 
@@ -398,10 +417,7 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
       const { lane } = car;
       if (lane.merge) {
         const main = laneById.get(lane.merge.lane);
-        car.lane = main;
-        car.path = main.path;
-        car.s = main.path.along[lane.merge.at];
-        car.key = main.id;
+        boardLane(car, main, main.path.along[lane.merge.at]);
         return true;
       }
       if (lane.toCell !== undefined) {
@@ -496,6 +512,15 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     return limit - car.s;
   };
 
+  /** 公交到站：开到格子中央停下，停够时间再走。 */
+  const roomToBay = (car, dt) => {
+    if (car.mode !== 'cell' || !car.bay || car.dwell <= 0) return Infinity;
+    const room = car.path.length / 2 - car.s;
+    if (room < -BAY_MARGIN) return Infinity;
+    if (room < BAY_MARGIN) car.dwell -= dt;
+    return room;
+  };
+
   /** 环上前车的距离，按角度量。 */
   const roomOnRing = (car) => {
     if (!onRing(car)) return Infinity;
@@ -521,9 +546,15 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     return car.path.length - car.s + last.s - (lengthOf(car) + lengthOf(last)) / 2 - CLEARANCE;
   };
 
+  const speedLimit = (car) => {
+    if (car.mode !== 'lane') return SPEED[car.kind] * car.top;
+    const { kind, speeds } = car.lane;
+    const factor = speeds ? speeds[pointAt(car.path, car.s).index] : 1;
+    return SPEED[kind] * car.top * factor;
+  };
+
   const follow = (car, room) => {
-    const limit = SPEED[car.mode === 'lane' ? car.lane.kind : car.kind] * car.top;
-    car.speed = Math.max(0, Math.min(limit, room * 5));
+    car.speed = Math.max(0, Math.min(speedLimit(car), room * 5));
   };
 
   const takeExit = (car) => {
@@ -532,13 +563,9 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
       if (exit.at !== index || car.passed?.has(exit.lane) || car.s <= car.path.along[exit.at])
         continue;
       (car.passed ??= new Set()).add(exit.lane);
-      if (random() < RAMP_CHANCE) {
-        const ramp = laneById.get(exit.lane);
-        car.lane = ramp;
-        car.path = ramp.path;
-        car.s = 0;
-        car.key = ramp.id;
-        car.passed = null;
+      const ramp = laneById.get(exit.lane);
+      if (random() < rampChance(ramp)) {
+        boardLane(car, ramp);
         return;
       }
     }
@@ -552,6 +579,11 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     car.y = spot.y;
     car.h = spot.h;
     car.high = car.mode === 'lane';
+    const a = pointAt(car.path, Math.max(0, s - CHORD));
+    const b = pointAt(car.path, Math.min(car.path.length, s + CHORD));
+    const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    car.dx = (b.x - a.x) / length;
+    car.dy = (b.y - a.y) / length;
     const target = roadAngle(car.path, s);
     const blend = Math.min(1, (car.speed * dt) / HEADING_REACH);
     car.heading = car.heading === undefined ? target : car.heading + wrapAngle(target - car.heading) * blend;
@@ -588,7 +620,7 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
             leader.s - car.s - (lengthOf(leader) + lengthOf(car)) / 2 - CLEARANCE,
           );
         }
-        room = Math.min(room, roomToStop(car), roomOnRing(car));
+        room = Math.min(room, roomToStop(car), roomOnRing(car), roomToBay(car, dt));
         follow(car, room);
         car.s += car.speed * dt;
         car.idle = car.speed < 0.02 ? car.idle + dt : 0;

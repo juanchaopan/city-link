@@ -1,8 +1,10 @@
 import { hashString } from './builder.js';
-import { addHeadlightBeam, buildInterchange, buildViaduct } from './interchange.js';
+import { addHeadlightBeam, buildPiece, buildPierSprite, buildViaduct } from './interchange.js';
 import { buildCrossing, buildRoundabout, buildStopLine } from './marks.js';
 import { buildModule } from './modules.js';
 import { buildObject } from './objects.js';
+import { buildLamp, buildPole, faceVisible } from './signal.js';
+import { buildBusStop, buildMetroHall, buildServiceIcon } from './signs.js';
 import {
   buildBank,
   buildBridge,
@@ -17,14 +19,19 @@ import {
   LAYER,
   waterLevel,
 } from './tiles.js';
+import { SERVICES } from '../sim/services.js';
 import { cornersOfShape } from '../sim/surface.js';
 
 // 精灵的名字决定它的画法，生成器只需要知道名字。类别用来分别统计数量和耗时。
 // 路面名字：rw、rc、rd 是人行道、路缘、车道三层，r 是三层合一，只用于界面缩略图；坡上的路加前缀 s。
 // 路面名字的第二段是普通路方向位，有双向四车道时写成 普通路_四车道，第三段是高速方向位。
 // 路面标记：xw 是斑马线，sl 是停车线，rb 是整个环岛。
+// 高架：ev-走向-起点高度-终点高度，高度是百分之一层。ixp-模板-序号 是立交的一小块，pr-高度-方向 是一根桥墩。
+// 这三种用同一块画布，渲染目标不用反复换尺寸，烘焙时显存不会一阵一阵涨。
+// 信号灯：pole-方向 是灯杆和灯箱，lamp-方向 是灯面。公共设施：si 图标牌，bs 公交站，ms 地铁站厅。
 
 const flags = (text) => [...text].map((c) => c === '1');
+const STRUCTURE_BOX = { w: 480, h: 420, anchorY: 280 };
 
 function box(span, tall) {
   const w = Math.ceil((span * 128 + 240) / 40) * 40;
@@ -178,17 +185,22 @@ export function specFor(key, P) {
     };
   }
   if (kind === 'ev') {
-    const { build, extra } = buildViaduct(
-      parts[1],
-      Number(parts[2]) / 100,
-      Number(parts[3]) / 100,
-      P,
-    );
-    return { group: '高架', w: 320, h: 300, anchorY: 190, shadow: true, reach: 2.4, build, extra };
+    const { build } = buildViaduct(parts[1], Number(parts[2]) / 100, Number(parts[3]) / 100, P);
+    return { group: '高架', ...STRUCTURE_BOX, shadow: true, reach: 2.2, build };
   }
-  if (kind === 'ix') {
-    const { build, extra } = buildInterchange(parts[1], P);
-    return { group: '立交', w: 2400, h: 1320, anchorY: 660, shadow: true, reach: 11, build, extra };
+  if (kind === 'ixp') {
+    const { build, low } = buildPiece(parts[1], Number(parts[2]), P);
+    if (low) return { group: '立交', ...STRUCTURE_BOX, lit: false, build };
+    return { group: '立交', ...STRUCTURE_BOX, shadow: true, reach: 2.2, build };
+  }
+  if (kind === 'pr') {
+    return {
+      group: '高架',
+      ...STRUCTURE_BOX,
+      shadow: true,
+      reach: 2.2,
+      build: () => buildPierSprite(Number(parts[1]), Number(parts[2]), P),
+    };
   }
   if (kind === 'Mp' || kind === 'Mb' || kind === 'Mr') {
     const group = { Mp: '模块·底座', Mb: '模块·楼身', Mr: '模块·屋顶' }[kind];
@@ -227,14 +239,58 @@ export function specFor(key, P) {
     };
     return { group: '车船', w: 160, h: 110, anchorY: 60, lit: false, build };
   }
-  if (kind === 'pole' || kind === 'lamp') {
+  if (kind === 'pole') {
+    const dir = Number(parts[1]);
     return {
       group: '信号灯',
-      w: 60,
-      h: 80,
-      anchorY: 60,
+      w: 160,
+      h: 150,
+      anchorY: 110,
       lit: false,
-      build: () => buildObject(key, P),
+      build: () => buildPole(dir, P),
+    };
+  }
+  if (kind === 'lamp') {
+    const dir = Number(parts[1]);
+    return {
+      group: '信号灯',
+      w: 160,
+      h: 150,
+      anchorY: 110,
+      lit: false,
+      build: () => buildLamp(dir),
+    };
+  }
+  if (kind === 'si') {
+    return {
+      group: '公共设施',
+      w: 110,
+      h: 110,
+      anchorY: 55,
+      lit: false,
+      build: () => buildServiceIcon(parts[1], P),
+    };
+  }
+  if (kind === 'bs') {
+    return {
+      group: '公共设施',
+      w: 160,
+      h: 130,
+      anchorY: 90,
+      shadow: true,
+      reach: 1,
+      build: () => buildBusStop(Number(parts[1]), P),
+    };
+  }
+  if (kind === 'ms') {
+    return {
+      group: '公共设施',
+      w: 240,
+      h: 240,
+      anchorY: 150,
+      shadow: true,
+      reach: 1.4,
+      build: () => buildMetroHall(Number(parts[1]), P),
     };
   }
   if (kind === 'boat') {
@@ -302,14 +358,17 @@ export function bakeKey(baker, key, P) {
 const ROTATIONS = [0, 1, 2, 3, 4, 5, 6, 7];
 const MARK_KINDS = ['road', 'arterial'];
 
-/** 一批不进示例城市、但要进图集的精灵：主界面的缩略图、信号灯、动态车流用的八个方向的车和全部路面标记。 */
+/** 一批不进示例城市、但要进图集的精灵：主界面的缩略图、信号灯、动态车流用的八个方向的车、全部路面标记和公共设施。 */
 export const EXTRA_KEYS = [
   'r-11-0',
   'r-0-11',
   'r-22-0',
   'br-11-0',
-  'pole',
-  'lamp',
+  ...ROTATIONS.map((dir) => `pole-${String(dir)}`),
+  ...ROTATIONS.filter(faceVisible).map((dir) => `lamp-${String(dir)}`),
+  ...SERVICES.map(({ id }) => `si-${id}`),
+  ...ROTATIONS.filter((dir) => dir % 2 === 0).map((dir) => `bs-${String(dir)}`),
+  ...[0, 1, 2, 3].map((side) => `ms-${String(side)}`),
   ...[0, 1, 2, 3].flatMap((color) =>
     ROTATIONS.map((rotation) => `car-${String(color)}-${String(rotation)}`),
   ),

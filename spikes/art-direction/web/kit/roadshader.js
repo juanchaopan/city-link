@@ -3,12 +3,15 @@ import { linear } from './builder.js';
 import { ROAD_SPEC } from '../sim/network.js';
 import { junctionRays } from '../sim/roadfield.js';
 
-// 路面用距离场在片元里画。一格路的精灵会盖到邻格，所以拼接要靠下面三条规则，而不是靠相邻格碰巧对齐：
+// 路面用距离场在片元里画。一格路的精灵会盖到邻格，所以拼接要靠下面四条规则，而不是靠相邻格碰巧对齐：
 // 1. 路面分三层绘制，全图的人行道、路缘、车道各画一遍。后画的层永远盖住先画的层，
 //    人行道和路缘因此不可能出现在车道上，不管相邻格怎么排列。
 // 2. 裁剪按整条路做，不按线段做。否则弯道折线中间的端点会带着圆头越过格子边界。
 // 3. 路口的圆角来自各方向沿直线延长后的平滑并集，只取比直路多出来的部分，垫在夹角里。
 //    对向的两个方向算一条直线，直通的一侧不会鼓包。
+// 4. 夹角里的这块垫片在路口这一格的精灵里，它旁边的直路在邻格的精灵里，两张精灵的边缘都是半透明的。
+//    如果垫片刚好停在直路边上，两层半透明叠起来还是漏，下面一层的颜色会透出一条细线。
+//    所以垫片往直路里多铺 PAD_OVERLAP，直路的抗锯齿边落在垫片的实色上。
 // 斑马线和停车线不在这里，它们是单独一层精灵，位置由 sim/junctions.js 算好。
 // 环岛的环路是一个圆环的距离，和进口做平滑并集，进出口自然带圆角。
 
@@ -16,6 +19,7 @@ export const MAX_SEGMENTS = 32;
 const MAX_RAYS = 8;
 const RAY_LENGTH = 1.5;
 const CLIP_OVERLAP = 0.016;
+const PAD_OVERLAP = 0.03;
 const RING_ROUND = 0.3;
 const RING_MARK_LIMIT = 2.05;
 
@@ -101,8 +105,8 @@ const BODY = `
     walk = smin(walk, around - uRing.y, ${RING_ROUND.toFixed(2)});
     deck = smin(deck, around - uRing.z, ${RING_ROUND.toFixed(2)});
   }
-  bool padWalk = uRayCount > 1 && roundWalk < 0.0 && rawWalk > 0.0;
-  bool padDeck = uRayCount > 1 && roundDeck < 0.0 && rawDeck > 0.0;
+  bool padWalk = uRayCount > 1 && roundWalk < 0.0 && rawWalk > -${PAD_OVERLAP.toFixed(3)};
+  bool padDeck = uRayCount > 1 && roundDeck < 0.0 && rawDeck > -${PAD_OVERLAP.toFixed(3)};
   bool inWalk = walk < 0.0 || padWalk;
   bool inDeck = deck < 0.0 || padDeck;
   float edge = uRayCount > 1 ? min(deck, roundDeck) : deck;
@@ -120,7 +124,7 @@ const BODY = `
   bool ringMarks = !ringed || length(p) > ${RING_MARK_LIMIT.toFixed(2)};
   if (uLayer >= 2 && inDeck) {
     color = mix(uAsphalt, uHighway, highway);
-    if (deck < 0.0 && !padDeck && best >= 0 && marking < 1.5 && ringMarks) {
+    if (deck < 0.0 && best >= 0 && marking < 1.5 && ringMarks) {
       float pathLength = uPath[best].y;
       float crossAt = uPath[best].z;
       float halfDeck = uWidths[best].y;

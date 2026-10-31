@@ -1,19 +1,20 @@
 // 不开浏览器的几何预览：用软件光栅把程序建模的三角形按 2:1 等距画出来，内存紧张、开不了烘焙时看形体用。
-// 没有投影、抗锯齿和路面着色器，地面没有起伏，颜色也不等于成品，只用来判断形体和占地。真实效果以 shots.js 的截图为准。
+// 没有投影和抗锯齿，地面没有起伏，颜色也不等于成品，只用来判断形体和占地。真实效果以 shots.js 的截图为准。
 // node scripts/preview.js lots          out/r7-lots-preview.png：大三角物业的各种规格
 // node scripts/preview.js modules       out/r7-modules-preview.png：Q3 的模块拼装
-// node scripts/preview.js tee           out/r7-tee-preview.png：普通城市里的丁字立交
-// node scripts/preview.js center        out/r7-center-preview.png：市中心，斜路两边的大三角
+// node scripts/preview.js tee           out/r8-tee-preview.png：普通城市里的丁字立交
+// node scripts/preview.js diamond       out/r8-diamond-preview.png：菱形立交，只有立交本身
+// node scripts/preview.js center        out/r8-center-preview.png：市中心，斜路两边的大三角
 import { writeFileSync } from 'node:fs';
 import { LEVEL } from '../web/kit/bake.js';
 import { Builder, linear } from '../web/kit/builder.js';
-import { interchangeFrame } from '../web/kit/interchange.js';
+import { buildInterchange } from '../web/kit/interchange.js';
 import { buildModule } from '../web/kit/modules.js';
 import { buildObject } from '../web/kit/objects.js';
 import { palettes } from '../web/kit/palettes.js';
 import { generateCity } from '../web/sim/city.js';
 import { COMBOS, modulesOf } from '../web/sim/combos.js';
-import { ROAD_SPEC, worldPolylines } from '../web/sim/network.js';
+import { worldPolylines } from '../web/sim/network.js';
 import { createCanvas } from './raster.js';
 
 const P = palettes.sunny;
@@ -184,24 +185,27 @@ function cityView(name, [fx, fy], width, height) {
   }
 
   const { interchange } = city.plan;
-  if (interchange) {
-    const decks = new Builder(2);
-    for (const { points } of city.lanes)
-      ribbon(decks, points, ROAD_SPEC.ramp.deck / 2, linear(ROAD_COLOR.ramp));
-    stamp(sheet, decks, ox, oy);
-    stamp(sheet, interchangeFrame(interchange.name, P), ox, oy, [
+  if (interchange)
+    stamp(sheet, buildInterchange(interchange.name, P).build(), ox, oy, [
       interchange.cx + 0.5,
       0,
       interchange.cy + 0.5,
     ]);
-  }
-  return { path: `out/r7-${name}-preview.png`, canvas: sheet.canvas };
+  return { path: `out/r8-${name}-preview.png`, canvas: sheet.canvas };
+}
+
+/** 只有立交本身，看线形和桥墩用。 */
+function templateView(name, width, height) {
+  const sheet = surface(width, height);
+  stamp(sheet, buildInterchange(name, P).build(), width / 2, height / 2);
+  return { path: `out/r8-${name}-preview.png`, canvas: sheet.canvas };
 }
 
 const MODES = {
   lots,
   modules,
   tee: () => cityView('tee', [33, 8], 2200, 1300),
+  diamond: () => templateView('diamond', 1400, 1000),
   center: () => cityView('center', [31, 30], 2000, 2400),
 };
 const { path, canvas } = MODES[process.argv[2] ?? 'lots']();
