@@ -3,8 +3,10 @@ import { LayoutContainer } from '@pixi/layout/components';
 import { Button } from '@pixi/ui';
 import {
   autoDetectRenderer,
+  CanvasTextMetrics,
   Container,
   ImageSource,
+  isMobile,
   Particle,
   ParticleContainer,
   Rectangle,
@@ -19,6 +21,14 @@ const TW = 64;
 const TH = 32;
 const LEVEL_H = 16;
 const SURFACES = ['grass', 'grass', 'hill', 'rock'];
+const MIN_ZOOM = 0.15;
+const MAX_ZOOM = 2.5;
+const PANEL_HEIGHT = 72;
+const TEXT_PADDING = 6;
+
+// Pixi 默认按拉丁字母量字高，中文的下沿比字母低，不改会被切掉。
+CanvasTextMetrics.METRICS_STRING = '|ÉqÅ国';
+CanvasTextMetrics.BASELINE_SYMBOL = '国';
 
 function textures(source) {
   const map = {};
@@ -173,26 +183,45 @@ function createFlowLoad(graph, sourcesPerSecond, budgetMs, clock) {
   return load;
 }
 
-function createUi(onPress) {
+function createText(text, style) {
+  return new Text({ text, style: { fontFamily: 'sans-serif', padding: TEXT_PADDING, ...style } });
+}
+
+// 按下后在按钮上显示次数：tap 来自 Pixi 事件，UI 来自 @pixi/ui，两个数字用来判断是哪一层出了问题。
+function createUi(bottomInset, onPress) {
   const panel = new LayoutContainer({
     layout: {
       width: '100%',
-      height: 72,
+      height: PANEL_HEIGHT + bottomInset,
+      paddingBottom: bottomInset,
       flexDirection: 'row',
       justifyContent: 'space-around',
       alignItems: 'center',
       backgroundColor: 0x20242c,
     },
   });
-  const makeButton = (label) => {
+  const makeButton = (name) => {
     const view = new LayoutContainer({
-      layout: { width: 96, height: 44, justifyContent: 'center', alignItems: 'center', backgroundColor: 0x2e6fd8, borderRadius: 8 },
+      layout: { width: 104, height: 48, justifyContent: 'center', alignItems: 'center', backgroundColor: 0x2e6fd8, borderRadius: 8 },
     });
-    const text = new Text({ text: label, style: { fill: 0xffffff, fontSize: 18 } });
+    const text = createText(name, { fill: 0xffffff, fontSize: 18 });
     text.layout = true;
     view.addChild(text);
+    const counts = { tap: 0, ui: 0 };
+    const show = () => {
+      text.text = `${name} ${counts.tap}/${counts.ui}`;
+      onPress(name, counts);
+    };
     const button = new Button(view);
-    button.onPress.connect(() => onPress(label));
+    button.onPress.connect(() => {
+      counts.ui++;
+      show();
+    });
+    view.eventMode = 'static';
+    view.on('pointertap', () => {
+      counts.tap++;
+      show();
+    });
     return view;
   };
   const buttons = ['修路', '分区', '贸易'].map(makeButton);
@@ -200,9 +229,26 @@ function createUi(onPress) {
   return { panel, buttons };
 }
 
+function createFrameMeter(now) {
+  let windowStart = now;
+  let frames = 0;
+  let worst = 0;
+  return (time, dt) => {
+    frames++;
+    worst = Math.max(worst, dt);
+    if (time - windowStart < 1000) return null;
+    const result = { average: (frames * 1000) / (time - windowStart), low: 1000 / Math.max(worst, 1) };
+    windowStart = time;
+    frames = 0;
+    worst = 0;
+    return result;
+  };
+}
+
 export async function createGame(platform, options = {}) {
   const bootStart = platform.now();
   const { width, height, resolution } = platform.size();
+  const insets = platform.insets?.() ?? { top: 0, bottom: 0 };
   const canvas = platform.mainCanvas();
   const renderer = await autoDetectRenderer({
     preference: 'webgl',
@@ -244,13 +290,17 @@ export async function createGame(platform, options = {}) {
   cars.boundsArea = new Rectangle(-2100, -100, 4200, 2300);
   camera.addChild(cars);
 
+  const presses = [];
   const hud = new Container();
   hud.layout = { width, height, flexDirection: 'column', justifyContent: 'space-between' };
-  const label = new Text({ text: '首席规划师 探针 0 fps', style: { fill: 0x10131a, fontSize: 16, fontFamily: 'sans-serif' } });
-  label.layout = { margin: 12 };
-  const presses = [];
-  const ui = createUi((name) => presses.push(name));
-  hud.addChild(label, ui.panel);
+  const header = new LayoutContainer({
+    layout: { marginTop: insets.top + 6, marginLeft: 10, padding: 8, borderRadius: 8, backgroundColor: 0x10131a, alignSelf: 'flex-start' },
+  });
+  const label = createText('等待测量', { fill: 0xffffff, fontSize: 15, lineHeight: 22 });
+  label.layout = true;
+  header.addChild(label);
+  const ui = createUi(insets.bottom, (name) => presses.push(name));
+  hud.addChild(header, ui.panel);
   stage.addChild(hud);
 
   const state = { zoom: Math.min(width / 2200, 1), x: width / 2, y: 40, scripted: false, frames: [] };
@@ -270,37 +320,54 @@ export async function createGame(platform, options = {}) {
   applyCamera();
 
   const pointers = new Map();
-  let pinch = 0;
-  stage.on('pointerdown', (e) => pointers.set(e.pointerId, { x: e.global.x, y: e.global.y }));
+  let pinch = null;
+  const measurePinch = () => {
+    const [a, b] = [...pointers.values()];
+    return { distance: Math.max(Math.hypot(a.x - b.x, a.y - b.y), 1), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  };
+  // 两指中点下的世界坐标保持不动，同时跟随中点移动，地图才会跟手。
+  const applyPinch = () => {
+    const next = measurePinch();
+    if (pinch) {
+      const zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.zoom * (next.distance / pinch.distance)));
+      const scale = zoom / state.zoom;
+      state.x = next.x - (pinch.x - state.x) * scale;
+      state.y = next.y - (pinch.y - state.y) * scale;
+      state.zoom = zoom;
+    }
+    pinch = next;
+  };
+  stage.on('pointerdown', (e) => {
+    pointers.set(e.pointerId, { x: e.global.x, y: e.global.y });
+    pinch = null;
+  });
   stage.on('globalpointermove', (e) => {
     const last = pointers.get(e.pointerId);
     if (!last) return;
-    if (pointers.size === 1) {
-      state.x += e.global.x - last.x;
-      state.y += e.global.y - last.y;
-    } else if (pointers.size === 2) {
-      last.x = e.global.x;
-      last.y = e.global.y;
-      const [a, b] = [...pointers.values()];
-      const distance = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinch > 0) state.zoom = Math.max(0.15, Math.min(2.5, state.zoom * (distance / pinch)));
-      pinch = distance;
-    }
+    const dx = e.global.x - last.x;
+    const dy = e.global.y - last.y;
     last.x = e.global.x;
     last.y = e.global.y;
+    if (pointers.size === 1) {
+      state.x += dx;
+      state.y += dy;
+    } else if (pointers.size === 2) {
+      applyPinch();
+    }
     applyCamera();
   });
   const release = (e) => {
     pointers.delete(e.pointerId);
-    pinch = 0;
+    pinch = null;
   };
   stage.on('pointerup', release);
   stage.on('pointerupoutside', release);
 
   const flow = createFlowLoad(roadGraph(), options.flowSources ?? 64, options.flowBudgetMs ?? 2, () => platform.now());
   let previous = platform.now();
-  let lastLabel = 0;
   const started = previous;
+  const meter = createFrameMeter(previous);
+  const agent = String(globalThis.navigator?.userAgent ?? '无').slice(0, 24);
   let firstFrameAt = 0;
 
   function frame() {
@@ -324,9 +391,9 @@ export async function createGame(platform, options = {}) {
       state.y = height / 3 - 900 * state.zoom * (0.5 + 0.5 * Math.cos(s * 0.4));
       applyCamera();
     }
-    if (now - lastLabel > 1000) {
-      lastLabel = now;
-      label.text = `首席规划师 探针 ${(1000 / Math.max(dt, 1)).toFixed(0)} fps`;
+    const measured = meter(now, dt);
+    if (measured) {
+      label.text = `${measured.average.toFixed(0)} fps  最低 ${measured.low.toFixed(0)}\n手机判定 ${isMobile.any ? '是' : '否'}\n${agent}`;
     }
     const t1 = platform.now();
     renderer.render(stage);

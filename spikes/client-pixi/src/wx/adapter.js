@@ -38,8 +38,19 @@ export const WxAdapter = {
   },
 };
 
+// 顶部要避开刘海和右上角的胶囊按钮，底部要避开 Home 指示条。
+function safeInsets() {
+  const safe = info.safeArea ?? { top: 0, bottom: info.windowHeight };
+  const capsule = wx.getMenuButtonBoundingClientRect?.();
+  return {
+    top: Math.max(safe.top, capsule?.bottom ?? 0),
+    bottom: Math.max(0, info.windowHeight - safe.bottom),
+  };
+}
+
 export const wxPlatform = {
   size: () => ({ width: info.windowWidth, height: info.windowHeight, resolution: info.pixelRatio }),
+  insets: safeInsets,
   mainCanvas: () => screen,
   now: () => globalThis.performance.now(),
   raf: (fn) => requestAnimationFrame(fn),
