@@ -12,16 +12,23 @@
     "diagonalRamp": true,
     "mainShare": 0.45,
     "riverShare": 0.8,
-    "meanderCell": 9,
-    "routeMargin": 2,
-    "swingMin": 6,
-    "swingSpread": 8,
+    "meanderCell": 14,
+    "meanderWeight": 3,
+    "routeMargin": 3,
+    "relaxPasses": 40,
+    "waypointTries": 6,
+    "swingMin": 7,
+    "swingSpread": 9,
     "valley": 3,
-    "lakeChance": 0.3,
-    "lakeMin": 6,
+    "lakeChance": 0.22,
+    "lakeMin": 7,
     "lakeSpread": 4,
-    "sourceLakeMin": 7,
-    "sourceLakeSpread": 3
+    "lakeStretchMin": 0.1,
+    "lakeStretchSpread": 0.5,
+    "sourceLakeMin": 8,
+    "sourceLakeSpread": 4,
+    "pondMin": 4,
+    "pondSpread": 2
   },
   "stats": {
     "name": "cluster",
@@ -29,13 +36,10 @@
     "maxLevel": 3,
     "clusters": 30,
     "cities": 1920,
-    "hardFailures": 13,
-    "failureReasons": {
-      "route": 60,
-      "firstTrade": 85
-    },
-    "retried": 19,
-    "attemptsMax": 8,
+    "hardFailures": 0,
+    "failureReasons": {},
+    "retried": 0,
+    "attemptsMax": 1,
     "seams": {
       "heightSeam": 0,
       "waterSeam": 0,
@@ -44,34 +48,34 @@
       "range": 0
     },
     "coverage": {
-      "mean": 0.79,
-      "min": 0.766
+      "mean": 0.797,
+      "min": 0.797
     },
     "network": {
       "mainSlots": 910,
-      "mainReached": 800,
+      "mainReached": 910,
       "mouths": 3000,
-      "mouthsBroken": 361
+      "mouthsBroken": 0
     },
     "buildable": {
-      "mean": 0.793,
-      "p05": 0.713,
-      "min": 0.644
+      "mean": 0.789,
+      "p05": 0.697,
+      "min": 0.62
     },
     "water": {
-      "mean": 0.056,
+      "mean": 0.061,
       "p05": 0,
       "min": 0
     },
     "hill": {
-      "mean": 0.168,
+      "mean": 0.17,
       "p05": 0.044,
-      "min": 0.002
+      "min": 0
     },
     "forest": {
-      "mean": 0.19,
+      "mean": 0.188,
       "p05": 0.107,
-      "min": 0.027
+      "min": 0.029
     },
     "mineral": {
       "mean": 0.008,
@@ -79,46 +83,46 @@
       "min": 0
     },
     "slope": {
-      "mean": 0.151,
+      "mean": 0.15,
       "p05": 0.104,
-      "min": 0.043
+      "min": 0.039
     },
     "byKind": {
       "main": {
-        "count": 897,
+        "count": 910,
         "buildable": {
-          "mean": 0.759,
-          "p05": 0.703,
-          "min": 0.644
+          "mean": 0.753,
+          "p05": 0.677,
+          "min": 0.62
         },
         "water": {
-          "mean": 0.088,
-          "p05": 0.055,
-          "min": 0.028
+          "mean": 0.094,
+          "p05": 0.048,
+          "min": 0.012
         }
       },
       "trib": {
         "count": 620,
         "buildable": {
-          "mean": 0.807,
-          "p05": 0.749,
-          "min": 0.692
+          "mean": 0.806,
+          "p05": 0.741,
+          "min": 0.707
         },
         "water": {
-          "mean": 0.036,
-          "p05": 0.019,
-          "min": 0.01
+          "mean": 0.039,
+          "p05": 0.015,
+          "min": 0.005
         }
       },
       "none": {
         "count": 390,
         "buildable": {
-          "mean": 0.852,
-          "p05": 0.797,
-          "min": 0.732
+          "mean": 0.848,
+          "p05": 0.78,
+          "min": 0.711
         },
         "water": {
-          "mean": 0.013,
+          "mean": 0.017,
           "p05": 0,
           "min": 0
         }
@@ -127,13 +131,13 @@
     "firstTradeFail": 0,
     "connectFail": 0,
     "ms": {
-      "p50": 15.71,
-      "p95": 25.1,
-      "max": 133.68
+      "p50": 17.78,
+      "p95": 30.62,
+      "max": 107.47
     },
     "createMs": {
-      "mean": 0.78,
-      "max": 4.17
+      "mean": 0.76,
+      "max": 3.18
     },
     "skeletonJsonBytes": {
       "mean": 3366,
@@ -141,23 +145,23 @@
     },
     "look": {
       "main": {
-        "tiles": 74127,
-        "sharp": 987,
-        "loops": 12,
-        "straight": 42,
-        "sharpPer100": 1.33
+        "tiles": 63185,
+        "sharp": 0,
+        "loops": 0,
+        "straight": 63,
+        "sharpPer100": 0
       },
       "trib": {
-        "tiles": 61006,
-        "sharp": 563,
-        "loops": 7,
-        "straight": 50,
-        "sharpPer100": 0.92
+        "tiles": 51116,
+        "sharp": 0,
+        "loops": 0,
+        "straight": 63,
+        "sharpPer100": 0
       }
     },
     "storage": {
-      "gzipMean": 620,
-      "gzipMax": 850
+      "gzipMean": 613,
+      "gzipMax": 761
     }
   }
 }

@@ -14,6 +14,7 @@ const SIDES = {
 const CONNECT_LEVEL = 1;
 const PAD_HALF = 2;
 const MAX_ATTEMPTS = 8;
+const CORRIDOR_HALF = 3;
 
 function createCluster(seed, N, maxLevel, opt) {
   const rng = makeRng(seed);
@@ -187,6 +188,17 @@ function attemptGenerate(cluster, sx, sy, seed, attempt, opt) {
     }
   }
 
+  // 留一条河流不能穿过的走廊，保证新手不修桥也能从市中心连到一个邻居。
+  const corridor = new Uint8Array(N * N);
+  const innerSides = Object.keys(SIDES).filter((side) => !isOuter(side, sx, sy));
+  const corridorSide = innerSides[(rng() * innerSides.length) | 0];
+  for (let along = 0; along < N / 2; along++) {
+    for (let a = mid - CORRIDOR_HALF; a <= mid + CORRIDOR_HALF; a++) {
+      const [x, y] = corridorSide === 'W' ? [along, a] : corridorSide === 'E' ? [N - 1 - along, a] : corridorSide === 'N' ? [a, along] : [a, N - 1 - along];
+      corridor[tid(x, y)] = 1;
+    }
+  }
+
   const heightAt = (x, y) => {
     const gx = originX + x;
     const gy = originY + y;
@@ -236,7 +248,7 @@ function attemptGenerate(cluster, sx, sy, seed, attempt, opt) {
     && lower[vid(x, y + 1)] <= 0 && lower[vid(x + 1, y + 1)] <= 0;
 
   const carved = carveRivers({
-    N, sides, rng, canBeWater, blocked, water, pinTile, meander: cluster.meander, originX, originY, opt,
+    N, sides, rng, canBeWater, blocked, corridor, water, pinTile, meander: cluster.meander, originX, originY, opt,
   });
   if (!carved.ok) return { ok: false, reason: 'route' };
 
