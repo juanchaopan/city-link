@@ -12,8 +12,10 @@ import { roadWorld, terrainOf } from './sim/terrainworld.js';
 
 // 路面验收用的场景：把路面按游戏里的方式烘焙成精灵，再按游戏里的层序拼到一张画布上。
 // mode 为 legacy 时用保留的旧着色器和逐格绘制的旧层序，用来证明检查抓得到用户报告过的错误。
-// region 只拼地图的一块，整张 64×64 的遮罩要吃掉一两 GB 内存，查局部时不值得。
+// region 只拼地图的一块，查局部时不用付整张地图的内存。
 // world.low 是贴地的匝道路面，和路面同一层，画在车道上面。
+// 拼图的大画布全程只有一张：改尺寸时旧的像素立刻释放，不等垃圾回收。上一次 compose 的结果读完再拼下一张。
+// 精灵的画布都留在内存里，不上显卡：它们只被画到大画布上，放显卡只会多占一份，还要来回传。
 
 /** 遮罩配色：车道红、人行道绿、路缘蓝、标线黄，其余路基构件是灰，一个像素属于哪一层是读出来的。 */
 export const MASK = {
@@ -61,10 +63,14 @@ export function readerOf(context, width, height) {
 const PAD = 420;
 const baker = new Baker();
 const cache = new Map();
+const stage = new OffscreenCanvas(1, 1);
+const stageContext = stage.getContext('2d', { willReadFrequently: true });
 
 function canvasOf(sprite) {
   const canvas = new OffscreenCanvas(sprite.w, sprite.h);
-  canvas.getContext('2d').putImageData(new ImageData(sprite.data, sprite.w, sprite.h), 0, 0);
+  canvas
+    .getContext('2d', { willReadFrequently: true })
+    .putImageData(new ImageData(sprite.data, sprite.w, sprite.h), 0, 0);
   return { canvas, ax: sprite.ax, ay: sprite.ay };
 }
 
@@ -76,6 +82,12 @@ export function spriteOf(key, palette) {
   }
   return cache.get(id);
 }
+
+/** 排序要用的精灵尺寸。 */
+export const frameOf = (palette) => (key) => {
+  const { canvas, ax, ay } = spriteOf(key, palette);
+  return { w: canvas.width, h: canvas.height, ax, ay };
+};
 
 /** 旧版本的一格路：一张精灵里同时画人行道和车道，断头路用圆头收尾。 */
 function legacySprite(entry, palette, deckHeightOf) {
@@ -136,8 +148,10 @@ export function placer(N, region = [0, 0, N, N]) {
 export function compose(world, palette, mode, { withGround, region }) {
   const { N, sprites, low = [] } = world;
   const place = placer(N, region);
-  const canvas = new OffscreenCanvas(place.width, place.height);
-  const context = canvas.getContext('2d', { willReadFrequently: true });
+  stage.width = place.width;
+  stage.height = place.height;
+  const canvas = stage;
+  const context = stageContext;
   const [x0, y0, x1, y1] = region ?? [0, 0, N, N];
   const inside = (x, y) => x >= x0 && x < x1 && y >= y0 && y < y1;
   const stamp = (sprite, x, y, level) => {

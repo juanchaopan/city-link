@@ -3,6 +3,7 @@
 // r8-occlusion：匝道和灯杆、桥下的车、路口里的车和公交、车和建筑。
 // r8-public：公共服务默认缩放和放大。r8-metro：地铁线路图和城市。r8-stations：地铁站厅和公交站。
 // r8-traffic：交通视图全城、高架和选中一个物业。要先有 out/atlas-sunny.png。
+// 每张样张单独开一次浏览器，截图一页一关，出完就退出，所以峰值内存只看一页游戏，和样张数量无关。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { generateCity } from '../web/sim/city.js';
@@ -106,19 +107,7 @@ const SHEETS = {
 const wanted = process.argv.slice(2);
 const names = wanted.length > 0 ? wanted : Object.keys(SHEETS);
 
-mkdirSync('out', { recursive: true });
-const server = await startServer(PORT);
-const browser = await chromium.launch({
-  channel: 'chrome',
-  headless: true,
-  args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'],
-});
-const context = await browser.newContext({
-  viewport: { width: WIDTH, height: HEIGHT },
-  deviceScaleFactor: 1,
-});
-
-async function capture({ query, pick }) {
+async function capture(context, { query, pick }) {
   const page = await context.newPage();
   page.on('pageerror', (error) => console.error('页面错误', error.message));
   await page.goto(`http://localhost:${String(PORT)}/web/play.html?${query}`);
@@ -130,7 +119,7 @@ async function capture({ query, pick }) {
   return shot.toString('base64');
 }
 
-async function assemble(images, columns) {
+async function assemble(context, images, columns) {
   const page = await context.newPage();
   const data = await page.evaluate(
     async ([list, across, width, height]) => {
@@ -161,13 +150,24 @@ async function assemble(images, columns) {
   return data;
 }
 
+mkdirSync('out', { recursive: true });
+const server = await startServer(PORT);
 for (const name of names) {
   const { shots, columns } = SHEETS[name];
+  const browser = await chromium.launch({
+    channel: 'chrome',
+    headless: true,
+    args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'],
+  });
+  const context = await browser.newContext({
+    viewport: { width: WIDTH, height: HEIGHT },
+    deviceScaleFactor: 1,
+  });
   const images = [];
-  for (const shot of shots) images.push({ label: shot.label, data: await capture(shot) });
-  const data = await assemble(images, columns);
+  for (const shot of shots) images.push({ label: shot.label, data: await capture(context, shot) });
+  const data = await assemble(context, images, columns);
   writeFileSync(`out/${name}.png`, Buffer.from(data.split(',')[1], 'base64'));
   console.log(name, shots.length);
+  await browser.close();
 }
-await browser.close();
 server.close();

@@ -4,16 +4,18 @@
 // node scripts/preview.js modules       out/r7-modules-preview.png：Q3 的模块拼装
 // node scripts/preview.js tee           out/r8-tee-preview.png：普通城市里的丁字立交
 // node scripts/preview.js diamond       out/r8-diamond-preview.png：菱形立交，只有立交本身
+// node scripts/preview.js viaduct       out/r8-viaduct-preview.png：普通城市里的高架中段
 // node scripts/preview.js center        out/r8-center-preview.png：市中心，斜路两边的大三角
 import { writeFileSync } from 'node:fs';
 import { LEVEL } from '../web/kit/bake.js';
 import { Builder, linear } from '../web/kit/builder.js';
-import { buildInterchange } from '../web/kit/interchange.js';
+import { buildPiece } from '../web/kit/interchange.js';
 import { buildModule } from '../web/kit/modules.js';
 import { buildObject } from '../web/kit/objects.js';
 import { palettes } from '../web/kit/palettes.js';
 import { generateCity } from '../web/sim/city.js';
 import { COMBOS, modulesOf } from '../web/sim/combos.js';
+import { piecesOf } from '../web/sim/ixpieces.js';
 import { worldPolylines } from '../web/sim/network.js';
 import { createCanvas } from './raster.js';
 
@@ -31,6 +33,7 @@ const ROAD_COLOR = {
   express: '#4f545e',
   ramp: '#4a4f58',
 };
+const SKIPPED = /^(ixp|ev|pr|bs|ms|si|br|gate|boat|dock)/;
 
 const gamma = (value) => Math.round(255 * Math.min(1, Math.max(0, value)) ** (1 / 2.2));
 
@@ -92,6 +95,14 @@ function stamp({ draw }, builder, ox, oy, [wx, wy, wz] = [0, 0, 0]) {
       [gamma(colors[i] * light), gamma(colors[i + 1] * light), gamma(colors[i + 2] * light)],
     );
   }
+}
+
+/** 立交切成的小块一块块画上去。 */
+function stampTemplate(sheet, name, ox, oy, wx, wz) {
+  piecesOf(name).forEach(({ cell }, index) => {
+    const builder = buildPiece(name, index, P).build();
+    stamp(sheet, builder, ox, oy, [wx + cell[0], 0, wz + cell[1]]);
+  });
 }
 
 function lots() {
@@ -176,7 +187,7 @@ function cityView(name, [fx, fy], width, height) {
   stamp(sheet, roads, ox, oy);
 
   for (const { key, px, py, level, modules: parts } of city.objects) {
-    if (!inView(px, py) || /^(ix|ev|br|gate|boat|dock)/.test(key)) continue;
+    if (!inView(px, py) || SKIPPED.test(key)) continue;
     for (const part of parts ?? []) {
       const lift = level * LEVEL + (part.lift * LEVEL) / 2;
       stamp(sheet, buildModule(part.key, P), ox, oy, [px + part.dx, lift, py + part.dy]);
@@ -184,20 +195,22 @@ function cityView(name, [fx, fy], width, height) {
     if (!parts) stamp(sheet, buildObject(key, P), ox, oy, [px, level * LEVEL, py]);
   }
 
-  const { interchange } = city.plan;
-  if (interchange)
-    stamp(sheet, buildInterchange(interchange.name, P).build(), ox, oy, [
-      interchange.cx + 0.5,
-      0,
-      interchange.cy + 0.5,
-    ]);
+  const { interchange, viaduct } = city.plan;
+  const placed = [interchange, ...(city.viaduct?.placed ?? [])].filter(Boolean);
+  for (const { name: id, cx, cy } of placed) stampTemplate(sheet, id, ox, oy, cx + 0.5, cy + 0.5);
+  if (viaduct) {
+    const line = new Builder(2);
+    for (const lane of city.lanes.filter(({ kind }) => kind === 'express'))
+      ribbon(line, lane.points, 0.4, linear(ROAD_COLOR.express));
+    stamp(sheet, line, ox, oy);
+  }
   return { path: `out/r8-${name}-preview.png`, canvas: sheet.canvas };
 }
 
 /** 只有立交本身，看线形和桥墩用。 */
 function templateView(name, width, height) {
   const sheet = surface(width, height);
-  stamp(sheet, buildInterchange(name, P).build(), width / 2, height / 2);
+  stampTemplate(sheet, name, width / 2, height / 2, 0, 0);
   return { path: `out/r8-${name}-preview.png`, canvas: sheet.canvas };
 }
 
@@ -206,6 +219,7 @@ const MODES = {
   modules,
   tee: () => cityView('tee', [33, 8], 2200, 1300),
   diamond: () => templateView('diamond', 1400, 1000),
+  viaduct: () => cityView('viaduct', [25, 23], 1400, 1400),
   center: () => cityView('center', [31, 30], 2000, 2400),
 };
 const { path, canvas } = MODES[process.argv[2] ?? 'lots']();

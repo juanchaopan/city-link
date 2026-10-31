@@ -1,5 +1,5 @@
 import { palettes } from './kit/palettes.js';
-import { compose, spriteOf } from './roadscene.js';
+import { compose, frameOf, spriteOf } from './roadscene.js';
 import { carItem, createDrawList, mergedSequence } from './sim/drawlist.js';
 import { createFleet } from './sim/fleet.js';
 import { sceneItems } from './sim/sceneitems.js';
@@ -28,15 +28,10 @@ const screenOf = (px, py, level) => ({
   sy: (px + py - 1) * 32 - level * 32,
 });
 
-const frameOf = (palette) => (key) => {
-  const { canvas, ax, ay } = spriteOf(key, palette);
-  return { w: canvas.width, h: canvas.height, ax, ay };
-};
-
 /** 白色灯面染成当前的灯色。 */
 function tinted(sprite, color) {
   const canvas = new OffscreenCanvas(sprite.canvas.width, sprite.canvas.height);
-  const context = canvas.getContext('2d');
+  const context = canvas.getContext('2d', { willReadFrequently: true });
   context.drawImage(sprite.canvas, 0, 0);
   context.globalCompositeOperation = 'multiply';
   context.fillStyle = color;

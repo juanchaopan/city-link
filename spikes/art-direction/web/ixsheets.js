@@ -1,5 +1,6 @@
 import { palettes } from './kit/palettes.js';
 import { IX_SCENES, ixTown } from './ixscenes.js';
+import { ELEVATED } from './sim/interchange.js';
 import { pasteCrop, pngData, renderTown } from './townrender.js';
 
 // 立交验收的样张：每种立交一张全景加四张放大，匝道开口两种放大倍数，匝道上的车。
@@ -43,7 +44,7 @@ window.renderMergeSheet = () => {
   names.forEach((name, row) => {
     const entry = ixTown(name);
     const { canvas, place } = renderTown(entry.town, { cars: 30, palette: palettes.sunny });
-    const level = name === 'diamond' ? 1.5 : 0;
+    const level = name === 'diamond' ? ELEVATED : 0;
     const centerOf = ([x, z]) => place.at(entry.cx + 0.5 + x, entry.cy + 0.5 + z, level);
     const list = [
       ['分流', 2],
