@@ -1,0 +1,79 @@
+name: security-review
+
+# 每个 PR 的安全审查，和 ai-review 里的代码审查分开进行，只看安全问题。
+# 问题以行内评论发出。分支规则要求所有评论线程处理完才能合并，所以每个安全问题要么修掉，要么写明理由后关闭。
+# 不审查的 PR：发布 PR（release/*）和从 main、master 回合并的 PR，它们只包含已经审查过的代码；
+# 来自 fork 和 Dependabot 的 PR，GitHub 不给它们访问密钥。维护者需要时，在 PR 里评论 @claude 请它做安全审查。
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: security-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  security-review:
+    name: security-review
+    if: >-
+      ${{
+        !github.event.pull_request.draft &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.actor != 'dependabot[bot]' &&
+        !startsWith(github.event.pull_request.head.ref, 'release/') &&
+        github.event.pull_request.head.ref != 'main' && github.event.pull_request.head.ref != 'master'
+      }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 收集已有的审查意见
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p .ai-review-context
+          gh api "repos/$REPO/pulls/$PR/comments" --paginate \
+            --jq '.[] | "- \(.path):\(.line // .original_line // "?") \(.body | split("\n")[0])"' \
+            > .ai-review-context/previous-comments.md
+
+      - name: Claude 安全审查
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            仓库：${{ github.repository }}
+            PR 编号：${{ github.event.pull_request.number }}
+            新增提交范围：${{ github.event.before }}..${{ github.event.after }}（只在 PR 收到新提交时有值）
+
+            你是这个仓库的安全审查员，只找安全问题，不管代码风格和一般的逻辑错误。
+
+            1. 读 CLAUDE.md 和 REVIEW.md，了解项目和评论语言；docs/architecture/ 里有架构文档时，读一下信任边界和认证方式。用 `gh pr view` 和 `gh pr diff` 看 PR 的意图和改动，需要时阅读仓库里的其他代码。
+            2. 重点检查：
+               - 注入：SQL、命令行、路径拼接、模板、日志
+               - 登录鉴权和权限：缺少校验、越权访问别人的数据、服务之间的调用没有认证
+               - 密钥、令牌、密码写进代码、日志或报错信息
+               - 不可信输入：反序列化、SSRF、XSS、开放重定向、文件上传
+               - 加密用法：自己实现的加密、弱随机数、不安全的比较方式
+               - 依赖和安装脚本：新加的依赖、下载后直接执行的脚本
+               - CI 工作流和部署配置：权限过大，或把 PR 标题、分支名之类的不可信内容直接拼进 run 命令
+               - 敏感数据：个人信息、内部地址泄露到前端或第三方
+            3. 先读 `.ai-review-context/previous-comments.md`，已经提过的问题不要重复。PR 收到新提交时，重点看上面的新增提交范围。
+            4. 只报能说清攻击路径的问题：谁、通过什么输入、能做到什么。说不清的不报。
+            5. 每个问题用 `mcp__github_inline_comment__create_inline_comment` 发在对应的行上，开头标注 [Security]，写明攻击路径和修法。
+            6. 最后用 `gh pr comment` 发一条总结。总结第一行原样写 `<!-- security-review-summary -->`，第二行以"发现 N 个安全问题"开头；没有问题就写"发现 0 个安全问题"。
+            7. 不要批准 PR，不要修改或提交代码。
+          claude_args: |
+            --allowedTools "Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"

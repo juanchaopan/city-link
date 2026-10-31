@@ -1,0 +1,26 @@
+{
+  "threshold": 2,
+  "minTokens": 60,
+  "minLines": 8,
+  "reporters": ["console"],
+  "gitignore": true,
+  "absolute": false,
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/target/**",
+    "**/bin/**",
+    "**/obj/**",
+    "**/.venv/**",
+    "**/coverage/**",
+    "**/*.min.js",
+    "**/*.lock",
+    "**/package-lock.json",
+    "**/*.md",
+    "**/*.json",
+    "**/*.yml",
+    "**/*.yaml",
+    "**/*.svg"
+  ]
+}

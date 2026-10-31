@@ -1,0 +1,56 @@
+name: claude
+
+# 在 issue、PR 或评论里写 @claude，Claude 就在云端处理这个请求：回答问题、实现 issue、按审查意见修改 PR、审查外部贡献者的 PR。
+# 只有对仓库有写权限的人能触发（claude-code-action 会检查发起人的权限）。
+# 它改的代码推到新的 feature/ 分支或当前 PR 的分支，和本地开发一样，要过全部检查和审查才能合并。
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [opened, assigned]
+
+permissions: {}
+
+jobs:
+  claude:
+    if: >-
+      ${{
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          branch_prefix: feature/
+          additional_permissions: |
+            actions: read
+          claude_args: |
+            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(git:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(pnpm format:*),Bash(pnpm lint:*),Bash(pnpm arch:*),Bash(pnpm typecheck:*),Bash(pnpm test:*),Bash(pnpm build:*),Bash(npx jscpd:*)"
+            --append-system-prompt "按 CLAUDE.md、.claude/rules/ 和 REVIEW.md 工作。改动前先读相关的需求和架构文档（docs/）。每个提交只做一件事，提交信息用 Conventional Commits 并带上 issue 号。提交前运行 CLAUDE.md 的自检命令并确认通过。请求涉及需求或架构的重大变化、或者说不清验收标准时，不要直接改代码，在评论里说明原因，建议维护者在本地用 /change 处理。"

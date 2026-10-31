@@ -1,0 +1,25 @@
+name: commits
+
+# 检查 PR 里每个提交的提交信息是否符合 Conventional Commits，规则和本地的 .githooks/commit-msg 相同。
+# 分支规则按 job 名 "commit-lint" 把它设为合并前必须通过。
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  commit-lint:
+    name: commit-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - if: ${{ github.event_name == 'pull_request' }}
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/check-commit-message.mjs --range "$BASE..$HEAD"
