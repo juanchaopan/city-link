@@ -2,6 +2,7 @@
   "seams": [
     {
       "hour": 12,
+      "bare": true,
       "zoom": 0.078,
       "solid": 0,
       "tinted": 0,
@@ -9,6 +10,7 @@
     },
     {
       "hour": 12,
+      "bare": true,
       "zoom": 0.25,
       "solid": 0,
       "tinted": 0,
@@ -16,13 +18,7 @@
     },
     {
       "hour": 12,
-      "zoom": 0.3333,
-      "solid": 0,
-      "tinted": 0,
-      "inside": 1899558
-    },
-    {
-      "hour": 12,
+      "bare": true,
       "zoom": 0.5,
       "solid": 0,
       "tinted": 0,
@@ -30,13 +26,7 @@
     },
     {
       "hour": 12,
-      "zoom": 0.75,
-      "solid": 0,
-      "tinted": 0,
-      "inside": 2962440
-    },
-    {
-      "hour": 12,
+      "bare": true,
       "zoom": 1,
       "solid": 0,
       "tinted": 0,
@@ -44,6 +34,47 @@
     },
     {
       "hour": 12,
+      "bare": true,
+      "zoom": 2,
+      "solid": 0,
+      "tinted": 0,
+      "inside": 2962440
+    },
+    {
+      "hour": 12,
+      "bare": false,
+      "zoom": 0.078,
+      "solid": 0,
+      "tinted": 0,
+      "inside": 202050
+    },
+    {
+      "hour": 12,
+      "bare": false,
+      "zoom": 0.25,
+      "solid": 0,
+      "tinted": 0,
+      "inside": 1340611
+    },
+    {
+      "hour": 12,
+      "bare": false,
+      "zoom": 0.5,
+      "solid": 0,
+      "tinted": 0,
+      "inside": 2887867
+    },
+    {
+      "hour": 12,
+      "bare": false,
+      "zoom": 1,
+      "solid": 0,
+      "tinted": 0,
+      "inside": 2962440
+    },
+    {
+      "hour": 12,
+      "bare": false,
       "zoom": 2,
       "solid": 0,
       "tinted": 0,
@@ -51,13 +82,15 @@
     },
     {
       "hour": 22,
+      "bare": true,
       "zoom": 0.078,
       "solid": 0,
-      "tinted": 0,
+      "tinted": 50,
       "inside": 202050
     },
     {
       "hour": 22,
+      "bare": true,
       "zoom": 0.25,
       "solid": 0,
       "tinted": 0,
@@ -65,13 +98,7 @@
     },
     {
       "hour": 22,
-      "zoom": 0.3333,
-      "solid": 0,
-      "tinted": 0,
-      "inside": 1899558
-    },
-    {
-      "hour": 22,
+      "bare": true,
       "zoom": 0.5,
       "solid": 0,
       "tinted": 0,
@@ -79,13 +106,7 @@
     },
     {
       "hour": 22,
-      "zoom": 0.75,
-      "solid": 0,
-      "tinted": 0,
-      "inside": 2962440
-    },
-    {
-      "hour": 22,
+      "bare": true,
       "zoom": 1,
       "solid": 0,
       "tinted": 0,
@@ -93,6 +114,47 @@
     },
     {
       "hour": 22,
+      "bare": true,
+      "zoom": 2,
+      "solid": 0,
+      "tinted": 0,
+      "inside": 2962440
+    },
+    {
+      "hour": 22,
+      "bare": false,
+      "zoom": 0.078,
+      "solid": 0,
+      "tinted": 0,
+      "inside": 202050
+    },
+    {
+      "hour": 22,
+      "bare": false,
+      "zoom": 0.25,
+      "solid": 0,
+      "tinted": 0,
+      "inside": 1340611
+    },
+    {
+      "hour": 22,
+      "bare": false,
+      "zoom": 0.5,
+      "solid": 0,
+      "tinted": 0,
+      "inside": 2887867
+    },
+    {
+      "hour": 22,
+      "bare": false,
+      "zoom": 1,
+      "solid": 0,
+      "tinted": 0,
+      "inside": 2962440
+    },
+    {
+      "hour": 22,
+      "bare": false,
       "zoom": 2,
       "solid": 0,
       "tinted": 0,
@@ -101,32 +163,16 @@
   ],
   "grid": [
     {
-      "bare": true,
       "hour": 12,
-      "edge": 162.32303726588196,
-      "middle": 166.4297045941666,
-      "contrast": -4.1066673282846295
+      "edge": 140.443107067883,
+      "middle": 145.22354290674846,
+      "contrast": -4.780435838865458
     },
     {
-      "bare": true,
       "hour": 22,
-      "edge": 44.614464182277814,
-      "middle": 45.734424564346305,
-      "contrast": -1.1199603820684914
-    },
-    {
-      "bare": false,
-      "hour": 12,
-      "edge": 162.02696530862207,
-      "middle": 165.84775044264563,
-      "contrast": -3.8207851340235663
-    },
-    {
-      "bare": false,
-      "hour": 22,
-      "edge": 44.49967754393062,
-      "middle": 45.50522038952665,
-      "contrast": -1.0055428455960254
+      "edge": 38.81259272218374,
+      "middle": 40.059433283729945,
+      "contrast": -1.2468405615462075
     }
   ]
 }

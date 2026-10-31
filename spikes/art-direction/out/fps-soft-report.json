@@ -1,42 +1,197 @@
 {
-  "全图，白天": {
-    "sprites": 7208,
-    "atlas": [4096, 2552],
-    "frames": 347,
-    "p50fps": 58.47953167452842,
-    "p95fps": 49.50495037818911,
-    "worstFps": 21.92982449260775
+  "全图，白天，无车": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8004,
+    "atlas": [4096, 4578],
+    "frames": 211,
+    "p50fps": 43.103448187270146,
+    "p95fps": 38.022813757150914,
+    "worstFps": 31.54574127746946,
+    "cars": null
   },
-  "游戏视角，白天": {
-    "sprites": 7208,
-    "atlas": [4096, 2552],
-    "frames": 145,
-    "p50fps": 24.50980380698838,
-    "p95fps": 20.2020202020202,
-    "worstFps": 19.157088105105725
+  "游戏视角，白天，无车": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8004,
+    "atlas": [4096, 4578],
+    "frames": 79,
+    "p50fps": 16.638935068548772,
+    "p95fps": 14.025245451174976,
+    "worstFps": 12.453300131928016,
+    "cars": null
+  },
+  "游戏视角，满额 300 辆": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8004,
+    "atlas": [4096, 4578],
+    "frames": 77,
+    "p50fps": 16.31321365234097,
+    "p95fps": 13.850415503318015,
+    "worstFps": 13.531799755558044,
+    "cars": {
+      "cars": 300,
+      "wanted": 300,
+      "stopped": 184,
+      "signals": 242
+    }
+  },
+  "游戏视角，满额 600 辆": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8004,
+    "atlas": [4096, 4578],
+    "frames": 76,
+    "p50fps": 16.207455416971932,
+    "p95fps": 14.064697627866584,
+    "worstFps": 12.150668293795736,
+    "cars": {
+      "cars": 600,
+      "wanted": 600,
+      "stopped": 381,
+      "signals": 242
+    }
+  },
+  "夜间车灯，满额 300 辆": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8004,
+    "atlas": [4096, 4578],
+    "frames": 76,
+    "p50fps": 16.129032258064516,
+    "p95fps": 13.869625538456457,
+    "worstFps": 12.515644578102345,
+    "cars": {
+      "cars": 300,
+      "wanted": 300,
+      "stopped": 193,
+      "signals": 242
+    }
+  },
+  "夜间车灯，满额 600 辆": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8004,
+    "atlas": [4096, 4578],
+    "frames": 75,
+    "p50fps": 16.103059544226067,
+    "p95fps": 13.831258653658725,
+    "worstFps": 12.547051435404141,
+    "cars": {
+      "cars": 600,
+      "wanted": 600,
+      "stopped": 392,
+      "signals": 242
+    }
+  },
+  "全图缩小，满额 600 辆": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8004,
+    "atlas": [4096, 4578],
+    "frames": 208,
+    "p50fps": 42.37288109908944,
+    "p95fps": 36.76470581790155,
+    "worstFps": 24.213075088488363,
+    "cars": {
+      "cars": 600,
+      "wanted": 600,
+      "stopped": 256,
+      "signals": 242
+    }
+  },
+  "满城模块拼装（每物业 3 张），全图": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8636,
+    "atlas": [4096, 4578],
+    "frames": 194,
+    "p50fps": 40.322580722690745,
+    "p95fps": 34.843205517022525,
+    "worstFps": 25.83979324981557,
+    "cars": null
+  },
+  "满城模块拼装（每物业 3 张），游戏视角满额 300 辆": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8636,
+    "atlas": [4096, 4578],
+    "frames": 64,
+    "p50fps": 13.698630136986301,
+    "p95fps": 12.165450114597398,
+    "worstFps": 11.2866817277244,
+    "cars": {
+      "cars": 300,
+      "wanted": 300,
+      "stopped": 203,
+      "signals": 242
+    }
+  },
+  "满城模块拼装（每物业 3 张），游戏视角满额 600 辆，夜间": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8636,
+    "atlas": [4096, 4578],
+    "frames": 63,
+    "p50fps": 13.31557920233277,
+    "p95fps": 12.091898421081178,
+    "worstFps": 10.845986979206323,
+    "cars": {
+      "cars": 600,
+      "wanted": 600,
+      "stopped": 401,
+      "signals": 242
+    }
+  },
+  "立交场景，满额 300 辆": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 3309,
+    "atlas": [4096, 4578],
+    "frames": 131,
+    "p50fps": 27.173913078688944,
+    "p95fps": 22.883295294385405,
+    "worstFps": 21.321961577112564,
+    "cars": {
+      "cars": 300,
+      "wanted": 300,
+      "stopped": 97,
+      "signals": 36
+    }
+  },
+  "普通城市的丁字立交，满额 300 辆": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8004,
+    "atlas": [4096, 4578],
+    "frames": 129,
+    "p50fps": 26.666666666666668,
+    "p95fps": 22.4215247116207,
+    "worstFps": 18.93939387097722,
+    "cars": {
+      "cars": 300,
+      "wanted": 300,
+      "stopped": 147,
+      "signals": 242
+    }
   },
   "单图集加亮窗层，连续变换时间": {
-    "sprites": 7208,
-    "atlas": [4096, 2552],
-    "frames": 146,
-    "p50fps": 25.06265658170022,
-    "p95fps": 20,
-    "worstFps": 12.738853503184714
-  },
-  "两套图集叠加，黄昏混合中": {
-    "sprites": 13878,
-    "atlas": [4096, 2552],
-    "frames": 92,
-    "p50fps": 16.4203612222337,
-    "p95fps": 12.903225806451612,
-    "worstFps": 11.534025368512282
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8004,
+    "atlas": [4096, 4578],
+    "frames": 80,
+    "p50fps": 16.89189187828601,
+    "p95fps": 14.409221882216563,
+    "worstFps": 13.812154677938816,
+    "cars": {
+      "cars": 300,
+      "wanted": 300,
+      "stopped": 159,
+      "signals": 242
+    }
   },
   "节日叠加层": {
-    "sprites": 7436,
-    "atlas": [4096, 2735],
-    "frames": 136,
-    "p50fps": 23.41920372092003,
-    "p95fps": 18.867924528301888,
-    "worstFps": 18.214936216081753
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "sprites": 8041,
+    "atlas": [4096, 4725],
+    "frames": 80,
+    "p50fps": 16.835016875560076,
+    "p95fps": 14.556040797326702,
+    "worstFps": 12.953367867646831,
+    "cars": {
+      "cars": 300,
+      "wanted": 300,
+      "stopped": 178,
+      "signals": 242
+    }
   }
 }

@@ -5,7 +5,7 @@
     "noSpec": 62846,
     "blocks": 66,
     "wholeBlocks": 23,
-    "millis": 9063.9534
+    "millis": 5145.0741
   },
   "blockAtoms": 2476,
   "residualAtoms": 30,
@@ -13,7 +13,13 @@
     "blocksChecked": 5,
     "failures": 0,
     "maxPieces": 4,
-    "shapes": ["rect+triangle+triangle", "rect", "rect+rect", "rect+triangle+triangle", "rect+rect"]
+    "shapes": [
+      "rect+triangle+triangle",
+      "rect",
+      "rect+rect",
+      "rect+triangle+triangle",
+      "rect+rect"
+    ]
   },
   "shapeCounts": {
     "rect 1x3": 17,
@@ -45,7 +51,12 @@
   },
   "detail": {
     "blockAtoms": 50,
-    "box": [22, 16, 31, 25],
+    "box": [
+      22,
+      16,
+      31,
+      25
+    ],
     "before": [
       {
         "shape": "diagonal",

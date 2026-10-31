@@ -9,10 +9,10 @@
     "image": "festival-national-day.png",
     "frames": "festival-national-day.json",
     "footprints": [
-      "D2x2-u",
       "Q2-0",
       "Q2-1",
       "Q2-2",
+      "Q2-3",
       "Q3-0",
       "Q3-1",
       "Q3-2",

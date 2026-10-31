@@ -98,7 +98,9 @@ function deckMeshes(points, kind, P, span) {
   const meshes = [];
   for (let i = 0; i < paths.length; i += CHUNKS_PER_MESH) {
     const group = paths.slice(i, i + CHUNKS_PER_MESH);
-    meshes.push(roadMesh(group, P, (x, z) => heightOnLine(points, x, z), LAYER.both, span, RAMP_RESOLUTION));
+    meshes.push(
+      roadMesh(group, P, (x, z) => heightOnLine(points, x, z), LAYER.both, span, RAMP_RESOLUTION),
+    );
   }
   return meshes;
 }
@@ -137,7 +139,15 @@ export function buildViaduct(axis, h0, h1, P) {
     if (middle > 0.24) {
       const concrete = linear(P.road.wall);
       b.box(0, 0, 0, 0.12, middle - 0.05, 0.12, shade(concrete, 0.92));
-      b.box(0, middle - 0.09, 0, axis === 'x' ? 0.14 : 0.8, 0.05, axis === 'x' ? 0.8 : 0.14, concrete);
+      b.box(
+        0,
+        middle - 0.09,
+        0,
+        axis === 'x' ? 0.14 : 0.8,
+        0.05,
+        axis === 'x' ? 0.8 : 0.14,
+        concrete,
+      );
     }
     return b;
   };

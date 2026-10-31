@@ -217,7 +217,10 @@ function uniformsFor(paths, P, layer) {
     }
   });
   const count = segment.length;
-  if (count > MAX_SEGMENTS) throw new Error(`路面有 ${String(count)} 段，着色器最多 ${String(MAX_SEGMENTS)} 段，多出来的路面画不出来`);
+  if (count > MAX_SEGMENTS)
+    throw new Error(
+      `路面有 ${String(count)} 段，着色器最多 ${String(MAX_SEGMENTS)} 段，多出来的路面画不出来`,
+    );
   while (segment.length < MAX_SEGMENTS) {
     segment.push(blank());
     widths.push(blank());

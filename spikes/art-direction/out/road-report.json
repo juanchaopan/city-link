@@ -482,14 +482,14 @@
     },
     {
       "name": "全图 64×64·未打通",
-      "samples": 2038516,
+      "samples": 2052090,
       "walkInDeck": 0,
       "deckHole": 0,
       "deckOutside": 0,
       "walkHole": 0,
       "overshoot": 0,
       "capOvershoot": 0,
-      "corners": 219,
+      "corners": 221,
       "sharpCorners": 0,
       "wobblePixels": 4.9,
       "variants": 1,
@@ -506,14 +506,14 @@
     },
     {
       "name": "全图 64×64·已打通",
-      "samples": 2055248,
+      "samples": 2068822,
       "walkInDeck": 0,
       "deckHole": 0,
       "deckOutside": 0,
       "walkHole": 0,
       "overshoot": 0,
       "capOvershoot": 0,
-      "corners": 219,
+      "corners": 221,
       "sharpCorners": 0,
       "wobblePixels": 4.9,
       "variants": 1,
@@ -1326,33 +1326,33 @@
     },
     {
       "name": "全图 64×64·未打通",
-      "samples": 2038516,
+      "samples": 2052090,
       "walkInDeck": 1996,
       "deckHole": 1228,
       "deckOutside": 0,
       "walkHole": 0,
       "overshoot": 351,
-      "capOvershoot": 2508,
-      "corners": 219,
-      "sharpCorners": 116,
+      "capOvershoot": 3301,
+      "corners": 221,
+      "sharpCorners": 118,
       "wobblePixels": 4.1,
       "variants": 1,
       "examples": {
         "walkInDeck": [
-          [13.28, 12.23, 2],
-          [13.3, 12.21, 2],
-          [12.81, 11.7, 2],
-          [13.29, 12.18, 2],
-          [12.84, 11.7, 2],
-          [13.3, 12.16, 2]
+          [13.28, 9.23, 2],
+          [13.3, 9.21, 2],
+          [12.81, 8.7, 2],
+          [13.29, 9.18, 2],
+          [12.84, 8.7, 2],
+          [13.3, 9.16, 2]
         ],
         "deckHole": [
-          [12.77, 11.74, 4],
-          [13.27, 12.24, 4],
-          [12.78, 11.73, 4],
-          [13.26, 12.21, 4],
-          [12.8, 11.71, 4],
-          [12.81, 11.72, 4]
+          [12.77, 8.74, 4],
+          [13.27, 9.24, 4],
+          [12.78, 8.73, 4],
+          [13.26, 9.21, 4],
+          [12.8, 8.71, 4],
+          [12.81, 8.72, 4]
         ],
         "deckOutside": [],
         "walkHole": [],
@@ -1365,12 +1365,12 @@
           [57.76, 38.62, 2]
         ],
         "capOvershoot": [
-          [63.54, 10.07, 2],
-          [63.55, 10.12, 1],
-          [63.54, 10.13, 1],
-          [63.55, 10.15, 1],
-          [63.54, 10.16, 1],
-          [63.55, 10.18, 1]
+          [34.19, 11.47, 1],
+          [34.19, 11.46, 1],
+          [34.22, 11.47, 1],
+          [34.22, 11.46, 1],
+          [34.25, 11.47, 1],
+          [34.25, 11.46, 1]
         ],
         "sharp": [
           [14.74, 17.74, 4, 0, 2],
@@ -1385,33 +1385,33 @@
     },
     {
       "name": "全图 64×64·已打通",
-      "samples": 2055248,
+      "samples": 2068822,
       "walkInDeck": 1996,
       "deckHole": 1228,
       "deckOutside": 0,
       "walkHole": 0,
       "overshoot": 351,
-      "capOvershoot": 0,
-      "corners": 219,
-      "sharpCorners": 116,
+      "capOvershoot": 793,
+      "corners": 221,
+      "sharpCorners": 118,
       "wobblePixels": 4.1,
       "variants": 1,
       "examples": {
         "walkInDeck": [
-          [13.28, 12.23, 2],
-          [13.3, 12.21, 2],
-          [12.81, 11.7, 2],
-          [13.29, 12.18, 2],
-          [12.84, 11.7, 2],
-          [13.3, 12.16, 2]
+          [13.28, 9.23, 2],
+          [13.3, 9.21, 2],
+          [12.81, 8.7, 2],
+          [13.29, 9.18, 2],
+          [12.84, 8.7, 2],
+          [13.3, 9.16, 2]
         ],
         "deckHole": [
-          [12.77, 11.74, 4],
-          [13.27, 12.24, 4],
-          [12.78, 11.73, 4],
-          [13.26, 12.21, 4],
-          [12.8, 11.71, 4],
-          [12.81, 11.72, 4]
+          [12.77, 8.74, 4],
+          [13.27, 9.24, 4],
+          [12.78, 8.73, 4],
+          [13.26, 9.21, 4],
+          [12.8, 8.71, 4],
+          [12.81, 8.72, 4]
         ],
         "deckOutside": [],
         "walkHole": [],
@@ -1423,7 +1423,14 @@
           [57.75, 38.61, 2],
           [57.76, 38.62, 2]
         ],
-        "capOvershoot": [],
+        "capOvershoot": [
+          [34.19, 11.47, 1],
+          [34.19, 11.46, 1],
+          [34.22, 11.47, 1],
+          [34.22, 11.46, 1],
+          [34.25, 11.47, 1],
+          [34.25, 11.46, 1]
+        ],
         "sharp": [
           [14.74, 17.74, 4, 0, 2],
           [14.74, 23.74, 4, 0, 2],
@@ -1442,41 +1449,55 @@
         "name": "快速路主线",
         "lanes": 4,
         "samples": 4368,
-        "holes": 20,
+        "holes": 0,
         "side": 0,
-        "pass": false
+        "pass": true,
+        "examples": []
       },
       {
         "name": "立交·diamond",
         "lanes": 8,
         "samples": 3600,
         "holes": 0,
-        "side": 26,
-        "pass": false
+        "side": 0,
+        "pass": true,
+        "examples": []
       },
       {
         "name": "立交·cloverleaf",
         "lanes": 8,
         "samples": 6312,
-        "holes": 2,
-        "side": 39,
-        "pass": false
+        "holes": 0,
+        "side": 0,
+        "pass": true,
+        "examples": []
       },
       {
         "name": "立交·trumpet",
         "lanes": 4,
         "samples": 4011,
         "holes": 0,
-        "side": 7,
-        "pass": false
+        "side": 0,
+        "pass": true,
+        "examples": []
       },
       {
         "name": "高架下方的地面路",
         "lanes": 3,
         "samples": 603,
         "holes": 0,
-        "side": 4,
-        "pass": false
+        "side": 0,
+        "pass": true,
+        "examples": []
+      },
+      {
+        "name": "普通城市·tee",
+        "lanes": 4,
+        "samples": 4578,
+        "holes": 0,
+        "side": 0,
+        "pass": true,
+        "examples": []
       }
     ],
     "footprints": [
@@ -1503,6 +1524,14 @@
         "cells": 255,
         "ramps": 4,
         "bbox": [-8, -6, 8, 8]
+      },
+      {
+        "name": "tee",
+        "w": 17,
+        "h": 11,
+        "cells": 187,
+        "ramps": 4,
+        "bbox": [-8, -6, 8, 4]
       }
     ]
   }
