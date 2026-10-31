@@ -174,11 +174,15 @@ export async function timerTick(db, { now, minute, owner, skip = () => false, le
 }
 
 // 玩家同步：建造操作按序号幂等，之后结算本城。
-export async function sync(db, { now, cityId, opSeq, ops, settle = true, owner, leaseless = false, skipFinalRead = false }) {
+// known 由客户端带上城市群信息时可以省掉同步前的读取，序号仍由条件更新保证。
+export async function sync(
+  db,
+  { now, cityId, opSeq, ops, settle = true, owner, leaseless = false, skipFinalRead = false, known = null },
+) {
   const cost = ops.reduce((sum, op) => sum + op.cost, 0);
-  const city = await db.get('cities', cityId);
+  const city = known ?? (await db.get('cities', cityId));
   let rejected = false;
-  if (ops.length > 0 && opSeq > city.opSeq) {
+  if (ops.length > 0 && (known || opSeq > city.opSeq)) {
     const applied = await db.update(
       'cities',
       cityId,

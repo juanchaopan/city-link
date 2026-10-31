@@ -1,0 +1,10 @@
+{
+  "name": "spikeprobe",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ADR-0005 真实环境探针，用完删除",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

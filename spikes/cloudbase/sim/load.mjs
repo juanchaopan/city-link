@@ -243,13 +243,19 @@ class World {
   async playerSync(player, session, second, last) {
     const { cfg } = this;
     const { state } = session;
-    const dirty = this.random() < ASSUME.syncWithOpsShare;
+    session.tick = (session.tick ?? 0) + 1;
+    state.pendingOps = (state.pendingOps ?? 0) + (this.random() < ASSUME.syncWithOpsShare ? 1 : 0);
+    const onSchedule = session.tick % cfg.syncEveryMinutes === 0;
+    if (!session.first && !last && !onSchedule) return;
+    const dirty = state.pendingOps > 0;
     const elapsed = this.clock.t - state.settledAt;
-    const dueSettle = cfg.settleEveryMs === 0 || session.first || elapsed >= cfg.settleEveryMs;
+    const dueSettle = cfg.settleEveryMs === 0 || session.first || (cfg.settleOnLast && last) || elapsed >= cfg.settleEveryMs;
     if (cfg.syncOnlyIfDirty && !dirty && !dueSettle && !last) return;
     const before = this.db.calls;
     if (dirty) state.opSeq++;
+    state.pendingOps = 0;
     if (cfg.splitLayout) await this.db.get('layouts', player.cityId);
+    const known = cfg.knownCity && !session.first ? this.db.peek('cities', player.cityId) : null;
     await sync(this.db, {
       now: this.now,
       cityId: player.cityId,
@@ -259,6 +265,7 @@ class World {
       owner: `s${player.id}`,
       leaseless: cfg.leaseless,
       skipFinalRead: cfg.skipFinalRead,
+      known,
     });
     if (cfg.splitLayout && dirty) await this.db.update('layouts', player.cityId, () => true, () => {});
     if (dueSettle) {

@@ -1,0 +1,123 @@
+{
+  "assumptions": {
+    "retentionD1": 0.35,
+    "retentionD7": 0.15,
+    "retentionHorizonDays": 180,
+    "replaceAfterDays": 30,
+    "seedDays": 90,
+    "sessionMinutesMin": 4,
+    "sessionMinutesMax": 12,
+    "secondSessionChance": 0.6,
+    "thirdSessionChance": 0.2,
+    "newPlayerSessionMinutes": 10,
+    "hourlyShare": [
+      1,
+      0.6,
+      0.3,
+      0.2,
+      0.2,
+      0.3,
+      0.8,
+      1.5,
+      2,
+      2,
+      2,
+      2.2,
+      3.5,
+      3,
+      2.2,
+      2,
+      2,
+      2.5,
+      3.5,
+      5,
+      6,
+      6,
+      5,
+      2.5
+    ],
+    "linksPerCity": 3,
+    "neighbourLinkShare": 0.6,
+    "crossClusterLinkShare": 0.1,
+    "viaProbability": 0.5,
+    "syncWithOpsShare": 0.7,
+    "fnBaseMs": 60,
+    "dbCallMs": 12,
+    "fnMemoryGb": 0.25,
+    "layoutKb": 10,
+    "terrainKb": 0.6,
+    "ledgerKb": 1,
+    "routeKb": 0.3,
+    "assetPackMb": 12,
+    "assetFilesPerInstall": 20,
+    "assetStoredGb": 0.1,
+    "assetUpdatesPerMonth": 2,
+    "updatedPlayerShare": 0.3
+  },
+  "result": {
+    "variant": "trimmed",
+    "config": {
+      "settleEveryMs": 0,
+      "syncOnlyIfDirty": true,
+      "splitLayout": false,
+      "timerEveryMinutes": 5,
+      "timerActiveOnly": true,
+      "activeWindowMs": 3600000,
+      "timerLinksActiveOnly": false,
+      "leaseless": true,
+      "skipFinalRead": true
+    },
+    "targetDau": 1000,
+    "days": 30,
+    "measuredDau": 931,
+    "installsPerDay": 117,
+    "cities": 12323,
+    "clusters": 160,
+    "routes": 25576,
+    "calls": {
+      "fnPerMonth": 394865,
+      "dbPerMonth": 6602197,
+      "dbReadsPerMonth": 2010896,
+      "dbWritesPerMonth": 4591301,
+      "dbFromSyncPerMonth": 3421993,
+      "dbFromTimerPerMonth": 3132995,
+      "dbFromEnterPerMonth": 31590,
+      "dbFromRetirePerMonth": 15619,
+      "fnGbsPerMonth": 31619
+    },
+    "counts": {
+      "sync": 382715,
+      "settleOnSync": 382715,
+      "enter": 3510,
+      "timerInvocations": 8640,
+      "clusterSettles": 36045
+    },
+    "dbCallsPerSync": 8.9,
+    "dbCallsPerClusterSettle": 86.9,
+    "peak": {
+      "dbPerSecond": 84,
+      "fnPerSecond": 6,
+      "onlineSessions": 43
+    },
+    "planEnvQps": 500,
+    "storage": {
+      "dbGb": 0.45,
+      "avgBatchKb": 5.4
+    },
+    "billing": {
+      "items": {
+        "dbCalls": 132044,
+        "fnCalls": 525,
+        "fnGbs": 3512,
+        "dbCapacity": 541,
+        "assetStorage": 12,
+        "assetRequests": 70,
+        "cdn": 10114
+      },
+      "pointsPerMonth": 146819,
+      "yuanPerMonth": 126.72,
+      "fitsPlan": false
+    },
+    "wallSeconds": 256
+  }
+}
