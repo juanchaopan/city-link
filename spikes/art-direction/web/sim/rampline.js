@@ -4,11 +4,13 @@ import { ROAD_SPEC } from './network.js';
 // 车走的线（points）和路面中心线（center）不是一条：车在渐变段和平行车道的全长上慢慢横移，并进主线的车道。
 // 右行规则下主线永远在匝道左侧，所以路面的宽度分左右：l、r 是中心线到两侧路面边的距离，可以是负数；
 // sl、sr 是两侧路肩的宽度。接主线的一侧路肩为 0，路面盖住主线的边线和路肩，这就是开口。
+// 高度的单位是层，一层是 1/√6 格。ELEVATED 是桥面高度：上下匝道都在街区里完成，坡长决定了它不能更高。
 
-export const ELEVATED = 1.5;
+export const ELEVATED = 1.25;
 export const MAIN_LANE = 0.29;
 export const SIDE_LANE = 0.58;
 export const RAMP_STEP = 0.1;
+export const MAX_GRADE = 0.2;
 
 const HALF = ROAD_SPEC.ramp.deck / 2;
 const SHOULDER = (ROAD_SPEC.ramp.walk - ROAD_SPEC.ramp.deck) / 2;
@@ -17,11 +19,13 @@ const OPEN_EDGE = 0.36;
 const LEAVE = 0.6;
 const SHARE_MARGIN = 0.6;
 const PLAIN_SHARE = 1.5;
-const EASE = 0.25;
+const EASE = 0.14;
 const CURVE_REFERENCE = 2;
 const SLOPE_DROP = 0.8;
 const MIN_SPEED = 0.45;
 const SPEED_WINDOW = 3;
+const CELLS_PER_LEVEL = 1 / Math.sqrt(6);
+const GRADE_WINDOW = 0.5;
 
 const clamp = (t) => Math.max(0, Math.min(1, t));
 const smooth = (t) => {
@@ -85,7 +89,7 @@ export function stationsOf(points) {
   return along;
 }
 
-/** 中段匀速爬升，两头用抛物线接平，峰值坡度只比平均值高三分之一。 */
+/** 中段匀速爬升，两头用抛物线接平，峰值坡度比平均值高不到两成。 */
 export function ease(t) {
   const v = clamp(t);
   const peak = 2 * EASE * (1 - EASE);
@@ -94,11 +98,12 @@ export function ease(t) {
   return 1 - ((1 - v) * (1 - v)) / peak;
 }
 
-/** 给中心线配高度。stops 是 [里程, 高度]，里程是负数时从终点往回量。 */
-function graded(points, stops) {
+/** 给中心线配高度。grade 是 [里程, 高度] 的表，里程是负数时从终点往回量；也可以是 z 的函数，给要和主线同坡的匝道用。 */
+function graded(points, grade) {
+  if (typeof grade === 'function') return points.map(([x, z]) => [x, z, grade(z)]);
   const along = stationsOf(points);
   const total = along[along.length - 1];
-  const marks = stops.map(([s, h]) => [s < 0 ? total + s : s, h]);
+  const marks = grade.map(([s, h]) => [s < 0 ? total + s : s, h]);
   return points.map(([x, z], i) => {
     const s = along[i];
     if (s <= marks[0][0]) return [x, z, marks[0][1]];
@@ -109,6 +114,20 @@ function graded(points, stops) {
     }
     return [x, z, marks[marks.length - 1][1]];
   });
+}
+
+/** 一条线上半格窗口内的最大坡度，竖向距离除以水平距离。 */
+export function peakGrade(points) {
+  const along = stationsOf(points);
+  let peak = 0;
+  let j = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    while (j < points.length - 1 && along[j] - along[i] < GRADE_WINDOW) j += 1;
+    const run = along[j] - along[i];
+    if (run >= GRADE_WINDOW)
+      peak = Math.max(peak, (Math.abs(points[j][2] - points[i][2]) * CELLS_PER_LEVEL) / run);
+  }
+  return peak;
 }
 
 /** 接主线的一端：先是渐变段，路面从无到有；再是平行车道；离开时路面收回标准宽度，路肩才长出来。 */
@@ -185,7 +204,7 @@ export function laneSpeeds(points) {
     const turn = angleBetween(unit(points[a], points[m]), unit(points[m], points[c]));
     const reach = (along[c] - along[a]) / 2;
     const radius = turn < 1e-3 ? Infinity : reach / turn;
-    const slope = Math.abs(points[c][2] - points[a][2]) / Math.sqrt(6) / (along[c] - along[a]);
+    const slope = (Math.abs(points[c][2] - points[a][2]) * CELLS_PER_LEVEL) / (along[c] - along[a]);
     const curve = Math.min(1, Math.sqrt(radius / CURVE_REFERENCE));
     return Math.max(MIN_SPEED, curve * (1 - slope * SLOPE_DROP));
   });

@@ -1,5 +1,5 @@
 import { ROAD_SPEC } from './network.js';
-import { ELEVATED, MAIN_LANE, makeRamp, plainRamp, SIDE_LANE, stationsOf } from './rampline.js';
+import { ease, ELEVATED, MAIN_LANE, makeRamp, plainRamp, SIDE_LANE, stationsOf } from './rampline.js';
 import { SIDE_DIAMOND } from './sidediamond.js';
 
 // 立交的线形。坐标相对中心格的中心，x 向东，z 向南，高度的单位是层。
@@ -7,6 +7,7 @@ import { SIDE_DIAMOND } from './sidediamond.js';
 // 向南的车在快速路西侧，向东的车在高速南侧。
 // footprint 是占地，含匝道的外缘；ground 是从模板下面穿过的地面路，桥墩要避开；pads 是接地面路的平铺路面。
 // 不合流的两条路一定不在同一高度相交，合流和分流都发生在主线右侧的平行车道上。
+// 匝道的最大坡度由 MAX_GRADE 限定，高差 ELEVATED 至少要 3 格的坡长。
 
 const ARTERIAL_LANE = 0.25;
 const TEE_FOOT = 3.5;
@@ -14,12 +15,20 @@ const TEE_CELL_END = 4.49;
 const TEE_LOOP = 1.2;
 const TEE_STEM = 0.175;
 const TEE_TAPER = 0.89;
+const TEE_CLIMB = 3.05;
 const DIAMOND_STUB = 3;
 const DIAMOND_TAPER = 0.7;
 const DIAMOND_PARALLEL = 0.45;
 const SPUR_END = 2.5;
 const SPUR_HALF = 0.2;
 const SPUR_RADIUS = 1.4;
+const APPROACH_START = 1.8;
+const APPROACH_LENGTH = 3;
+
+/** 快速路头上引道的高度，z 从高速的中线量起。匝道和主线共用一条坡，车过了弯就开始爬，赶在第一条横街之前上到桥面。 */
+export function approachHeight(z) {
+  return ELEVATED * ease((z - APPROACH_START) / APPROACH_LENGTH);
+}
 
 /** 把折线的角磨圆，两端的点不动。 */
 function rounded(points, passes = 2) {
@@ -100,6 +109,7 @@ function cloverleafLoop(quarter) {
  * 丁字形：四车道到头接高速，没有快速路主线。四条匝道的一头在高速上，另一头在四车道的头上。
  * 右转的两条贴地；左转的两条并成一座双幅桥跨过高速，一条进喇叭环，一条绕到环外。
  * 四车道在桥头分成两幅，外侧车道顺着贴地匝道离开，内侧车道上桥。贴地匝道离开之前，桥头这一侧不画路肩。
+ * 桥头到高速只有 3.5 格，桥面的坡压满这段距离，过高速南边的路缘时已经高出一层。
  */
 function teeRamps() {
   const groundFoot = { l: 0.08, r: 0.08, sl: 0, sr: 0.08, blend: 1.2, hold: 0.6 };
@@ -156,7 +166,7 @@ function teeRamps() {
       grade: [
         [3.9, 0],
         [9.3, ELEVATED],
-        [11.95, ELEVATED],
+        [-TEE_CLIMB - 0.2, ELEVATED],
         [-0.2, 0],
       ],
       first: { main: { taper: TEE_TAPER, parallel: 2.9 } },
@@ -174,7 +184,7 @@ function teeRamps() {
       radii: [1.63, 1.63, 0.9],
       grade: [
         [0.2, 0],
-        [2.8, ELEVATED],
+        [TEE_CLIMB + 0.2, ELEVATED],
         [8.2, ELEVATED],
         [12.6, 0],
       ],
@@ -259,7 +269,7 @@ function spurRamps() {
         [-SPUR_HALF, SPUR_END],
       ],
       radii: [SPUR_RADIUS],
-      grade: [[0, 0]],
+      grade: approachHeight,
       first: { main },
       last: { foot },
     }),
@@ -271,7 +281,7 @@ function spurRamps() {
         [4.5, SIDE_LANE],
       ],
       radii: [SPUR_RADIUS],
-      grade: [[0, 0]],
+      grade: approachHeight,
       first: { foot },
       last: { main },
     }),
