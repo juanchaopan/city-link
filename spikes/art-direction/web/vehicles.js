@@ -4,16 +4,19 @@ import { screenOf } from './world.js';
 
 // 把车流和红绿灯画出来。模拟在 sim/fleet.js，这里只管粒子。
 // 地面的车画在物体层下面，所以楼能挡住身后的车；高架和匝道上的车画在物体层上面。
+// 精灵只有 8 个方向，运行时再旋转到路面走向，这样不用多烘焙精灵，上坡、下坡和弯道都对得上。
+// 精灵的锚点在车轮接地点，车身比它高，画面上看车偏向路的一侧，所以往下挪半个车身，车看起来走在车道中间。
 
 const LIGHTS = { green: 0x45e07a, yellow: 0xffc832, red: 0xff4438 };
 const HIGH_CAP = 120;
+export const BODY_DROP = 3;
 
 function pool(atlas, count, area) {
   const key = 'car-0-0';
   const frame = atlas.frames[key];
   const container = new ParticleContainer({
     texture: atlas.textures[key],
-    dynamicProperties: { position: true, rotation: false, uvs: true, vertex: true, color: true },
+    dynamicProperties: { position: true, rotation: true, uvs: true, vertex: true, color: true },
   });
   const free = [];
   for (let i = 0; i < count; i += 1) {
@@ -116,7 +119,8 @@ export function createVehicles(atlas, city, scene, { cap, full = false }) {
     body.anchorX = frame.ax / frame.w;
     body.anchorY = frame.ay / frame.h;
     body.x = sx;
-    body.y = sy;
+    body.y = sy + BODY_DROP;
+    body.rotation = car.tilt;
     body.alpha = 1;
     body.tint = tint;
     const glowKey = `${key}~g`;
@@ -126,7 +130,8 @@ export function createVehicles(atlas, city, scene, { cap, full = false }) {
       light.anchorX = lit.ax / lit.w;
       light.anchorY = lit.ay / lit.h;
       light.x = sx;
-      light.y = sy;
+      light.y = sy + BODY_DROP;
+      light.rotation = car.tilt;
       light.alpha = glow;
     } else hide(light);
   };

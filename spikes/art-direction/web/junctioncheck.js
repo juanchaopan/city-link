@@ -2,27 +2,31 @@ import { buildObject } from './kit/objects.js';
 import { palettes } from './kit/palettes.js';
 import { JUNCTION_CASES } from './junctioncases.js';
 import { CLASS, compose, MASK, readerOf, spriteOf, worldOf, worldOfCity } from './roadscene.js';
-import { footprintKey, generateCity, specKey } from './sim/city.js';
-import { createFleet } from './sim/fleet.js';
-import { crossingsOf, junctionLegs } from './sim/crossings.js';
-import { cellPaths, DIRECTIONS, ROAD_SPEC, spokesOf } from './sim/network.js';
+import { generateCity, specKey } from './sim/city.js';
+import { createFleet, roadAngle, spriteAngle, wrapAngle } from './sim/fleet.js';
+import { unitOf } from './sim/junctions.js';
+import { clearLots } from './sim/lotclear.js';
+import { cellPaths, ROAD_SPEC } from './sim/network.js';
 import { generateParcels, ZONE } from './sim/parcels.js';
+import { cornerHeight } from './sim/surface.js';
 import { computeTraffic } from './sim/traffic.js';
 
 // 路口验收：看成品。场景按游戏流程生成，路面按真实烘焙拼到一张遮罩上，灯杆、斑马线端点、车脚点和地块的地面轮廓
 // 都换算成屏幕像素，直接读那个像素属于哪一层，不靠几何推断。
 // 地块的地面轮廓是建筑模型里贴地的三角形（地台和铺装），楼身不算，高楼挡住后面的路是正常的。
+// 停车检查量的是车身：停够 IDLE 秒的车，车头、车中、车尾三点都不能落在斑马线或路口里。
 
 const CASE_SIZE = 16;
-const RUN_STEPS = 700;
-const SAMPLE_EVERY = 35;
+const RUN_STEPS = 900;
+const SAMPLE_EVERY = 30;
 const DT = 0.05;
 const GROUND_Y = 0.03;
 const GROUND_STEP = 0.05;
 const SLOPE_SAMPLE = 0.25;
 const MAX_HEADING = 8;
 const MAX_FACE_PIXELS = 4;
-const JUNCTION_REACH = 1.3;
+const CORE_MARGIN = 0.05;
+const IDLE = 1;
 
 /** 可重复的随机数，同一个场景每次跑的结果一样。 */
 function randomFrom(seed) {
@@ -37,31 +41,33 @@ function caseParcels(world) {
   const { N, roads } = world;
   const zones = new Uint8Array(N * N).fill(ZONE.commercial);
   const density = new Uint8Array(N * N).fill(1);
-  return generateParcels({ N, roads, water: new Set(), slopes: new Set(), zones, density, seed: 11 });
+  const reserved = new Set(world.rings.flatMap(({ cells }) => [...cells]));
+  const result = generateParcels({
+    N,
+    roads,
+    water: new Set(),
+    slopes: new Set(),
+    zones,
+    density,
+    seed: 11,
+    reserved,
+  });
+  clearLots(result.parcels, world.junctions.field);
+  return result;
 }
 
 function townOf(entry) {
   const world = worldOf({ N: CASE_SIZE, ...entry });
   const parcels = entry.lots ? caseParcels(world) : null;
   const objects = (parcels?.parcels ?? [])
-    .filter((parcel) => parcel.shape !== 'field')
-    .map((parcel) => ({
-      key: specKey(parcel),
-      px: parcel.px,
-      py: parcel.py,
-      level: 0,
-      footprintKey: footprintKey(parcel),
-    }));
+    .filter((parcel) => parcel.shape !== 'field' && parcel.use !== 'bare')
+    .map((parcel) => ({ key: specKey(parcel), px: parcel.px, py: parcel.py, level: 0 }));
   const traffic = computeTraffic([], world.roads, CASE_SIZE);
   return { ...world, objects, traffic, lanes: [] };
 }
 
 function townOfCity(city) {
   return { ...worldOfCity(city, false), objects: city.objects, traffic: city.traffic, lanes: [] };
-}
-
-function cellOf(point, N) {
-  return Math.floor(point[1]) * N + Math.floor(point[0]);
 }
 
 /** 灯杆底部要落在人行道或路缘上。落在车道上是最坏的情况，落到路外说明高度或位置错了。 */
@@ -78,57 +84,79 @@ function checkPoles(fleet, scene) {
   return result;
 }
 
-/** 逐条腿核对：每条腿一条斑马线，两端都在人行道上，中间是车道。少一条就算不通过。 */
+/** 逐条腿核对：每条腿一条斑马线，两端都在人行道上。少一条就算不通过，环岛的腿也一样。 */
 function checkCrossings(town, scene) {
-  const { crossings, interior } = crossingsOf(town);
-  const legs = junctionLegs(town);
+  const { legs } = town.junctions;
   const result = {
     legs: legs.length,
-    crossings: crossings.length,
+    crossings: 0,
     missingCrossings: 0,
     crossingEndsOff: 0,
-    interiorCrossings: interior,
+    interiorCrossings: 0,
     examples: [],
   };
-  const has = new Set(crossings.map(({ junction, dir }) => `${String(junction)}:${String(dir)}`));
-  for (const { junction, dir } of legs) {
-    if (has.has(`${String(junction)}:${String(dir)}`)) continue;
-    result.missingCrossings += 1;
-    if (result.examples.length < 4) result.examples.push(['缺斑马线', junction, dir]);
-  }
-  for (const { ends, level, junction, dir } of crossings) {
-    for (const [px, py] of ends) {
-      const [sx, sy] = scene.place.at(px, py, level);
+  for (const { crossing, node, dir } of legs) {
+    if (!crossing) {
+      result.missingCrossings += 1;
+      if (result.examples.length < 4) result.examples.push(['缺斑马线', node, dir]);
+      continue;
+    }
+    result.crossings += 1;
+    for (const [px, py] of crossing.ends) {
+      const [sx, sy] = scene.place.at(px, py, crossing.level);
       const found = scene.read(Math.round(sx), Math.round(sy));
       if (found === CLASS.walk || found === CLASS.curb) continue;
       result.crossingEndsOff += 1;
-      if (result.examples.length < 4) result.examples.push(['端点', junction, dir, px, py, found]);
+      if (result.examples.length < 4) result.examples.push(['端点', node, dir, px, py, found]);
     }
   }
   return result;
 }
 
-/** 红灯时停着的车：车身不能压进路口里的其他路，也不能压在斑马线上。 */
-function stoppedInJunction(car, town, bands) {
-  const { N, roads } = town;
-  const cell = cellOf([car.x, car.y], N);
-  for (const band of bands) {
-    if (Math.abs(band.x - car.x) > JUNCTION_REACH || Math.abs(band.y - car.y) > JUNCTION_REACH) continue;
-    if (Math.hypot(band.x - car.x, band.y - car.y) < band.reach) return true;
+/** 这一点在斑马线上，或者在路口中心到斑马线之间。 */
+function inJunction(x, y, legs, core) {
+  for (const leg of legs) {
+    if (!leg.crossing) continue;
+    const [ux, uy] = unitOf(leg.dir);
+    const dx = x - leg.x;
+    const dy = y - leg.y;
+    const along = dx * ux + dy * uy;
+    const side = Math.abs(-dx * uy + dy * ux);
+    if (
+      side < leg.crossing.half &&
+      along > leg.crossing.near - CORE_MARGIN &&
+      along < leg.crossing.far + CORE_MARGIN
+    )
+      return true;
   }
-  void cell;
-  void roads;
-  return false;
+  return core.some(([[cx, cy], reach]) => Math.hypot(x - cx, y - cy) < reach);
 }
 
-/** 让车流跑一段时间，抽样检查车脚点和停着的车。 */
+/** 每个路口的中心区：半径取这个路口最近的斑马线。 */
+function coreOf(legs) {
+  const reach = new Map();
+  for (const leg of legs) {
+    if (!leg.crossing) continue;
+    const key = `${String(leg.x)},${String(leg.y)}`;
+    const entry = reach.get(key) ?? [[leg.x, leg.y], Infinity];
+    entry[1] = Math.min(entry[1], leg.crossing.near);
+    reach.set(key, entry);
+  }
+  return [...reach.values()];
+}
+
+/** 让车流跑一段时间，抽样检查车脚点和红灯时停着的车。 */
 function checkCars(town, scene) {
   const fleet = createFleet(town, { cap: 80, full: true, random: randomFrom(7) });
-  const bands = junctionLegs(town).reduce((list, { x, y, core }) => {
-    list.push({ x, y, reach: core });
-    return list;
-  }, []);
-  const result = { carSamples: 0, carsOffRoad: 0, stoppedSamples: 0, stoppedInJunction: 0, examples: [] };
+  const { legs } = town.junctions;
+  const core = coreOf(legs);
+  const result = {
+    carSamples: 0,
+    carsOffRoad: 0,
+    stoppedSamples: 0,
+    stoppedInJunction: 0,
+    examples: [],
+  };
   for (let i = 0; i < RUN_STEPS; i += 1) {
     fleet.step(DT);
     if (i % SAMPLE_EVERY !== SAMPLE_EVERY - 1) continue;
@@ -141,12 +169,17 @@ function checkCars(town, scene) {
         result.carsOffRoad += 1;
         if (result.examples.length < 4) result.examples.push(['车脚', car.x, car.y, car.h, found]);
       }
-      if (car.waiting ?? car.speed < 0.02) {
-        result.stoppedSamples += 1;
-        if (stoppedInJunction(car, town, bands)) {
-          result.stoppedInJunction += 1;
-          if (result.examples.length < 4) result.examples.push(['停车', car.x, car.y]);
-        }
+      if (car.idle < IDLE) continue;
+      result.stoppedSamples += 1;
+      const half = fleet.lengthOf(car) / 2;
+      const angle = roadAngle(car.path, car.s);
+      const dx = Math.cos(angle) / 64 / 2 + Math.sin(angle) / 32 / 2;
+      const dy = Math.sin(angle) / 32 / 2 - Math.cos(angle) / 64 / 2;
+      const scale = half / Math.hypot(dx, dy);
+      const body = [-1, 0, 1].map((d) => [car.x + dx * scale * d, car.y + dy * scale * d]);
+      if (body.some(([x, y]) => inJunction(x, y, legs, core))) {
+        result.stoppedInJunction += 1;
+        if (result.examples.length < 4) result.examples.push(['停车', car.x, car.y, car.bus]);
       }
     }
   }
@@ -161,16 +194,26 @@ function groundSamples(key) {
     const { positions } = buildObject(key, palettes.sunny);
     const samples = [];
     for (let i = 0; i < positions.length; i += 9) {
-      const points = [0, 3, 6].map((k) => [positions[i + k], positions[i + k + 1], positions[i + k + 2]]);
+      const points = [0, 3, 6].map((k) => [
+        positions[i + k],
+        positions[i + k + 1],
+        positions[i + k + 2],
+      ]);
       if (points.some(([, y]) => y > GROUND_Y)) continue;
       const [a, b, c] = points;
-      const longest = Math.max(Math.hypot(b[0] - a[0], b[2] - a[2]), Math.hypot(c[0] - a[0], c[2] - a[2]));
+      const longest = Math.max(
+        Math.hypot(b[0] - a[0], b[2] - a[2]),
+        Math.hypot(c[0] - a[0], c[2] - a[2]),
+      );
       const steps = Math.max(1, Math.ceil(longest / GROUND_STEP));
       for (let u = 0; u <= steps; u += 1) {
         for (let v = 0; v <= steps - u; v += 1) {
           const s = u / steps;
           const t = v / steps;
-          samples.push([a[0] + (b[0] - a[0]) * s + (c[0] - a[0]) * t, a[2] + (b[2] - a[2]) * s + (c[2] - a[2]) * t]);
+          samples.push([
+            a[0] + (b[0] - a[0]) * s + (c[0] - a[0]) * t,
+            a[2] + (b[2] - a[2]) * s + (c[2] - a[2]) * t,
+          ]);
         }
       }
     }
@@ -203,29 +246,30 @@ function checkLots(town, scene) {
 
 /** 坡路的路面边缘到地面的高差，单位是屏幕像素。路贴在地上时这个数很小，腾空时就是一道看得见的竖面。 */
 function checkHang(town) {
-  const { N, sprites, cornersOf, levelOf } = town;
+  const { N, sprites, cornersOf, surface } = town;
+  const groundAt = (px, py) => {
+    const x = Math.floor(px);
+    const y = Math.floor(py);
+    return cornerHeight(cornersOf(x, y), px - x, py - y);
+  };
   const result = { slopeCells: sprites.grades.size, worstHang: 0, hangingEdges: 0 };
-  const planeAt = ([a, b, c, d], u, v) => a * (1 - u) * (1 - v) + b * u * (1 - v) + c * u * v + d * (1 - u) * v;
-  for (const [id, grade] of sprites.grades) {
+  for (const id of sprites.grades.keys()) {
+    const entry = sprites.cells.get(id);
+    if (!entry) continue;
     const x = id % N;
     const y = Math.floor(id / N);
-    const { road, highway, arterial } = sprites.cells.get(id);
-    const [path] = cellPaths(road, highway, arterial);
+    const [path] = cellPaths(entry.road, entry.highway, entry.arterial);
     const [a, c] = [path.points[0], path.points[path.points.length - 1]];
     const length = Math.hypot(c[0] - a[0], c[1] - a[1]);
     const nx = -(c[1] - a[1]) / length;
     const nz = (c[0] - a[0]) / length;
     const half = ROAD_SPEC[path.kind].walk / 2 + 0.04;
-    const corners = cornersOf(x, y);
     for (let t = 0; t <= 1; t += SLOPE_SAMPLE) {
-      const [h0, h1, m0, m1] = grade;
-      const t2 = t * t;
-      const t3 = t2 * t;
-      const deck = levelOf(x, y) + (2 * t3 - 3 * t2 + 1) * h0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * h1 + (t3 - t2) * m1;
+      const px = x + 0.5 + a[0] + (c[0] - a[0]) * t;
+      const py = y + 0.5 + a[1] + (c[1] - a[1]) * t;
+      const deck = surface(px, py);
       for (const side of [1, -1]) {
-        const u = a[0] + (c[0] - a[0]) * t + nx * side * half + 0.5;
-        const v = a[1] + (c[1] - a[1]) * t + nz * side * half + 0.5;
-        const gap = Math.abs(deck - planeAt(corners, u, v)) * 32;
+        const gap = Math.abs(deck - groundAt(px + nx * side * half, py + nz * side * half)) * 32;
         result.worstHang = Math.max(result.worstHang, gap);
         if (gap > MAX_FACE_PIXELS) result.hangingEdges += 1;
       }
@@ -235,30 +279,6 @@ function checkHang(town) {
   return result;
 }
 
-function screenVector(dx, dy, dh) {
-  return [(dx - dy) * 64, (dx + dy) * 32 - dh * 32];
-}
-
-function tangentOf(car) {
-  const { points, along } = car.path;
-  let i = 0;
-  while (i < points.length - 2 && along[i + 1] < car.s) i += 1;
-  return [points[i + 1][0] - points[i][0], points[i + 1][1] - points[i][1], points[i + 1][2] - points[i][2]];
-}
-
-/** 车身精灵在屏幕上的朝向和路面切线的夹角，度。 */
-function headingError(car) {
-  const angle = (car.rotation * Math.PI) / 4;
-  const [ax, ay] = screenVector(Math.cos(angle), -Math.sin(angle), 0);
-  const [dx, dy, dh] = tangentOf(car);
-  const [bx, by] = screenVector(dx, dy, dh);
-  const body = Math.atan2(ay, ax) + (car.tilt ?? 0);
-  const road = Math.atan2(by, bx);
-  let difference = Math.abs(road - body) % (Math.PI * 2);
-  if (difference > Math.PI) difference = Math.PI * 2 - difference;
-  return (difference * 180) / Math.PI;
-}
-
 function checkHeading(town) {
   const fleet = createFleet(town, { cap: 80, full: true, random: randomFrom(9) });
   const result = { headingSamples: 0, headingOff: 0, worstHeading: 0 };
@@ -266,8 +286,10 @@ function checkHeading(town) {
     fleet.step(DT);
     if (i % SAMPLE_EVERY !== SAMPLE_EVERY - 1) continue;
     for (const car of fleet.cars) {
-      if (car.x === undefined || car.speed < 0.02 || !car.path) continue;
-      const error = headingError(car);
+      if (car.x === undefined || car.speed < 0.02) continue;
+      const body = spriteAngle(car.rotation) + car.tilt;
+      const road = roadAngle(car.path, Math.min(car.s, car.path.length));
+      const error = (Math.abs(wrapAngle(road - body)) * 180) / Math.PI;
       result.headingSamples += 1;
       result.worstHeading = Math.max(result.worstHeading, error);
       if (error > MAX_HEADING) result.headingOff += 1;
@@ -291,6 +313,7 @@ function inspect(town) {
     checkHeading(town),
   ];
   const row = Object.assign({}, ...parts);
+  row.rings = town.rings.length;
   row.examples = parts.flatMap((part) => part.examples ?? []).slice(0, 8);
   return row;
 }
@@ -315,18 +338,22 @@ window.runJunctionChecks = (withCity = true) => {
   return { rows, failures: FAILURES };
 };
 
-/** 真实配色的成品：地面、路面、物业、灯杆和车，从下往上画。 */
+/** 真实配色的成品：地面、路面、标记、物业、灯杆和车，从下往上画。 */
 function renderTown(town) {
   const { canvas, context, place } = compose(town, palettes.sunny, 'current', { withGround: true });
-  const stamp = (key, px, py, level) => {
+  const stamp = (key, px, py, level, rotation = 0) => {
     const sprite = spriteOf(key, palettes.sunny);
     const [sx, sy] = place.at(px, py, level);
-    context.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - sprite.ay));
+    context.save();
+    context.translate(Math.round(sx), Math.round(sy));
+    context.rotate(rotation);
+    context.drawImage(sprite.canvas, -sprite.ax, -sprite.ay);
+    context.restore();
   };
-  for (const { key, x, y, level } of town.marks ?? []) stamp(key, x + 0.5, y + 0.5, level);
+  for (const { key, x, y, level } of town.marks) stamp(key, x + 0.5, y + 0.5, level);
   const fleet = createFleet(town, { cap: 40, full: true, random: randomFrom(5) });
-  for (let i = 0; i < 400; i += 1) fleet.step(DT);
-  const objects = town.objects.map(({ key, px, py, level }) => ({ key, px, py, level }));
+  for (let i = 0; i < 500; i += 1) fleet.step(DT);
+  const objects = town.objects.map(({ key, px, py, level }) => ({ key, px, py, level, tilt: 0 }));
   const cars = fleet.cars
     .filter((car) => car.x !== undefined)
     .map((car) => ({
@@ -334,10 +361,11 @@ function renderTown(town) {
       px: car.x,
       py: car.y,
       level: car.h,
+      tilt: car.tilt,
     }));
-  const poles = fleet.signals.map(({ px, py, level }) => ({ key: 'pole', px, py, level }));
-  for (const { key, px, py, level } of [...cars, ...poles, ...objects].sort((a, b) => a.px + a.py - b.px - b.py))
-    stamp(key, px, py, level);
+  const poles = fleet.signals.map(({ px, py, level }) => ({ key: 'pole', px, py, level, tilt: 0 }));
+  const items = [...cars, ...poles, ...objects].sort((a, b) => a.px + a.py - b.px - b.py);
+  for (const { key, px, py, level, tilt } of items) stamp(key, px, py, level, tilt);
   return { canvas, place };
 }
 
@@ -356,7 +384,17 @@ window.renderJunctionSheet = (rows) => {
     const [sx, sy] = place.at(entry.focus[0] + 0.5, entry.focus[1] + 0.5, 0);
     const dx = 12 + (index % columns) * (cropW + 12);
     const dy = 12 + Math.floor(index / columns) * (cropH + labelH + 12);
-    context.drawImage(canvas, sx - cropW / 2, sy - cropH / 2, cropW, cropH, dx, dy + labelH, cropW, cropH);
+    context.drawImage(
+      canvas,
+      sx - cropW / 2,
+      sy - cropH / 2,
+      cropW,
+      cropH,
+      dx,
+      dy + labelH,
+      cropW,
+      cropH,
+    );
     const row = rows.find((item) => item.name === entry.name);
     context.fillStyle = row?.pass ? '#7fe0a0' : '#ff8a70';
     context.font = '700 26px "Microsoft YaHei"';
@@ -372,6 +410,4 @@ window.renderJunctionSheet = (rows) => {
   );
 };
 
-void DIRECTIONS;
-void spokesOf;
 window.junctionReady = true;

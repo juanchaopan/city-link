@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { linear } from './builder.js';
 import { ROAD_SPEC } from '../sim/network.js';
+import { junctionRays } from '../sim/roadfield.js';
 
 // 路面用距离场在片元里画。一格路的精灵会盖到邻格，所以拼接要靠下面三条规则，而不是靠相邻格碰巧对齐：
 // 1. 路面分三层绘制，全图的人行道、路缘、车道各画一遍。后画的层永远盖住先画的层，
@@ -8,11 +9,15 @@ import { ROAD_SPEC } from '../sim/network.js';
 // 2. 裁剪按整条路做，不按线段做。否则弯道折线中间的端点会带着圆头越过格子边界。
 // 3. 路口的圆角来自各方向沿直线延长后的平滑并集，只取比直路多出来的部分，垫在夹角里。
 //    对向的两个方向算一条直线，直通的一侧不会鼓包。
+// 斑马线和停车线不在这里，它们是单独一层精灵，位置由 sim/junctions.js 算好。
+// 环岛的环路是一个圆环的距离，和进口做平滑并集，进出口自然带圆角。
 
 export const MAX_SEGMENTS = 32;
 const MAX_RAYS = 8;
 const RAY_LENGTH = 1.5;
 const CLIP_OVERLAP = 0.016;
+const RING_ROUND = 0.3;
+const RING_MARK_LIMIT = 2.05;
 
 export const LAYER = { walk: 0, curb: 1, deck: 2, both: 3 };
 
@@ -30,6 +35,7 @@ const HEADER = `
   uniform vec4 uClipB[MAX_SEGMENTS];
   uniform vec4 uRay[MAX_RAYS];
   uniform float uRayBack[MAX_RAYS];
+  uniform vec3 uRing;
   uniform int uCount;
   uniform int uRayCount;
   uniform int uLayer;
@@ -89,6 +95,12 @@ const BODY = `
     roundWalk = smin(roundWalk, d - uRay[i].z, 0.24);
     roundDeck = smin(roundDeck, d - uRay[i].w, 0.36);
   }
+  bool ringed = uRing.x > 0.0;
+  if (ringed) {
+    float around = abs(length(p) - uRing.x);
+    walk = smin(walk, around - uRing.y, ${RING_ROUND.toFixed(2)});
+    deck = smin(deck, around - uRing.z, ${RING_ROUND.toFixed(2)});
+  }
   bool padWalk = uRayCount > 1 && roundWalk < 0.0 && rawWalk > 0.0;
   bool padDeck = uRayCount > 1 && roundDeck < 0.0 && rawDeck > 0.0;
   bool inWalk = walk < 0.0 || padWalk;
@@ -105,15 +117,17 @@ const BODY = `
   float marking = best >= 0 ? uWidths[best].w : 0.0;
   vec3 color = mix(uWalk, uShoulder, highway);
   if (uLayer == 1 || (uLayer == 3 && inCurb)) color = uCurb;
+  bool ringMarks = !ringed || length(p) > ${RING_MARK_LIMIT.toFixed(2)};
   if (uLayer >= 2 && inDeck) {
     color = mix(uAsphalt, uHighway, highway);
-    if (deck < 0.0 && !padDeck && best >= 0 && marking < 1.5) {
+    if (deck < 0.0 && !padDeck && best >= 0 && marking < 1.5 && ringMarks) {
       float pathLength = uPath[best].y;
       float crossAt = uPath[best].z;
       float halfDeck = uWidths[best].y;
       float period = pathLength / max(1.0, floor(pathLength / 0.25 + 0.5));
       float dash = abs(fract(bestU / period + 0.5) - 0.5) * period;
       bool junction = uRayCount > 1;
+      bool marked = !junction || (crossAt > 0.0 && bestU > crossAt + 0.15);
       if (highway > 0.5) {
         if (!junction || bestU > 0.5) {
           if (abs(bestV) < 0.026) color = uMedian;
@@ -121,19 +135,9 @@ const BODY = `
           else if (abs(abs(bestV) - 0.37) < 0.006) color = uLine;
         }
       } else if (marking > 0.5) {
-        bool marked = !junction || (crossAt > 0.0 && bestU > crossAt + 0.15);
         if (marked && abs(abs(bestV) - 0.016) < 0.006) color = uLine;
         else if (marked && abs(abs(bestV) - halfDeck * 0.52) < 0.006 && dash < period * 0.27) color = uLine;
-        if (junction && crossAt > 0.0 && crossAt < 0.39 && bestU > crossAt && bestU < crossAt + 0.09 && abs(bestV) < halfDeck - 0.03) {
-          if (fract((bestV + 10.0) / 0.074) < 0.5) color = uLine;
-        }
-      } else {
-        bool marked = !junction || (crossAt > 0.0 && bestU > crossAt + 0.15);
-        if (marked && abs(bestV) < 0.007 && dash < period * 0.27) color = uLine;
-        if (junction && crossAt > 0.0 && crossAt < 0.39 && bestU > crossAt && bestU < crossAt + 0.09 && abs(bestV) < halfDeck - 0.03) {
-          if (fract((bestV + 10.0) / 0.074) < 0.5) color = uLine;
-        }
-      }
+      } else if (marked && abs(bestV) < 0.007 && dash < period * 0.27) color = uLine;
     }
   }
   diffuseColor.rgb = color;
@@ -149,29 +153,7 @@ const unit = (a, b) => {
 
 const blank = () => new THREE.Vector4(0, 0, 0, 0);
 
-/** 路口各方向的延长线。对向且同宽的两个方向合成一条穿过中心的直线。一条路切成的几段不是路口，没有延长线。 */
-function junctionRays(paths) {
-  if (paths.length < 2 || paths[0].chained) return [];
-  const rays = paths.map((entry) => {
-    const spec = ROAD_SPEC[entry.kind];
-    const [dx, dz] = unit([0, 0], entry.points[entry.points.length - 1]);
-    return { dx, dz, walk: spec.walk / 2, deck: spec.deck / 2, back: 0, merged: false };
-  });
-  rays.forEach((ray, i) => {
-    if (ray.merged) return;
-    for (let j = i + 1; j < rays.length; j += 1) {
-      const other = rays[j];
-      const opposite = Math.hypot(ray.dx + other.dx, ray.dz + other.dz) < 1e-6;
-      if (!other.merged && opposite && other.walk === ray.walk) {
-        ray.back = RAY_LENGTH;
-        other.merged = true;
-      }
-    }
-  });
-  return rays.filter((ray) => !ray.merged);
-}
-
-function uniformsFor(paths, P, layer) {
+function uniformsFor(paths, P, layer, ring) {
   const segment = [];
   const widths = [];
   const path = [];
@@ -246,6 +228,9 @@ function uniformsFor(paths, P, layer) {
     uClipB: { value: clipB },
     uRay: { value: rayData },
     uRayBack: { value: rayBack },
+    uRing: {
+      value: ring ? new THREE.Vector3(ring.radius, ring.walk, ring.deck) : new THREE.Vector3(),
+    },
     uCount: { value: count },
     uRayCount: { value: rays.length },
     uLayer: { value: layer },
@@ -259,9 +244,9 @@ function uniformsFor(paths, P, layer) {
   };
 }
 
-function roadMaterial(paths, P, layer) {
+function roadMaterial(paths, P, layer, ring) {
   const material = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
-  const uniforms = uniformsFor(paths, P, layer);
+  const uniforms = uniformsFor(paths, P, layer, ring);
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
@@ -276,7 +261,7 @@ function roadMaterial(paths, P, layer) {
 }
 
 /** 路面网格。平地是一块平板；坡上按 deckHeight 起伏，路面横向保持水平。 */
-export function roadMesh(paths, P, deckHeight, layer, span = 3.6, resolution = 120) {
+export function roadMesh(paths, P, deckHeight, layer, span = 3.6, resolution = 120, ring = null) {
   const steps = deckHeight ? resolution : 1;
   const geometry = new THREE.PlaneGeometry(span, span, steps, steps);
   geometry.rotateX(-Math.PI / 2);
@@ -287,7 +272,7 @@ export function roadMesh(paths, P, deckHeight, layer, span = 3.6, resolution = 1
     }
     geometry.computeVertexNormals();
   }
-  const mesh = new THREE.Mesh(geometry, roadMaterial(paths, P, layer));
+  const mesh = new THREE.Mesh(geometry, roadMaterial(paths, P, layer, ring));
   mesh.frustumCulled = false;
   return mesh;
 }

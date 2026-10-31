@@ -1,23 +1,43 @@
-import { DIRECTIONS, ROAD_SPEC, spokesOf } from './network.js';
+import { lightAt } from './junctions.js';
+import { DIRECTIONS, spokesOf } from './network.js';
+import { RING } from './roundabout.js';
 
 // 车流和红绿灯的模拟。这是纯视觉层：只读路段的负载比，不写任何东西，经济和拥堵的结算完全不知道它的存在。
 // 这里不依赖图形库，所以检查脚本可以不开画面直接跑；画车是 web/vehicles.js 的事。
 // 车只在视野内生成，出了视野就回收；路段负载越高，这一段该有的车越多，总数不超过 cap。
 // full 为真时不看负载，视野里一直保持 cap 辆车，测帧率时才真的是这么多车。
+//
+// 车走的每一点高度都取路面实际高度，坡上、高地和桥上都贴路。
+// 车身方向：heading 是车身在屏幕上的角度，跟着路面走向平滑变化，平滑量按走过的距离算，所以快慢车都一样；
+// 精灵选最接近 heading 的那张，差的角度由运行时旋转补上，上坡车头抬起，弯道也跟着路，换精灵时车身不跳。
+//
+// 过路口：车按车身长度停在停车线后面。放行要同时满足绿灯和出口放得下自己，否则绿灯也不进，所以不会堵在路口里。
+// 过了停车线的车一路开走，全红时间按最长的通过路线算好，够它们清空。
+//
+// 环岛：车在斑马线外的让行线前看环上有没有车过来，没有才进；进环后逆时针绕到选定的出口。
 
-const CYCLE_GREEN = 5.5;
-const CYCLE_YELLOW = 1;
-const CYCLE_RED = 0.8;
-const PHASE = CYCLE_GREEN + CYCLE_YELLOW + CYCLE_RED;
 const SPEED = { road: 1.1, arterial: 1.5, highway: 2.2, express: 2.2, ramp: 1.4 };
 const LANE_OFFSET = { road: 0.115, arterial: 0.17, highway: 0.2, express: 0.2, ramp: 0 };
-const GAP = 0.3;
+export const BUS_LENGTH = 0.36;
+export const CAR_LENGTH = 0.2;
+const CLEARANCE = 0.08;
+const STOP_MARGIN = 0.02;
 const RAMP_CHANCE = 0.35;
-const TURNS = 6;
+const TURNS = 10;
 const VIEW_MARGIN = 240;
 const TILE_HALF_W = 64;
 const TILE_HALF_H = 32;
 const LEVEL_PIXELS = 32;
+const SLOW = 0.4;
+const STRAIGHT_WEIGHT = 2.5;
+const HEADING_REACH = 0.03;
+const CHORD = 0.04;
+const LANE_STEPS = 6;
+const RING_ENTRY = 0.34;
+const RING_WATCH = 1.1;
+const RING_STEPS = 24;
+const RING_APRON = 1.62;
+const SPAWN_GAP = 0.5;
 
 function unitDirection(dir) {
   const [dx, dy] = DIRECTIONS[dir];
@@ -46,13 +66,15 @@ function cellLane(x, y, from, to, kind) {
   const reachTo = Math.hypot(...DIRECTIONS[to]) / 2;
   const start = [cx + fx * reachFrom + fy * offset, cy + fy * reachFrom - fx * offset];
   const end = [cx + tx * reachTo - ty * offset, cy + ty * reachTo + tx * offset];
-  if (Math.abs(fx * tx + fy * ty + 1) < 1e-6)
-    return [
-      [...start, 0],
-      [...end, 0],
-    ];
-  const control = [cx + (fy - ty) * offset, cy + (tx - fx) * offset];
   const points = [];
+  if (Math.abs(fx * tx + fy * ty + 1) < 1e-6) {
+    for (let i = 0; i <= LANE_STEPS; i += 1) {
+      const t = i / LANE_STEPS;
+      points.push([start[0] + (end[0] - start[0]) * t, start[1] + (end[1] - start[1]) * t]);
+    }
+    return points;
+  }
+  const control = [cx + (fy - ty) * offset, cy + (tx - fx) * offset];
   for (let i = 0; i <= TURNS; i += 1) {
     const t = i / TURNS;
     const a = (1 - t) * (1 - t);
@@ -61,7 +83,6 @@ function cellLane(x, y, from, to, kind) {
     points.push([
       a * start[0] + b * control[0] + c * end[0],
       a * start[1] + b * control[1] + c * end[1],
-      0,
     ]);
   }
   return points;
@@ -77,7 +98,7 @@ function measured(points) {
   return { points, along, length: along[along.length - 1] };
 }
 
-function pointAt(path, s) {
+export function pointAt(path, s) {
   const { points, along } = path;
   let i = 0;
   while (i < points.length - 2 && along[i + 1] < s) i += 1;
@@ -89,16 +110,42 @@ function pointAt(path, s) {
     x: ax + (bx - ax) * t,
     y: ay + (by - ay) * t,
     h: ah + (bh - ah) * t,
-    hx: bx - ax,
-    hy: by - ay,
     index: i,
   };
 }
 
-/** 车身朝向的八个方向。精灵的第 r 张朝向是局部 +x 旋转 r×45°，屏幕上 y 向下。 */
-function rotationOf(hx, hy) {
-  const angle = Math.atan2(-hy, hx);
-  return ((Math.round(angle / (Math.PI / 4)) % 8) + 8) % 8;
+/** 一个地面方向在屏幕上的角度。 */
+function screenAngle(dx, dy, dh) {
+  return Math.atan2((dx + dy) * TILE_HALF_H - dh * LEVEL_PIXELS, (dx - dy) * TILE_HALF_W);
+}
+
+/** 路面在这一点的屏幕走向，用前后一小段的弦算，折线的拐点上不会跳。 */
+export function roadAngle(path, s) {
+  const a = pointAt(path, Math.max(0, s - CHORD));
+  const b = pointAt(path, Math.min(path.length, s + CHORD));
+  return screenAngle(b.x - a.x, b.y - a.y, b.h - a.h);
+}
+
+/** 第 r 张精灵的车头在屏幕上的角度。 */
+export function spriteAngle(rotation) {
+  const angle = (rotation * Math.PI) / 4;
+  return screenAngle(Math.cos(angle), -Math.sin(angle), 0);
+}
+
+export const wrapAngle = (value) => Math.atan2(Math.sin(value), Math.cos(value));
+
+/** 屏幕上最接近这个角度的精灵。 */
+function nearestSprite(heading) {
+  let best = 0;
+  let gap = Infinity;
+  for (let rotation = 0; rotation < 8; rotation += 1) {
+    const difference = Math.abs(wrapAngle(heading - spriteAngle(rotation)));
+    if (difference < gap) {
+      gap = difference;
+      best = rotation;
+    }
+  }
+  return best;
 }
 
 /** 八个方向里最接近车尾朝向的一个，车从匝道下来进入路网时，就算是从这一边进的格子。 */
@@ -116,8 +163,41 @@ function backwardDirection(hx, hy) {
   return from;
 }
 
+/** 一条环岛通过路线：进口直行，切入环路，逆时针绕到出口，再切出去。车逆时针，所以角度一路减小。 */
+function ringRoute(ring, entry, exit, surface) {
+  const { cx, cy } = ring;
+  const lane = (arm, side, station) => {
+    const value = LANE_OFFSET[arm.kind] * side;
+    return [cx + arm.ux * station - arm.uy * value, cy + arm.uy * station + arm.ux * value];
+  };
+  const start = entry.angle - RING_ENTRY;
+  let end = exit.angle + RING_ENTRY;
+  while (end >= start - 0.2) end -= Math.PI * 2;
+  const on = (angle) => [cx + Math.cos(angle) * RING, cy + Math.sin(angle) * RING];
+  const points = [
+    lane(entry, -1, entry.reach),
+    lane(entry, -1, entry.leg.stopLine.station),
+    lane(entry, -1, RING_APRON),
+    on(start + 0.05),
+  ];
+  const steps = Math.max(RING_STEPS, Math.ceil(((start - end) / Math.PI) * RING_STEPS));
+  for (let i = 0; i <= steps; i += 1) points.push(on(start + ((end - start) * i) / steps));
+  points.push(lane(exit, 1, RING_APRON), lane(exit, 1, exit.reach));
+  const path = measured(points.map(([x, y]) => [x, y, surface(x, y)]));
+  return {
+    path,
+    start,
+    end,
+    yieldAt: path.along[1],
+    enter: path.along[3],
+    leave: path.along[path.along.length - 3],
+  };
+}
+
 export function createFleet(city, { cap, full = false, highCap = 120, random = Math.random }) {
-  const { N, roads, lanes = [] } = city;
+  const { N, roads, surface, lanes = [] } = city;
+  const { clusters = [], stops = new Map() } = city.junctions ?? {};
+  const rings = city.rings ?? [];
   const load = new Map();
   for (const edge of city.traffic.edges) {
     load.set(`${String(edge.from)}:${String(edge.to)}`, edge.ratio);
@@ -132,43 +212,16 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     if (!lanesFrom.has(lane.fromCell)) lanesFrom.set(lane.fromCell, []);
     lanesFrom.get(lane.fromCell).push(lane);
   }
+  const clusterCells = new Set(clusters.flatMap(({ cells }) => [...cells]));
+  const stopCells = new Set([...stops.values()].map(({ cell }) => cell));
+  const ringOfCell = new Map();
+  for (const ring of rings) for (const cell of ring.cells) ringOfCell.set(cell, ring);
 
-  const junctions = new Map();
-  for (const [id, entry] of roads) {
-    if (entry.highway) continue;
-    const spokes = spokesOf(entry.road);
-    if (spokes.length < 3) continue;
-    const axes = [...new Set(spokes.map((dir) => dir % 4))];
-    junctions.set(id, { axes, offset: (id * 37) % 11 });
-  }
-
-  const phaseOf = (junction, axis, time) => {
-    const count = junction.axes.length;
-    const position = (time + junction.offset) % (PHASE * count);
-    const index = Math.floor(position / PHASE);
-    if (junction.axes[index] !== axis) return 'red';
-    const local = position - index * PHASE;
-    if (local < CYCLE_GREEN) return 'green';
-    return local < CYCLE_GREEN + CYCLE_YELLOW ? 'yellow' : 'red';
-  };
-
-  const signals = [];
-  for (const [id, junction] of junctions) {
-    const x = id % N;
-    const y = Math.floor(id / N);
-    const entry = roads.get(id);
-    for (const dir of spokesOf(entry.road)) {
-      const [dx, dy] = unitDirection(dir);
-      const half = ROAD_SPEC[kindOf(entry, dir)].walk / 2 - 0.03;
-      signals.push({
-        px: x + 0.5 + dx * 0.46 + dy * half,
-        py: y + 0.5 + dy * 0.46 - dx * half,
-        level: 0,
-        junction,
-        axis: dir % 4,
-      });
-    }
-  }
+  const signals = clusters.flatMap(({ legs, signal }) =>
+    legs
+      .filter((leg) => leg.pole)
+      .map((leg) => ({ ...leg.pole, signal, phase: legs.indexOf(leg) })),
+  );
 
   let time = 0;
   let viewBox = { left: -1e6, right: 1e6, top: -1e6, bottom: 1e6 };
@@ -176,19 +229,60 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
   let visibleLanes = [];
   let wanted = 0;
   let refreshIn = 0;
+  let groups = new Map();
   const cars = [];
   const removed = [];
   const countHigh = () => cars.reduce((sum, car) => sum + (car.high ? 1 : 0), 0);
 
+  const lengthOf = (car) => (car.bus ? BUS_LENGTH : CAR_LENGTH);
+
+  const weighted = (items, weightOf) => {
+    const weights = items.map(weightOf);
+    const total = weights.reduce((a, b) => a + b, 0);
+    if (total <= 0) return null;
+    let roll = random() * total;
+    for (let i = 0; i < items.length; i += 1) {
+      roll -= weights[i];
+      if (roll <= 0) return items[i];
+    }
+    return items[items.length - 1];
+  };
+
+  const enterRing = (car, ring, arm) => {
+    const exit = weighted(
+      ring.arms.filter((other) => other !== arm && roads.has(other.outside)),
+      () => 1,
+    );
+    if (!exit) return false;
+    car.mode = 'ring';
+    car.ring = ring;
+    car.exit = exit;
+    car.trip = ringRoute(ring, arm, exit, surface);
+    car.path = car.trip.path;
+    car.cleared = false;
+    car.stop = null;
+    car.s = 0;
+    car.kind = 'road';
+    car.key = `${String(ring.id)}:${String(arm.dir)}`;
+    return true;
+  };
+
   const enterCell = (car, cell, from) => {
+    const ring = ringOfCell.get(cell);
+    if (ring) {
+      const arm = ring.arms.find(({ gate }) => gate === cell);
+      return arm ? enterRing(car, ring, arm) : false;
+    }
     const entry = roads.get(cell);
     const x = cell % N;
     const y = Math.floor(cell / N);
     const spokes = spokesOf(entry.road | entry.highway).filter((dir) => dir !== from);
     const heading = unitDirection((from + 4) % 8);
     const ramps = lanesFrom.get(cell)?.filter((lane) => {
-      const { hx, hy } = pointAt(lane.path, 0);
-      return (hx * heading[0] + hy * heading[1]) / Math.hypot(hx, hy) > 0.2;
+      const { x: ax, y: ay } = pointAt(lane.path, 0);
+      const { x: bx, y: by } = pointAt(lane.path, 0.05);
+      const length = Math.hypot(bx - ax, by - ay);
+      return ((bx - ax) * heading[0] + (by - ay) * heading[1]) / length > 0.2;
     });
     if (ramps?.length > 0 && (spokes.length === 0 || random() < RAMP_CHANCE)) {
       car.mode = 'lane';
@@ -196,62 +290,78 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
       car.path = car.lane.path;
       car.s = 0;
       car.key = car.lane.id;
+      car.stop = null;
       return true;
     }
     if (spokes.length === 0) return false;
-    const weights = spokes.map((dir) => {
-      const [dx, dy] = DIRECTIONS[dir];
-      const next = (y + dy) * N + x + dx;
-      if (!roads.has(next)) return 0;
-      const straight = dir === (from + 4) % 8 ? 2.5 : 1;
-      return straight * (0.15 + (load.get(`${String(cell)}:${String(next)}`) ?? 0));
-    });
-    const total = weights.reduce((a, b) => a + b, 0);
-    if (total <= 0) return false;
-    let roll = random() * total;
-    let to = spokes[0];
-    for (let i = 0; i < spokes.length; i += 1) {
-      roll -= weights[i];
-      if (roll <= 0) {
-        to = spokes[i];
-        break;
-      }
+    const stop = stops.get(`${String(cell)}:${String(from)}`) ?? null;
+    if (stop) {
+      car.stop = stop;
+      car.cleared = false;
+      const straight = (stop.leg.dir + 4) % 8;
+      const pick = weighted(stop.routes, ({ dirs }) =>
+        dirs.length === 1 && dirs[0] === straight ? STRAIGHT_WEIGHT : 1,
+      );
+      car.route = pick ? [...pick.dirs] : null;
+      car.exit = pick?.exit ?? null;
     }
+    let to = null;
+    if (clusterCells.has(cell) && car.route?.length > 0) to = car.route.shift();
+    if (to === null || !spokes.includes(to)) {
+      to = weighted(spokes, (dir) => {
+        const [dx, dy] = DIRECTIONS[dir];
+        const next = (y + dy) * N + x + dx;
+        if (!roads.has(next)) return 0;
+        const straight = dir === (from + 4) % 8 ? STRAIGHT_WEIGHT : 1;
+        return straight * (0.15 + (load.get(`${String(cell)}:${String(next)}`) ?? 0));
+      });
+    }
+    if (to === null) return false;
     const kind = kindOf(entry, to);
     car.mode = 'cell';
     car.cell = cell;
     car.from = from;
     car.to = to;
     car.kind = kind;
-    car.path = measured(cellLane(x, y, from, to, kind));
+    car.path = measured(
+      cellLane(x, y, from, to, kind).map(([px, py]) => [px, py, surface(px, py)]),
+    );
     car.s = 0;
     car.key = `${String(cell)}:${String(from)}`;
     return true;
   };
 
-  const newCar = () => ({
+  const newCar = (bus) => ({
     color: Math.floor(random() * 4),
     speed: 0,
     s: 0,
     top: 1 + random() * 0.2,
-    bus: false,
+    bus,
     high: false,
+    tilt: 0,
+    idle: 0,
+    waiting: false,
   });
 
+  /** 车只生成在路段中间：路口、环岛和停车线那一格不生成，也不生成在别的车身上。 */
   const spawnOnEdge = (edge) => {
     const forward = random() < 0.5;
     const cell = forward ? edge.from : edge.to;
     const from = forward ? (edge.dir + 4) % 8 : edge.dir;
-    const car = { ...newCar(), bus: random() < 0.06 };
+    const entry = roads.get(cell);
+    if (spokesOf(entry.road | entry.highway).length !== 2) return;
+    if (ringOfCell.has(cell) || clusterCells.has(cell) || stopCells.has(cell)) return;
+    const car = newCar(random() < 0.06);
     if (!enterCell(car, cell, from)) return;
-    car.s = random() * car.path.length * 0.6;
-    cars.push(car);
+    car.s = random() * car.path.length;
+    const crowded = groups.get(car.key)?.some((other) => Math.abs(other.s - car.s) < SPAWN_GAP);
+    if (!crowded) cars.push(car);
   };
 
   const spawnOnLane = (lane) => {
     if (countHigh() >= highCap) return;
     cars.push({
-      ...newCar(),
+      ...newCar(false),
       high: true,
       mode: 'lane',
       lane,
@@ -279,6 +389,11 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
   };
 
   const finishPath = (car) => {
+    if (car.mode === 'ring') {
+      car.ring = null;
+      const { outside, dir } = car.exit;
+      return enterCell(car, outside, dir);
+    }
     if (car.mode === 'lane') {
       const { lane } = car;
       if (lane.merge) {
@@ -291,7 +406,12 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
       }
       if (lane.toCell !== undefined) {
         const end = pointAt(lane.path, lane.path.length);
-        return enterCell(car, lane.toCell, backwardDirection(end.hx, end.hy));
+        const before = pointAt(lane.path, lane.path.length - 0.05);
+        return enterCell(
+          car,
+          lane.toCell,
+          backwardDirection(end.x - before.x, end.y - before.y),
+        );
       }
       return false;
     }
@@ -304,20 +424,101 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     return enterCell(car, next, (car.to + 4) % 8);
   };
 
-  /** 车到了路口停止线前面要不要停。只看下一格是不是信号路口，以及自己这个方向是不是绿灯。 */
-  const mustStop = (car) => {
-    if (car.mode !== 'cell') return false;
-    const [dx, dy] = DIRECTIONS[car.to];
-    const next = (Math.floor(car.cell / N) + dy) * N + (car.cell % N) + dx;
-    const junction = junctions.get(next);
-    if (!junction) return false;
-    const state = phaseOf(junction, car.to % 4, time);
-    return state !== 'green';
-  };
-
   const remove = (index) => {
     removed.push(cars[index]);
     cars.splice(index, 1);
+  };
+
+  /** 出口放得下自己吗：出口斑马线外面要留出一个车身，那里有慢车就不进。 */
+  const exitFree = (car) => {
+    const { exit } = car;
+    if (!exit?.crossing) return true;
+    const step = Math.hypot(...DIRECTIONS[exit.dir]);
+    const need = exit.crossing.far + lengthOf(car) + CLEARANCE;
+    const [dx, dy] = DIRECTIONS[exit.dir];
+    const back = (exit.dir + 4) % 8;
+    for (let k = 1; (k - 0.5) * step < need; k += 1) {
+      const cell = (Math.floor(exit.node / N) + dy * k) * N + (exit.node % N) + dx * k;
+      for (const other of groups.get(`${String(cell)}:${String(back)}`) ?? []) {
+        if (other.speed >= SLOW) continue;
+        if ((k - 0.5) * step + other.s - lengthOf(other) / 2 < need) return false;
+      }
+    }
+    return true;
+  };
+
+  const ringAngleOf = (car) => {
+    const { start, end, enter, leave } = car.trip;
+    return start + ((end - start) * (car.s - enter)) / (leave - enter);
+  };
+  const onRing = (car) => car.mode === 'ring' && car.s >= car.trip.enter && car.s <= car.trip.leave;
+
+  /** 环岛让行：环上有车快到进环点时在让行线后等。 */
+  const roomToYield = (car) => {
+    if (car.cleared) return Infinity;
+    const limit = car.trip.yieldAt - lengthOf(car) / 2 - STOP_MARGIN;
+    if (car.s > limit + 0.02) {
+      car.cleared = true;
+      return Infinity;
+    }
+    const busy = cars.some((other) => {
+      if (other === car || other.ring !== car.ring) return false;
+      if (other.mode !== 'ring' || other.s < other.trip.yieldAt) return false;
+      if (!onRing(other)) return other.s < other.trip.enter && other.trip.start === car.trip.start;
+      const gap = wrapAngle(ringAngleOf(other) - car.trip.start);
+      return gap > -0.3 && gap < RING_WATCH;
+    });
+    if (busy) {
+      car.waiting = true;
+      return limit - car.s;
+    }
+    if (car.s > limit - 0.06) car.cleared = true;
+    return Infinity;
+  };
+
+  /** 停车线前的判断。返回还能往前走多远，没有停车线或者已经放行时是无穷。 */
+  const roomToStop = (car) => {
+    car.waiting = false;
+    if (car.mode === 'ring') return roomToYield(car);
+    if (car.mode !== 'cell' || !car.stop || car.cleared || car.stop.cell !== car.cell)
+      return Infinity;
+    const limit = car.stop.distance - lengthOf(car) / 2 - STOP_MARGIN;
+    const { signal, phase } = car.stop;
+    if (lightAt(signal, phase, time) === 'green' && exitFree(car)) {
+      car.cleared = true;
+      return Infinity;
+    }
+    if (car.s > limit + 0.02) {
+      car.cleared = true;
+      return Infinity;
+    }
+    car.waiting = true;
+    return limit - car.s;
+  };
+
+  /** 环上前车的距离，按角度量。 */
+  const roomOnRing = (car) => {
+    if (!onRing(car)) return Infinity;
+    const own = ringAngleOf(car);
+    let room = Infinity;
+    for (const other of cars) {
+      if (other === car || other.ring !== car.ring || !onRing(other)) continue;
+      const gap = wrapAngle(own - ringAngleOf(other));
+      if (gap <= 0) continue;
+      room = Math.min(room, gap * RING - (lengthOf(car) + lengthOf(other)) / 2 - CLEARANCE);
+    }
+    return room;
+  };
+
+  /** 下一格排尾的车，跨格子时也不能撞上去。 */
+  const roomToNextCell = (car) => {
+    if (car.mode !== 'cell') return Infinity;
+    const [dx, dy] = DIRECTIONS[car.to];
+    const next = (Math.floor(car.cell / N) + dy) * N + (car.cell % N) + dx;
+    const tail = groups.get(`${String(next)}:${String((car.to + 4) % 8)}`);
+    if (!tail || tail.length === 0) return Infinity;
+    const last = tail[tail.length - 1];
+    return car.path.length - car.s + last.s - (lengthOf(car) + lengthOf(last)) / 2 - CLEARANCE;
   };
 
   const follow = (car, room) => {
@@ -328,7 +529,8 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
   const takeExit = (car) => {
     const { index } = pointAt(car.path, car.s);
     for (const exit of car.lane.exits) {
-      if (exit.at !== index || car.passed?.has(exit.lane) || car.s <= car.path.along[exit.at]) continue;
+      if (exit.at !== index || car.passed?.has(exit.lane) || car.s <= car.path.along[exit.at])
+        continue;
       (car.passed ??= new Set()).add(exit.lane);
       if (random() < RAMP_CHANCE) {
         const ramp = laneById.get(exit.lane);
@@ -342,6 +544,27 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     }
   };
 
+  const place = (car, dt) => {
+    const s = Math.min(car.s, car.path.length);
+    const spot = pointAt(car.path, s);
+    const { sx, sy } = screenAt(spot.x, spot.y, spot.h);
+    car.x = spot.x;
+    car.y = spot.y;
+    car.h = spot.h;
+    car.high = car.mode === 'lane';
+    const target = roadAngle(car.path, s);
+    const blend = Math.min(1, (car.speed * dt) / HEADING_REACH);
+    car.heading = car.heading === undefined ? target : car.heading + wrapAngle(target - car.heading) * blend;
+    car.rotation = nearestSprite(car.heading);
+    car.tilt = wrapAngle(car.heading - spriteAngle(car.rotation));
+    return (
+      sx > viewBox.left - VIEW_MARGIN &&
+      sx < viewBox.right + VIEW_MARGIN &&
+      sy > viewBox.top - VIEW_MARGIN &&
+      sy < viewBox.bottom + VIEW_MARGIN
+    );
+  };
+
   const step = (dt) => {
     time += dt;
     refreshIn -= dt;
@@ -349,7 +572,7 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
       refreshView();
       refreshIn = 0.5;
     }
-    const groups = new Map();
+    groups = new Map();
     for (const car of cars) {
       if (!groups.has(car.key)) groups.set(car.key, []);
       groups.get(car.key).push(car);
@@ -357,11 +580,18 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     for (const group of groups.values()) group.sort((a, b) => b.s - a.s);
     for (const group of groups.values()) {
       group.forEach((car, index) => {
-        let room = Infinity;
-        if (index > 0) room = group[index - 1].s - car.s - GAP;
-        if (mustStop(car)) room = Math.min(room, car.path.length - car.s - 0.02);
+        let room = roomToNextCell(car);
+        if (index > 0) {
+          const leader = group[index - 1];
+          room = Math.min(
+            room,
+            leader.s - car.s - (lengthOf(leader) + lengthOf(car)) / 2 - CLEARANCE,
+          );
+        }
+        room = Math.min(room, roomToStop(car), roomOnRing(car));
         follow(car, room);
         car.s += car.speed * dt;
+        car.idle = car.speed < 0.02 ? car.idle + dt : 0;
       });
     }
     for (let i = cars.length - 1; i >= 0; i -= 1) {
@@ -369,20 +599,7 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
       if (car.mode === 'lane' && car.lane.exits.length > 0) takeExit(car);
       let alive = true;
       if (car.s >= car.path.length) alive = finishPath(car);
-      if (alive) {
-        const spot = pointAt(car.path, Math.min(car.s, car.path.length));
-        const { sx, sy } = screenAt(spot.x, spot.y, spot.h);
-        alive =
-          sx > viewBox.left - VIEW_MARGIN &&
-          sx < viewBox.right + VIEW_MARGIN &&
-          sy > viewBox.top - VIEW_MARGIN &&
-          sy < viewBox.bottom + VIEW_MARGIN;
-        car.x = spot.x;
-        car.y = spot.y;
-        car.h = spot.h;
-        car.rotation = rotationOf(spot.hx, spot.hy);
-        car.high = car.mode === 'lane';
-      }
+      if (alive) alive = place(car, dt);
       if (!alive || cars.length > wanted + 8 || (car.high && countHigh() > highCap)) remove(i);
     }
     for (let i = 0; i < 8 && cars.length < wanted; i += 1) {
@@ -398,7 +615,8 @@ export function createFleet(city, { cap, full = false, highCap = 120, random = M
     cars,
     removed,
     signals,
-    lightOf: ({ junction, axis }) => phaseOf(junction, axis, time),
+    lengthOf,
+    lightOf: ({ signal, phase }) => lightAt(signal, phase, time),
     setView(box) {
       viewBox = box;
       refreshIn = 0;
