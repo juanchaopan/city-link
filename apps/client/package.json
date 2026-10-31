@@ -1,0 +1,31 @@
+{
+  "name": "@city-link/client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "pnpm build:web && pnpm build:wx",
+    "build:web": "vite build --mode web",
+    "build:wx": "vite build --mode wx",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "visual": "playwright test"
+  },
+  "dependencies": {
+    "@city-link/protocol": "workspace:*",
+    "@pixi/layout": "3.2.1",
+    "@pixi/ui": "2.4.1",
+    "pixi.js": "8.22.0",
+    "yoga-layout": "3.2.1"
+  },
+  "devDependencies": {
+    "@city-link/server": "workspace:*",
+    "@playwright/test": "1.64.1",
+    "@types/node": "catalog:",
+    "minigame-api-typings": "^3.8.21",
+    "typescript": "catalog:",
+    "vite": "^8.3.5",
+    "vitest": "catalog:"
+  }
+}

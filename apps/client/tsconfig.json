@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "node", "minigame-api-typings"],
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "e2e", "vite", "vite.config.ts", "playwright.config.ts"]
+}
