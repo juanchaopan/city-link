@@ -1,6 +1,6 @@
 import { LEVEL } from './bake.js';
 import { Builder, hashString, linear, shade } from './builder.js';
-import { LAYER, roadMesh } from './roadshader.js';
+import { LAYER, MAX_SEGMENTS, roadMesh } from './roadshader.js';
 import { ELEVATED, template } from '../sim/interchange.js';
 import { ROAD_SPEC } from '../sim/network.js';
 
@@ -9,6 +9,7 @@ import { ROAD_SPEC } from '../sim/network.js';
 
 const RAMP_RESOLUTION = 200;
 const CHUNK_SEGMENTS = 5;
+const CHUNKS_PER_MESH = Math.floor(MAX_SEGMENTS / CHUNK_SEGMENTS);
 
 function pierAt(b, x, z, top, wide, P) {
   const concrete = linear(P.road.wall);
@@ -79,8 +80,9 @@ function beam(b, points, halfWidth, P) {
 /**
  * 路面。着色器的裁剪面是按整条路算的，环形匝道转过 270° 时，终点的裁剪面会切掉环的另一半，
  * 所以长路面切成短段，每段的转角都不大，段和段之间靠裁剪面的一点重叠接上。
+ * 一块网格装不下的长匝道分成几块，每块都不超过着色器的段数上限。
  */
-function deckMesh(points, kind, P, span) {
+function deckMeshes(points, kind, P, span) {
   const flat = points.map(([x, z]) => [x, z]);
   const paths = [];
   for (let i = 0; i < flat.length - 1; i += CHUNK_SEGMENTS) {
@@ -93,14 +95,12 @@ function deckMesh(points, kind, P, span) {
       chained: true,
     });
   }
-  return roadMesh(
-    paths,
-    P,
-    (x, z) => heightOnLine(points, x, z),
-    LAYER.both,
-    span,
-    RAMP_RESOLUTION,
-  );
+  const meshes = [];
+  for (let i = 0; i < paths.length; i += CHUNKS_PER_MESH) {
+    const group = paths.slice(i, i + CHUNKS_PER_MESH);
+    meshes.push(roadMesh(group, P, (x, z) => heightOnLine(points, x, z), LAYER.both, span, RAMP_RESOLUTION));
+  }
+  return meshes;
 }
 
 function piersAlong(b, points, wide, P, spacing = 1.3) {
@@ -137,19 +137,11 @@ export function buildViaduct(axis, h0, h1, P) {
     if (middle > 0.24) {
       const concrete = linear(P.road.wall);
       b.box(0, 0, 0, 0.12, middle - 0.05, 0.12, shade(concrete, 0.92));
-      b.box(
-        0,
-        middle - 0.09,
-        0,
-        axis === 'x' ? 0.14 : 0.8,
-        0.05,
-        axis === 'x' ? 0.8 : 0.14,
-        concrete,
-      );
+      b.box(0, middle - 0.09, 0, axis === 'x' ? 0.14 : 0.8, 0.05, axis === 'x' ? 0.8 : 0.14, concrete);
     }
     return b;
   };
-  return { build, extra: () => [deckMesh(points, 'express', P, 3.6)] };
+  return { build, extra: () => deckMeshes(points, 'express', P, 3.6) };
 }
 
 /** 梁和桥墩，没有路面，所以不用显卡，不开浏览器的预览也能用。 */
@@ -175,8 +167,8 @@ export function buildInterchange(name, P) {
   const [x0, z0, x1, z1] = shape.footprint;
   const span = Math.max(x1 - x0, z1 - z0) + 6;
   const extra = () => {
-    const ramps = shape.ramps().map(({ points }) => deckMesh(points, 'ramp', P, span));
-    return main.length > 0 ? [deckMesh(main, 'express', P, span), ...ramps] : ramps;
+    const ramps = shape.ramps().flatMap(({ points }) => deckMeshes(points, 'ramp', P, span));
+    return main.length > 0 ? [...deckMeshes(main, 'express', P, span), ...ramps] : ramps;
   };
   return { build: () => interchangeFrame(name, P), extra };
 }

@@ -9,7 +9,7 @@ import { ROAD_SPEC } from '../sim/network.js';
 // 3. 路口的圆角来自各方向沿直线延长后的平滑并集，只取比直路多出来的部分，垫在夹角里。
 //    对向的两个方向算一条直线，直通的一侧不会鼓包。
 
-const MAX_SEGMENTS = 32;
+export const MAX_SEGMENTS = 32;
 const MAX_RAYS = 8;
 const RAY_LENGTH = 1.5;
 const CLIP_OVERLAP = 0.016;
@@ -217,6 +217,7 @@ function uniformsFor(paths, P, layer) {
     }
   });
   const count = segment.length;
+  if (count > MAX_SEGMENTS) throw new Error(`路面有 ${String(count)} 段，着色器最多 ${String(MAX_SEGMENTS)} 段，多出来的路面画不出来`);
   while (segment.length < MAX_SEGMENTS) {
     segment.push(blank());
     widths.push(blank());
