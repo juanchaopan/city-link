@@ -30,6 +30,7 @@ const publicLayout = params.get('public') ?? 'spread';
 const hudOn = params.get('ui') === '1';
 const controlsOn = params.get('controls') !== '0';
 const carCap = Number(params.get('cars') ?? 300);
+const carsFull = params.get('full') === '1';
 const stress = Number(params.get('stress') ?? 1);
 
 // 风格解析和存档无关：缺包时退回标准风格。样张里只装了标准风格。
@@ -69,7 +70,7 @@ const scene = buildWorld(atlas, city, {
 });
 const vehicles =
   !seam && carCap > 0 && atlas.frames.lamp
-    ? createVehicles(atlas, city, scene, { cap: carCap })
+    ? createVehicles(atlas, city, scene, { cap: carCap, full: carsFull })
     : null;
 
 const camera = new Container();
@@ -411,9 +412,17 @@ if (panel && controlsOn) {
   toggle('linked', 'linked', linked);
 }
 
+/** 实际在用的显卡。笔记本有两块显卡，帧率要写清楚是哪一块跑的。 */
+function rendererName() {
+  const { gl } = app.renderer;
+  const info = gl.getExtension('WEBGL_debug_renderer_info');
+  return gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER);
+}
+
 window.sceneStats = {
   sprites: scene.count.sprites + (second?.count.sprites ?? 0),
   atlas: [atlas.width, atlas.height],
+  gpu: rendererName(),
 };
 window.trafficStats = () =>
   vehicles

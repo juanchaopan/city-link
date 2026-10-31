@@ -4,6 +4,7 @@ import { screenOf } from './world.js';
 
 // 动态车流和红绿灯。这是纯视觉层：只读路段的负载比，不写任何东西，经济和拥堵的结算完全不知道它的存在。
 // 车只在屏幕内生成，出了屏幕就回收；路段负载越高，这一段该有的车越多，总数不超过 cap。
+// full 为真时不看负载，屏幕里一直保持 cap 辆车，测帧率时才真的是这么多车。
 // 地面的车画在物体层下面，所以楼能挡住身后的车；高架和匝道上的车画在物体层上面。
 
 const CYCLE_GREEN = 5.5;
@@ -139,7 +140,7 @@ function hide(particle) {
   particle.x = -1e5;
 }
 
-export function createVehicles(atlas, city, scene, { cap }) {
+export function createVehicles(atlas, city, scene, { cap, full = false }) {
   const { N, roads, lanes = [] } = city;
   const area = new Rectangle(-N * 80, -400, N * 160, N * 80 + 800);
   const groundPool = pool(atlas, cap * 2, area);
@@ -365,7 +366,7 @@ export function createVehicles(atlas, city, scene, { cap }) {
     const demand =
       visibleEdges.reduce((sum, edge) => sum + 0.18 + edge.ratio * 1.6, 0) +
       visibleLanes.reduce((sum, lane) => sum + lane.path.length * 0.12, 0);
-    wanted = Math.min(cap, Math.round(demand));
+    wanted = full ? cap : Math.min(cap, Math.round(demand));
   };
 
   const finishPath = (car) => {

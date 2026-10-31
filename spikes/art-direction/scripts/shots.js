@@ -1,6 +1,9 @@
 // 生成样张截图、拼缝检查和帧率测量。
 // 用法：node scripts/shots.js [截图名前缀...]；SEAM=1 时只跑拼缝和露底检查，FPS=1 时只测帧率，SOFT=1 时用软件渲染。
 // 截图脚本用自己的端口，不影响 4180 上正在运行的页面。
+// 每个场景开一个新页面并关掉上一个，图集纹理才会释放，连续跑几十个场景内存不会累积。
+// 显卡测帧率时关掉垂直同步和帧率上限，否则所有用例都只读得出屏幕刷新率。软件渲染不关，它不关上限也到不了刷新率，
+// 关了以后帧会成批提交，中位数失真。带 full=1 的用例屏幕里一直保持满额的车。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { startServer } from './serve.js';
@@ -40,28 +43,39 @@ const views = [
   { name: 'r7-tee', query: `${base}&zoom=0.26&x=33&y=8` },
   { name: 'r7-tee-cars', query: `${base}&zoom=0.42&x=34&y=9&cars=300` },
   { name: 'r7-tee-night', query: `${base}&zoom=0.26&x=33&y=8&t=22&cars=300` },
+  { name: 'r7-full-600', query: `${base}&zoom=0.42&x=31&y=30&cars=600&full=1&warm=300` },
 ].filter((view) => filter.length === 0 || filter.some((prefix) => view.name.startsWith(prefix)));
+
+const UNCAPPED = ['--disable-gpu-vsync', '--disable-frame-rate-limit'];
+const GPU = ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'];
+const SOFTWARE = [
+  '--use-angle=swiftshader',
+  '--enable-unsafe-swiftshader',
+  '--ignore-gpu-blocklist',
+];
+const gpuArgs = process.env.FPS ? [...GPU, ...UNCAPPED] : GPU;
 
 mkdirSync('out', { recursive: true });
 const server = await startServer(PORT);
 const browser = await chromium.launch({
   channel: 'chrome',
   headless: true,
-  args: process.env.SOFT
-    ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
-    : ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'],
+  args: process.env.SOFT ? SOFTWARE : gpuArgs,
 });
 const context = await browser.newContext({
   viewport: { width: 390, height: 844 },
   deviceScaleFactor: process.env.SOFT ? 1.5 : 3,
 });
-const page = await context.newPage();
-page.on('pageerror', (error) => console.error('页面错误', error.message));
-page.on('console', (message) => {
-  if (message.type() === 'error' && !message.text().includes('404')) console.error(message.text());
-});
+let page = null;
 
 async function open(query) {
+  await page?.close();
+  page = await context.newPage();
+  page.on('pageerror', (error) => console.error('页面错误', error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error' && !message.text().includes('404'))
+      console.error(message.text());
+  });
   await page.goto(`http://localhost:${String(PORT)}/web/play.html?${query}`);
   await page.waitForSelector('html[data-ready="true"]', { state: 'attached', timeout: 120000 });
   await page.waitForTimeout(700);
@@ -168,47 +182,49 @@ if (process.env.SEAM) {
   report.grid = await gridCheck();
   writeFileSync('out/seam-report.json', JSON.stringify(report, null, 2));
 } else if (process.env.FPS) {
-  const game = 'n=64&controls=0&zoom=0.42&x=31&y=30';
+  const game = 'n=64&controls=0&zoom=0.42&x=31&y=30&warm=300';
+  const overview = 'n=64&controls=0&zoom=0.078&warm=300';
   const cases = [
     { name: '全图，白天，无车', query: 'n=64&controls=0&cars=0&zoom=0.078', cycle: false },
     { name: '游戏视角，白天，无车', query: `${game}&cars=0`, cycle: false },
-    { name: '游戏视角，300 辆', query: `${game}&cars=300&warm=300`, cycle: false },
-    { name: '游戏视角，600 辆', query: `${game}&cars=600&warm=300`, cycle: false },
-    { name: '夜间车灯，300 辆', query: `${game}&cars=300&warm=300&t=22`, cycle: false },
-    { name: '夜间车灯，600 辆', query: `${game}&cars=600&warm=300&t=22`, cycle: false },
-    {
-      name: '全图缩小，600 辆',
-      query: 'n=64&controls=0&zoom=0.078&cars=600&warm=300',
-      cycle: false,
-    },
+    { name: '游戏视角，满额 300 辆', query: `${game}&cars=300&full=1`, cycle: false },
+    { name: '游戏视角，满额 600 辆', query: `${game}&cars=600&full=1`, cycle: false },
+    { name: '夜间车灯，满额 300 辆', query: `${game}&cars=300&full=1&t=22`, cycle: false },
+    { name: '夜间车灯，满额 600 辆', query: `${game}&cars=600&full=1&t=22`, cycle: false },
+    { name: '全图缩小，满额 600 辆', query: `${overview}&cars=600&full=1`, cycle: false },
     {
       name: '满城模块拼装（每物业 3 张），全图',
       query: 'n=64&controls=0&zoom=0.078&cars=0&stress=3',
       cycle: false,
     },
     {
-      name: '满城模块拼装（每物业 3 张），游戏视角 300 辆',
-      query: `${game}&cars=300&warm=300&stress=3`,
+      name: '满城模块拼装（每物业 3 张），游戏视角满额 300 辆',
+      query: `${game}&cars=300&full=1&stress=3`,
       cycle: false,
     },
     {
-      name: '立交场景，300 辆',
-      query: 'scene=interchange&controls=0&zoom=0.2&x=22&y=20&cars=300&warm=300',
+      name: '满城模块拼装（每物业 3 张），游戏视角满额 600 辆，夜间',
+      query: `${game}&cars=600&full=1&stress=3&t=22`,
       cycle: false,
     },
     {
-      name: '普通城市的丁字立交，300 辆',
-      query: 'n=64&controls=0&zoom=0.26&x=33&y=8&cars=300&warm=300',
+      name: '立交场景，满额 300 辆',
+      query: 'scene=interchange&controls=0&zoom=0.2&x=22&y=20&cars=300&full=1&warm=300',
+      cycle: false,
+    },
+    {
+      name: '普通城市的丁字立交，满额 300 辆',
+      query: 'n=64&controls=0&zoom=0.26&x=33&y=8&cars=300&full=1&warm=300',
       cycle: false,
     },
     {
       name: '单图集加亮窗层，连续变换时间',
-      query: 'n=64&controls=0&zoom=0.3&x=31&y=30&t=20&cars=300',
+      query: 'n=64&controls=0&zoom=0.3&x=31&y=30&t=20&cars=300&full=1&warm=300',
       cycle: true,
     },
     {
       name: '节日叠加层',
-      query: 'n=64&controls=0&zoom=0.3&x=31&y=30&festival=1&cars=300',
+      query: 'n=64&controls=0&zoom=0.3&x=31&y=30&festival=1&cars=300&full=1&warm=300',
       cycle: false,
     },
   ];
@@ -217,7 +233,7 @@ if (process.env.SEAM) {
     const stats = await page.evaluate(() => window.sceneStats);
     const fps = await page.evaluate((flag) => window.measureFps(5, flag), cycle);
     const cars = await page.evaluate(() => window.trafficStats());
-    report[name] = { sprites: stats.sprites, atlas: stats.atlas, ...fps, cars };
+    report[name] = { gpu: stats.gpu, sprites: stats.sprites, atlas: stats.atlas, ...fps, cars };
     console.log(name, JSON.stringify(report[name]));
   }
   writeFileSync(
