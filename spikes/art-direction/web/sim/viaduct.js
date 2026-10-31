@@ -8,13 +8,13 @@ import {
   templateParts,
   viaductKey,
 } from './interchange.js';
-import { DIRECTIONS } from './network.js';
 import { ease, stationsOf } from './rampline.js';
+import { approachHeight } from './ramptemplates.js';
 
 // 默认城市里的高架快速路。快速路分地面和高架两种形态，同等级、同运力，造价不同；形态只影响造价和画法。
 // 这一条从高速南下：高速上两条匝道落到快速路的头上，一段引道爬上高架，贴着一条南北街在街区里穿过城区，
 // 跨过沿途的街道、一个路口和一条东西向的路，再落回地面，收成四车道接进下一条横街的信号路口。
-// 主线占一列格子，下面是绿地，桥墩立在绿地上，路格里不立桥墩，所以车行道和人行道上都没有桥墩。
+// 主线占一列格子，桥墩立在路格之外，所以车行道和人行道上都没有桥墩。
 // 东侧有一对匝道落到短街上，短街和横街做成信号路口；西侧紧贴南北街，放不下南向匝道，南向只在两头进出。
 // 车道不进路网，建筑接不到快速路，只能从匝道进出。
 
@@ -24,9 +24,8 @@ export const EXPRESS_COST = { ground: 2, elevated: 6 };
 const RAMP_ROW = 2;
 const TERMINAL_ROW = 4;
 const LANE_STEP = 0.5;
-const APPROACH_END = 2.7;
-const DESCENT_START = 3.9;
-const DESCENT_LENGTH = 2.5;
+const DESCENT_START = 4;
+const DESCENT_LENGTH = 3;
 const FOOT_LANE = 0.25;
 const PIER_MIN = 0.55;
 const PIER_GAP = 2;
@@ -57,10 +56,9 @@ export function viaductRoute(columns, rows, ringRow) {
 }
 
 /** 主线这一点的高度：头上是引道，尾上是落地的坡，中间是高架。 */
-function heightAt({ start, terminal }, y) {
-  const up = ease((y - start) / APPROACH_END);
+function heightAt({ top, terminal }, y) {
   const down = ease((y - (terminal - DESCENT_START)) / DESCENT_LENGTH);
-  return ELEVATED * Math.min(up, 1 - down);
+  return Math.min(approachHeight(y - top - 0.5), ELEVATED * (1 - down));
 }
 
 function square(x, y) {
@@ -146,17 +144,6 @@ function viaductLinks(route, lanes, N) {
   ];
 }
 
-/** 模板只知道自己的路，城市里还有别的路从占地里穿过，挨着路的格子不放绿地。 */
-function clearOfRoads(object, roads, N) {
-  if (!object.key.startsWith('P-')) return true;
-  const x = Math.floor(object.px);
-  const y = Math.floor(object.py);
-  return (
-    !roads.has(y * N + x) &&
-    DIRECTIONS.every(([dx, dy]) => !roads.has((y + dy) * N + x + dx))
-  );
-}
-
 /** 高架用到的全部东西：主线的格子和桥墩、匝道、车道、路网图的边和占地。 */
 export function viaductWorld(route, roads, N) {
   const { x, top, row, terminal } = route;
@@ -173,15 +160,16 @@ export function viaductWorld(route, roads, N) {
   connectRamps({ name: 'sidediamond', cx: x, cy: row, N, main, lanes });
   main.north.exits.sort((a, b) => a.at - b.at);
   const cells = viaductCells(route, roads, N);
+  const placed = [
+    { name: 'spur', cx: x, cy: top },
+    { name: 'sidediamond', cx: x, cy: row },
+  ];
   const parts = [
-    templateParts('spur', x, top),
-    templateParts('sidediamond', x, row),
+    ...placed.map(({ name, cx, cy }) => templateParts(name, cx, cy)),
     templateParts('expressfoot', x, terminal - 1),
   ];
   const low = parts.flatMap((part) => part.low);
-  const objects = parts
-    .flatMap((part) => part.high)
-    .filter((object) => clearOfRoads(object, roads, N));
+  const objects = parts.flatMap((part) => part.high);
   for (const { x: cx, y, h0, h1, pier } of cells) {
     const key = viaductKey(h0, h1);
     if (Math.max(h0, h1) < LOW) low.push({ key, x: cx, y, level: 0 });
@@ -197,9 +185,8 @@ export function viaductWorld(route, roads, N) {
     if (pier) objects.push(pierObject({ x: 0, z: 0, h: (h0 + h1) / 2, nx: 1, nz: 0 }, cx, y));
   }
   const reserved = [
-    ...footprintCells('spur', x, top, N),
-    ...footprintCells('sidediamond', x, row, N),
+    ...placed.flatMap(({ name, cx, cy }) => footprintCells(name, cx, cy, N)),
     ...cells.map((cell) => [cell.x, cell.y]),
   ].map(([cx, cy]) => cy * N + cx);
-  return { route, cells, lanes, links: viaductLinks(route, lanes, N), low, objects, reserved };
+  return { route, placed, cells, lanes, links: viaductLinks(route, lanes, N), low, objects, reserved };
 }

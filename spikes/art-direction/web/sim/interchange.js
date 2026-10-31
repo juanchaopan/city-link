@@ -1,5 +1,5 @@
 import { piecesOf } from './ixpieces.js';
-import { ROAD_SPEC } from './network.js';
+import { DIRECTIONS, ROAD_SPEC } from './network.js';
 import { pierSpots } from './piers.js';
 import { ELEVATED, MAIN_LANE, stationsOf } from './rampline.js';
 import { TEMPLATES } from './ramptemplates.js';
@@ -11,7 +11,7 @@ import { TEMPLATES } from './ramptemplates.js';
 //   高速 × 快速路（到头）→ 喇叭形（trumpet）
 //   高速 × 双向四车道（到头）→ 丁字形（tee），普通城市的四车道主干就从这里上高速
 // 匝道只接高速、快速路和双向四车道，双向两车道不能直接上匝道。模板的线形在 ramptemplates.js。
-// 占地里匝道没有压到的格子是圈内空地，放绿地；这些格子不接路，不能放要进出车的物业。
+// 占地里路面没有压到的格子分两种：连得到普通路的是可以建设的用地，见 innerland.js；连不到的放绿地。
 
 export { ELEVATED };
 export const LANE = MAIN_LANE;
@@ -20,6 +20,8 @@ const PIER_HALF = 0.07;
 const PIER_ANGLES = 12;
 const FREE_CLEARANCE = 0.75;
 const GREEN_VARIANTS = 2;
+const LOT_MARGIN = 0.02;
+const SAMPLE_STEP = 0.25;
 
 const INTERSECTION_RULES = {
   'road|road': 'signal',
@@ -96,29 +98,59 @@ export function piersOf(name) {
   return piers;
 }
 
-/** 占地里匝道和主线都没有压到的格子。 */
-export function freeCells(name) {
-  const { footprint, ramps, ground } = TEMPLATES[name];
-  const [x0, z0, x1, z1] = footprint;
-  const taken = [
-    ...ramps().flatMap(({ center }) => center),
-    ...mainlineOf(name),
-    ...ground.flatMap(({ points }) => {
-      const [[ax, az], [bx, bz]] = points;
-      const steps = Math.ceil(Math.hypot(bx - ax, bz - az));
-      return Array.from({ length: steps + 1 }, (_, i) => [
-        ax + ((bx - ax) * i) / steps,
-        az + ((bz - az) * i) / steps,
-      ]);
-    }),
-  ];
+/** 一条直线上按固定步长取的点，half 是这条路面的半宽。 */
+function sampled([ax, az], [bx, bz], half) {
+  const steps = Math.ceil(Math.hypot(bx - ax, bz - az) / SAMPLE_STEP);
+  return Array.from({ length: steps + 1 }, (_, i) => ({
+    x: ax + ((bx - ax) * i) / steps,
+    z: az + ((bz - az) * i) / steps,
+    half,
+  }));
+}
+
+/** 模板全部路面的采样点。主线的路肩悬在半空，地块可以挨到它下面，所以按车行道算。 */
+function surfaceSamples(name) {
+  const { ramps, ground } = TEMPLATES[name];
+  const samples = ramps().flatMap(({ center, band }) =>
+    center.map(([x, z], i) => ({
+      x,
+      z,
+      half: Math.max(band[i].l + band[i].sl, band[i].r + band[i].sr),
+    })),
+  );
+  const main = mainlineOf(name);
+  if (main.length > 0)
+    samples.push(...sampled(main[0], main[main.length - 1], ROAD_SPEC.express.deck / 2));
+  for (const { points, half } of ground)
+    samples.push(...sampled(points[0], points[points.length - 1], half));
+  return samples;
+}
+
+/** 占地里和所有路面采样点都满足 isClear 的格子。 */
+function cellsWhere(name, isClear) {
+  const samples = surfaceSamples(name);
+  const [x0, z0, x1, z1] = TEMPLATES[name].footprint;
   const cells = [];
   for (let z = z0; z <= z1; z += 1) {
     for (let x = x0; x <= x1; x += 1) {
-      if (taken.every(([px, pz]) => Math.hypot(px - x, pz - z) > FREE_CLEARANCE)) cells.push([x, z]);
+      if (samples.every((sample) => isClear(sample, x, z))) cells.push([x, z]);
     }
   }
   return cells;
+}
+
+/** 中心离路面足够远的格子，放绿地，边角可以被匝道的路肩擦到。 */
+export function freeCells(name) {
+  return cellsWhere(name, (p, x, z) => Math.hypot(p.x - x, p.z - z) > FREE_CLEARANCE);
+}
+
+/** 整格都不碰路面的格子，放得下有地台的物业。 */
+export function clearCells(name) {
+  return cellsWhere(name, (p, x, z) => {
+    const dx = Math.max(0, Math.abs(p.x - x) - 0.5);
+    const dz = Math.max(0, Math.abs(p.z - z) - 0.5);
+    return Math.hypot(dx, dz) >= p.half + LOT_MARGIN;
+  });
 }
 
 /** 模板的占地，格数和面积。usable 是圈内空地的格数。 */
@@ -189,7 +221,23 @@ function greenObject(x, y, variant) {
   };
 }
 
-/** 立交落到地图上：low 是路面层的精灵，high 是参加遮挡排序的路面块、桥墩和圈内绿地。 */
+/** 圈内的绿地。模板只知道自己的路，城市里还有别的路从占地里穿过，压着路和挨着路的格子不放；taken 是已经有用途的格子。 */
+export function templateGreens(name, cx, cy, { roads, N, taken }) {
+  const open = (x, y) => {
+    const id = y * N + x;
+    return (
+      !taken.has(id) &&
+      !roads.has(id) &&
+      DIRECTIONS.every(([dx, dy]) => !roads.has((y + dy) * N + x + dx))
+    );
+  };
+  return freeCells(name)
+    .map(([x, z], index) => ({ x: cx + x, y: cy + z, index }))
+    .filter(({ x, y }) => x >= 0 && y >= 0 && x < N && y < N && open(x, y))
+    .map(({ x, y, index }) => greenObject(x, y, index));
+}
+
+/** 立交落到地图上：low 是路面层的精灵，high 是参加遮挡排序的路面块和桥墩。 */
 export function templateParts(name, cx, cy) {
   const low = [];
   const high = [];
@@ -209,7 +257,6 @@ export function templateParts(name, cx, cy) {
       });
   });
   for (const pier of piersOf(name)) high.push(pierObject(pier, cx, cy));
-  freeCells(name).forEach(([x, z], index) => high.push(greenObject(cx + x, cy + z, index)));
   return { low, high };
 }
 

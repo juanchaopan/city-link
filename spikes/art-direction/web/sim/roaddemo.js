@@ -1,3 +1,4 @@
+import { interchangeLand, parkingObject, zoneShops } from './innerland.js';
 import {
   connectRamps,
   ELEVATED,
@@ -6,6 +7,7 @@ import {
   pierObject,
   rampLinks,
   template,
+  templateGreens,
   templateParts,
   viaductKey,
 } from './interchange.js';
@@ -135,17 +137,17 @@ export function generateRoadDemo(seed = 11) {
   const { sprites, rings } = road;
 
   const placed = [
-    ['cloverleaf', EXPRESS_A, HIGHWAY_ROW],
-    ['trumpet', EXPRESS_B, HIGHWAY_ROW],
-    ['diamond', EXPRESS_A, ARTERIAL_ROW],
-    ['diamond', EXPRESS_B, ARTERIAL_ROW],
+    { name: 'cloverleaf', cx: EXPRESS_A, cy: HIGHWAY_ROW },
+    { name: 'trumpet', cx: EXPRESS_B, cy: HIGHWAY_ROW },
+    { name: 'diamond', cx: EXPRESS_A, cy: ARTERIAL_ROW },
+    { name: 'diamond', cx: EXPRESS_B, cy: ARTERIAL_ROW },
   ];
   const reserved = new Set(rings.flatMap((ring) => ringFootprint(ring, N)));
-  for (const [name, cx, cy] of placed) {
+  for (const { name, cx, cy } of placed) {
     for (const [x, y] of footprintCells(name, cx, cy, N)) reserved.add(y * N + x);
   }
   const covered = (x, y) =>
-    placed.some(([name, cx, cy]) => {
+    placed.some(({ name, cx, cy }) => {
       const [x0, z0, x1, z1] = template(name).footprint;
       return x >= cx + x0 && x <= cx + x1 && y >= cy + z0 && y <= cy + z1;
     });
@@ -170,11 +172,13 @@ export function generateRoadDemo(seed = 11) {
   const mainA = expressLanes(EXPRESS_A, 0, N - 1, () => ELEVATED);
   const mainB = expressLanes(EXPRESS_B, HIGHWAY_ROW + 1, N - 1, descent);
   lanes.push(mainA.south, mainA.north, mainB.south, mainB.north);
-  for (const [name, cx, cy] of placed)
+  for (const { name, cx, cy } of placed)
     connectRamps({ name, cx, cy, N, main: cx === EXPRESS_A ? mainA : mainB, lanes });
   for (const lane of lanes) lane.exits.sort((a, b) => a.at - b.at);
   const links = rampLinks(lanes);
 
+  const land = interchangeLand(placed, roads, N);
+  for (const id of land.shops) reserved.delete(id);
   const zones = new Uint8Array(N * N);
   const density = new Uint8Array(N * N);
   for (let y = 12; y < N - 1; y += 1) {
@@ -184,6 +188,7 @@ export function generateRoadDemo(seed = 11) {
       density[y * N + x] = 1 + ((x + y) % 2);
     }
   }
+  zoneShops(land, zones, density);
   const result = generateParcels({
     N,
     roads,
@@ -196,8 +201,15 @@ export function generateRoadDemo(seed = 11) {
   });
   const traffic = computeTraffic(result.parcels, roads, N, links);
 
-  const parts = placed.map(([name, cx, cy]) => templateParts(name, cx, cy));
-  const objects = [...parts.flatMap(({ high }) => high), ...viaductObjects(viaducts, roads)];
+  const parts = placed.map(({ name, cx, cy }) => templateParts(name, cx, cy));
+  const objects = [
+    ...parts.flatMap(({ high }) => high),
+    ...land.parking.map(parkingObject),
+    ...placed.flatMap(({ name, cx, cy }) =>
+      templateGreens(name, cx, cy, { roads, N, taken: land.taken }),
+    ),
+    ...viaductObjects(viaducts, roads),
+  ];
   for (const parcel of result.parcels) {
     if (parcel.shape === 'field') continue;
     objects.push({
@@ -228,6 +240,7 @@ export function generateRoadDemo(seed = 11) {
     traffic,
     roads,
     reserved,
+    interchangeLand: land,
     ...flat,
     plan: { gates: [] },
     coverage: { rows: [], blindShare: 0 },

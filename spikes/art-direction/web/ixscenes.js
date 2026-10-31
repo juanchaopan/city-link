@@ -1,3 +1,4 @@
+import { interchangeLand, parkingObject } from './sim/innerland.js';
 import { worldOf } from './roadscene.js';
 import {
   connectRamps,
@@ -7,12 +8,13 @@ import {
   pierObject,
   rampLinks,
   template,
+  templateGreens,
   templateParts,
   viaductKey,
 } from './sim/interchange.js';
 import { computeTraffic } from './sim/traffic.js';
 
-// 立交验收的场景：一块平地上只放一个立交，路和车都按真实流程走。
+// 立交验收的场景：一块平地上只放一个立交，路和车都按真实流程走。圈内没有地块生成器，留给小物业的格子放绿地。
 // spots 是样张放大的位置，坐标相对立交中心。
 
 const N = 30;
@@ -133,11 +135,28 @@ function diamondTown() {
 
 export const IX_SCENES = { tee: teeTown, diamond: diamondTown };
 
+/** 圈内的停车场和绿地。 */
+function innerObjects(name, cx, cy, roads) {
+  const land = interchangeLand([{ name, cx, cy }], roads, N);
+  const taken = new Set(land.parking.flatMap(({ cells }) => cells));
+  return [
+    ...land.parking.map(parkingObject),
+    ...templateGreens(name, cx, cy, { roads, N, taken }),
+  ];
+}
+
 export function ixTown(name) {
   const scene = IX_SCENES[name]();
   const { world, lanes, objects, low, cx, cy } = scene;
   const links = rampLinks(lanes);
   const traffic = computeTraffic([], world.roads, N, links);
-  const town = { ...world, objects, low, traffic, lanes, links };
+  const town = {
+    ...world,
+    objects: [...objects, ...innerObjects(name, cx, cy, world.roads)],
+    low,
+    traffic,
+    lanes,
+    links,
+  };
   return { town, name, cx, cy, spots: scene.spots, axis: scene.axis };
 }

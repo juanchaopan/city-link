@@ -1,7 +1,14 @@
 import { chooseLooks, repeatedNeighbors } from './appearance.js';
 import { buildRoads, makeZones, terrain, traceRoads, valueNoise } from './citymap.js';
 import { COMBOS, modulesOf } from './combos.js';
-import { connectRamps, footprintCells, rampLinks, templateParts } from './interchange.js';
+import { interchangeLand, parkingObject, zoneShops } from './innerland.js';
+import {
+  connectRamps,
+  footprintCells,
+  rampLinks,
+  templateGreens,
+  templateParts,
+} from './interchange.js';
 import { clearLots } from './lotclear.js';
 import { DIRECTIONS } from './network.js';
 import { metroPlan, placeHalls } from './metro.js';
@@ -147,11 +154,14 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   const road = roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates, linked });
   const { sprites, surface, rings, blockedRings, junctions, marks } = road;
   const viaduct = plan.viaduct ? viaductWorld(plan.viaduct, roads, N) : null;
+  const placed = [...(interchange ? [interchange] : []), ...(viaduct?.placed ?? [])];
+  const land = interchangeLand(placed, roads, N);
   const reserved = new Set([
     ...interchangeCells.map(([x, y]) => y * N + x),
     ...rings.flatMap((ring) => ringFootprint(ring, N)),
     ...(viaduct?.reserved ?? []),
   ]);
+  for (const id of land.shops) reserved.delete(id);
   const lanes = [];
   if (interchange) connectRamps({ ...interchange, N, lanes });
   if (viaduct) lanes.push(...viaduct.lanes);
@@ -172,6 +182,7 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   const usable = (x, y) =>
     x > 0 && y > 0 && x < N - 1 && y < N - 1 && !water.has(y * N + x) && isFlat(x, y);
   const { zones, density } = makeZones(N, s, center, riverAt, plan, usable, publicLayout);
+  zoneShops(land, zones, density);
   const result = generateParcels({ N, roads, water, slopes, zones, density, seed, reserved });
   const clearedLots = clearLots(result.parcels, junctions.field);
   const gateCells = gates.map(({ x, y }) => y * N + x);
@@ -204,6 +215,9 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
     : { low: [], high: [] };
   const lowDecks = [...teeParts.low, ...(viaduct?.low ?? [])];
   objects.push(...teeParts.high, ...(viaduct?.objects ?? []));
+  objects.push(...land.parking.map(parkingObject));
+  for (const { name, cx, cy } of placed)
+    objects.push(...templateGreens(name, cx, cy, { roads, N, taken: land.taken }));
   for (const { x, y, side } of metro.halls)
     addObject(`ms-${String(side)}`, x + 0.5, y + 0.5, levelOf(x, y), cellSquare(x, y));
   const stops = busStops({ N, roads, junctions, isFlat });
@@ -237,7 +251,7 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   for (let y = 0; y < N; y += 1) {
     for (let x = 0; x < N; x += 1) {
       const id = y * N + x;
-      if (water.has(id) || roads.has(id) || reserved.has(id)) continue;
+      if (water.has(id) || roads.has(id) || reserved.has(id) || land.taken.has(id)) continue;
       if ([0, 1, 2, 3].some((q) => result.atomOwner[id * 4 + q] >= 0)) continue;
       const level = levelOf(x, y);
       const flat = isFlat(x, y);
@@ -302,6 +316,7 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
     lanes,
     links,
     viaduct,
+    interchangeLand: land,
     reserved,
     water,
     slopes,

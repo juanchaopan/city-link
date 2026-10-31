@@ -19,6 +19,13 @@ const ROW_MIN_LEGS = 4;
 const ROW_CORNER = ROW_HOUSE * 0.354;
 const MAX_TOWER = 1.3;
 const GREEN_ROOF_AREA = 2.5;
+const PARKING_SIDES = [
+  [1, 0],
+  [0, 1],
+  [-1, 0],
+  [0, -1],
+];
+const DRIVEWAY = { reach: 0.22, width: 0.26 };
 
 function pick(list, random) {
   return list[Math.floor(random() * list.length) % list.length];
@@ -1169,6 +1176,30 @@ function publicLand(b, use, sx, sz, P) {
   }
 }
 
+/** 立交圈内的停车场：车道对着路，一条车道穿过地块，出口有一段引道接到人行道上，旁边是收费亭。 */
+function parkingLot(b, sx, sz, P, side) {
+  const [dx, dz] = PARKING_SIDES[side];
+  const edge = dx !== 0 ? sx / 2 : sz / 2;
+  const middle = edge + DRIVEWAY.reach / 2;
+  const [spanX, spanZ] =
+    dx !== 0 ? [DRIVEWAY.reach, DRIVEWAY.width] : [DRIVEWAY.width, DRIVEWAY.reach];
+  lotFor(b, sx, sz, linear(P.road.yard));
+  parking(b, 0, 0, sx - 0.04, sz - 0.04, P, dx !== 0 ? 'x' : 'z');
+  flat(b, rectangle(dx * middle, dz * middle, spanX, spanZ), LOT_Y, linear(P.road.yard));
+  const booth = edge - 0.08;
+  const offset = DRIVEWAY.width / 2 + 0.06;
+  b.box(
+    dx * booth + dz * offset,
+    LOT_Y,
+    dz * booth + dx * offset,
+    0.09,
+    0.11,
+    0.09,
+    linear(P.wall.warm),
+    { top: linear(P.road.rail) },
+  );
+}
+
 /** 收边的小品。这些都不是建筑：没有容量，也没有出入口，只是让边角不空着。 */
 const SMALL_FEATURES = {
   flower(b, x, z, P) {
@@ -1373,15 +1404,10 @@ function dock(b, P) {
   b.box(-0.04, 0.01, 0.24, 0.14, 0.09, 0.1, linear(P.road.rail));
 }
 
-/** 信号灯的灯杆和灯头。灯头是一个白点，运行时染成红、黄、绿。 */
-function signalPole(b, P) {
-  const steel = linear(P.wall.glassDark);
-  b.cylinder(0, 0, 0, 0.012, 0.01, 0.2, 5, steel);
-  b.box(0, 0.17, 0, 0.05, 0.05, 0.05, linear('#2f3238'));
-}
-
-function signalLamp(b) {
-  b.blob(0, 0.195, 0.028, 0.018, 0.018, 0.012, linear('#ffffff'), 0);
+function publicObject(b, parts, P) {
+  const [w, h] = parts[2].split('x').map(Number);
+  if (parts[1] === 'parking') parkingLot(b, w - 0.1, h - 0.1, P, Number(parts[3]));
+  else publicLand(b, parts[1], w - 0.1, h - 0.1, P);
 }
 
 /** 名字决定画法。B、Q、S、P、t 开头的是物业规格，其余是场景物体。 */
@@ -1394,85 +1420,14 @@ export function buildObject(name, P) {
   else if (kind === 'S') {
     const [w, h] = parts[2].split('x').map(Number);
     SERVICE_BUILDERS[parts[1]](b, w - 0.1, h - 0.1, P);
-  } else if (kind === 'P') {
-    const [w, h] = parts[2].split('x').map(Number);
-    publicLand(b, parts[1], w - 0.1, h - 0.1, P);
-  } else if (kind === 't') smallTriangle(b, name, P);
+  } else if (kind === 'P') publicObject(b, parts, P);
+  else if (kind === 't') smallTriangle(b, name, P);
   else if (kind === 'farmhouse') farmhouse(b, P, Number(parts[1]));
   else if (kind === 'forest') forest(b, P, Number(parts[1]), Number(parts[2] ?? 5));
   else if (kind === 'car') car(b, P, Number(parts[1]), (Number(parts[2] ?? 0) * Math.PI) / 4);
   else if (kind === 'bus') bus(b, P, (Number(parts[1]) * Math.PI) / 4);
   else if (kind === 'boat') boat(b, P, (Number(parts[1]) * Math.PI) / 4);
   else if (kind === 'dock') dock(b, P);
-  else if (kind === 'pole') signalPole(b, P);
-  else if (kind === 'lamp') signalLamp(b);
   else throw new Error(`没有这种物体：${name}`);
-  return b;
-}
-
-function polygonOfFootprint(footprint) {
-  const match = /^([RDQ])(\d+)(?:x(\d+))?(?:-(\w+))?$/.exec(footprint);
-  const [, type, a, c, orient] = match;
-  const first = Number(a);
-  const second = Number(c ?? a);
-  const inset = 0.05;
-  if (type === 'R') return rectangle(0, 0, first - inset * 2, second - inset * 2);
-  if (type === 'D') {
-    const u = first * HALF_DIAGONAL - inset * 2;
-    const v = second * HALF_DIAGONAL - inset * 2;
-    const axisU = [HALF_DIAGONAL, HALF_DIAGONAL];
-    const axisV = [HALF_DIAGONAL, -HALF_DIAGONAL];
-    return [
-      [-1, -1],
-      [1, -1],
-      [1, 1],
-      [-1, 1],
-    ].map(([s, t]) => [
-      (s * u * axisU[0] + t * v * axisV[0]) / 2,
-      (s * u * axisU[1] + t * v * axisV[1]) / 2,
-    ]);
-  }
-  return triangleOutline(first, Number(orient));
-}
-
-/**
- * 节日装饰层。每种占地规格一张，只装饰地块最靠近相机的一条边：两端各一根灯笼杆，中间一条横幅。
- * 它只依赖占地，不依赖分区、等级和风格，所以任何风格都能直接叠加。不用任何国家标志。
- */
-export function buildFestival(footprint, P) {
-  const b = new Builder(hashString(footprint));
-  const polygon = polygonOfFootprint(footprint);
-  const red = linear(P.festival.red);
-  const gold = linear(P.festival.gold);
-  const poleHeight = 0.34;
-  const front = edgesOf(polygon).reduce((best, edge) =>
-    edge.nx + edge.nz > best.nx + best.nz ? edge : best,
-  );
-  const { x0, z0, x1, z1, nx, nz, length } = front;
-  const inset = Math.min(0.14, length * 0.15) / length;
-  const ax = x0 + (x1 - x0) * inset;
-  const az = z0 + (z1 - z0) * inset;
-  const cx = x1 - (x1 - x0) * inset;
-  const cz = z1 - (z1 - z0) * inset;
-  for (const [px, pz] of [
-    [ax, az],
-    [cx, cz],
-  ]) {
-    b.cylinder(px, LOT_Y, pz, 0.01, 0.008, poleHeight, 5, gold);
-    b.blob(px, LOT_Y + poleHeight - 0.03, pz, 0.052, 0.064, 0.052, red, 0.02);
-    b.box(px, LOT_Y + poleHeight - 0.11, pz, 0.016, 0.022, 0.016, gold);
-  }
-  const low = LOT_Y + poleHeight - 0.15;
-  const high = LOT_Y + poleHeight - 0.09;
-  b.poly(
-    [
-      [ax, low, az],
-      [cx, low, cz],
-      [cx, high, cz],
-      [ax, high, az],
-    ],
-    red,
-    [nx, 0, nz],
-  );
   return b;
 }
