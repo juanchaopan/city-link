@@ -28,7 +28,7 @@ function textures(source) {
   return map;
 }
 
-function placements() {
+function placements(shift) {
   const { N, level, shape, water, forest, mineral, roads, buildings } = city;
   const list = [];
   const order = [];
@@ -38,20 +38,34 @@ function placements() {
     const t = y * N + x;
     const sx = (x - y) * (TW / 2);
     const sy = (x + y) * (TH / 2) - level[t] * LEVEL_H;
-    const ground = water[t] ? 'water' : `ground-${SURFACES[level[t]]}-${shape[t] > 14 ? 0 : shape[t]}`;
-    list.push({ name: ground, x: sx - 32, y: sy - 16 });
-    if (mineral[t]) list.push({ name: 'mineral', x: sx - 32, y: sy - 16 });
+    const key = (y >> shift) * (N >> shift) + (x >> shift);
+    const add = (name, px, py) => list.push({ name, x: px, y: py, key });
+    add(water[t] ? 'water' : `ground-${SURFACES[level[t]]}-${shape[t] > 14 ? 0 : shape[t]}`, sx - 32, sy - 16);
+    if (mineral[t]) add('mineral', sx - 32, sy - 16);
     for (let dir = 0; dir < 8; dir++) {
-      if (roads[t] & (1 << dir)) list.push({ name: `road-${dir}`, x: sx - 32, y: sy - 16 });
+      if (roads[t] & (1 << dir)) add(`road-${dir}`, sx - 32, sy - 16);
     }
-    if (buildings[t]) list.push({ name: `building-${buildings[t]}`, x: sx - 32, y: sy - 64 });
-    else if (forest[t] && !roads[t]) list.push({ name: 'forest', x: sx - 32, y: sy - 32 });
+    if (buildings[t]) add(`building-${buildings[t]}`, sx - 32, sy - 64);
+    else if (forest[t] && !roads[t]) add('forest', sx - 32, sy - 32);
   }
   return list;
 }
 
-function buildWorld(tex, mode) {
-  const items = placements();
+function staticParticles(tex, items, bounds) {
+  const layer = new ParticleContainer({
+    dynamicProperties: { position: false, vertex: false, rotation: false, uvs: false, color: false },
+    texture: tex.water,
+  });
+  for (const item of items) {
+    layer.addParticle(new Particle({ texture: tex[item.name], x: item.x, y: item.y }));
+  }
+  layer.boundsArea = bounds;
+  layer.update();
+  return layer;
+}
+
+function buildWorld(tex, mode, shift) {
+  const items = placements(shift);
   if (mode === 'sprite') {
     const world = new Container();
     for (const item of items) {
@@ -59,18 +73,40 @@ function buildWorld(tex, mode) {
       sprite.position.set(item.x, item.y);
       world.addChild(sprite);
     }
-    return { world, count: items.length };
+    return { world, count: items.length, chunks: [] };
   }
-  const world = new ParticleContainer({
-    dynamicProperties: { position: false, vertex: false, rotation: false, uvs: false, color: false },
-    texture: tex.water,
-  });
+  if (mode === 'particle') {
+    const layer = staticParticles(tex, items, new Rectangle(-2100, -100, 4200, 2300));
+    return { world: layer, count: items.length, chunks: [{ layer, items, bounds: layer.boundsArea, whole: true }] };
+  }
+  const grouped = new Map();
   for (const item of items) {
-    world.addParticle(new Particle({ texture: tex[item.name], x: item.x, y: item.y }));
+    if (!grouped.has(item.key)) grouped.set(item.key, []);
+    grouped.get(item.key).push(item);
   }
-  world.boundsArea = new Rectangle(-2100, -100, 4200, 2300);
-  world.update();
-  return { world, count: items.length };
+  const side = city.N >> shift;
+  const keys = [...grouped.keys()].sort((a, b) => (a % side) + ((a / side) | 0) - (b % side) - ((b / side) | 0));
+  const world = new Container();
+  const chunks = [];
+  for (const key of keys) {
+    const list = grouped.get(key);
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const item of list) {
+      const f = atlas[item.name];
+      minX = Math.min(minX, item.x);
+      minY = Math.min(minY, item.y);
+      maxX = Math.max(maxX, item.x + f.w);
+      maxY = Math.max(maxY, item.y + f.h);
+    }
+    const bounds = new Rectangle(minX, minY, maxX - minX, maxY - minY);
+    const layer = staticParticles(tex, list, bounds);
+    world.addChild(layer);
+    chunks.push({ layer, bounds, items: list });
+  }
+  return { world, count: items.length, chunks };
 }
 
 function roadGraph() {
@@ -98,20 +134,23 @@ function roadGraph() {
   return { adjacency, size: nodes.length };
 }
 
-// 按 1 秒一轮、分摊到每帧的方式代替路网流量模拟的 CPU 负担。
-function createFlowLoad(graph, sourcesPerSecond) {
+// 代替路网流量模拟的 CPU 负担：每秒一轮，每帧最多用 budgetMs，做不完就顺延。
+function createFlowLoad(graph, sourcesPerSecond, budgetMs, clock) {
   const parent = new Int32Array(graph.size);
   const flow = new Float32Array(graph.size);
   const queue = new Int32Array(graph.size);
   let done = 0;
   let cycleStart = 0;
-  return (now) => {
-    if (now - cycleStart >= 1000) {
+  const load = { completedRounds: 0 };
+  load.step = (now) => {
+    if (now - cycleStart >= 1000 && done >= sourcesPerSecond) {
       cycleStart = now;
       done = 0;
+      load.completedRounds++;
     }
     const target = Math.min(sourcesPerSecond, Math.ceil(((now - cycleStart) / 1000) * sourcesPerSecond));
-    while (done < target) {
+    const begin = clock();
+    while (done < target && clock() - begin < budgetMs) {
       const source = (done * 97) % graph.size;
       parent.fill(-1);
       parent[source] = source;
@@ -131,6 +170,7 @@ function createFlowLoad(graph, sourcesPerSecond) {
       done++;
     }
   };
+  return load;
 }
 
 function createUi(onPress) {
@@ -161,6 +201,7 @@ function createUi(onPress) {
 }
 
 export async function createGame(platform, options = {}) {
+  const bootStart = platform.now();
   const { width, height, resolution } = platform.size();
   const canvas = platform.mainCanvas();
   const renderer = await autoDetectRenderer({
@@ -176,13 +217,16 @@ export async function createGame(platform, options = {}) {
     hello: false,
     layout: { autoUpdate: true, enableDebug: false },
   });
+  const rendererReady = platform.now();
   const image = await platform.loadImage('assets/atlas.png');
   const source = new ImageSource({ resource: image, scaleMode: 'linear', autoGenerateMipmaps: false });
   const tex = textures(source);
+  const atlasReady = platform.now();
   const stage = new Container();
   stage.eventMode = 'static';
   stage.hitArea = new Rectangle(0, 0, width, height);
-  const { world, count } = buildWorld(tex, options.mode ?? 'particle');
+  const { world, count, chunks } = buildWorld(tex, options.mode ?? 'chunk', options.chunkShift ?? 4);
+  const sceneReady = platform.now();
   const camera = new Container();
   camera.addChild(world);
   stage.addChild(camera);
@@ -213,6 +257,15 @@ export async function createGame(platform, options = {}) {
   const applyCamera = () => {
     camera.scale.set(state.zoom);
     camera.position.set(state.x, state.y);
+    const left = -state.x / state.zoom;
+    const top = -state.y / state.zoom;
+    const right = left + width / state.zoom;
+    const bottom = top + height / state.zoom;
+    for (const chunk of chunks) {
+      if (chunk.whole) continue;
+      const b = chunk.bounds;
+      chunk.layer.visible = b.x < right && b.x + b.width > left && b.y < bottom && b.y + b.height > top;
+    }
   };
   applyCamera();
 
@@ -244,17 +297,18 @@ export async function createGame(platform, options = {}) {
   stage.on('pointerup', release);
   stage.on('pointerupoutside', release);
 
-  const flowLoad = createFlowLoad(roadGraph(), options.flowSources ?? 64);
+  const flow = createFlowLoad(roadGraph(), options.flowSources ?? 64, options.flowBudgetMs ?? 2, () => platform.now());
   let previous = platform.now();
   let lastLabel = 0;
   const started = previous;
+  let firstFrameAt = 0;
 
   function frame() {
     const now = platform.now();
     const dt = now - previous;
     previous = now;
     const t0 = platform.now();
-    flowLoad(now - started);
+    flow.step(now - started);
     for (const car of carList) {
       car.u = (car.u + dt * 0.06) % 1000;
       const along = (car.u / 1000) * 63;
@@ -277,6 +331,7 @@ export async function createGame(platform, options = {}) {
     const t1 = platform.now();
     renderer.render(stage);
     const t2 = platform.now();
+    if (!firstFrameAt) firstFrameAt = t2;
     if (state.recording) state.frames.push({ dt, sim: t1 - t0, render: t2 - t1 });
     platform.raf(frame);
   }
@@ -290,16 +345,45 @@ export async function createGame(platform, options = {}) {
     ui,
     count,
     canvas,
+    flow,
+    setCamera(zoom, x, y) {
+      state.zoom = zoom;
+      state.x = x;
+      state.y = y;
+      applyCamera();
+    },
     startRecording() {
       state.frames = [];
       state.recording = true;
       state.scripted = true;
       state.scriptStart = platform.now();
+      flow.completedRounds = 0;
     },
     stopRecording() {
       state.recording = false;
       state.scripted = false;
       return state.frames;
+    },
+    // 修一格路时要重排并重传所在图层，这里量到下一次绘制结束。
+    measureEdit() {
+      if (!chunks.length) return null;
+      const chunk = chunks[Math.floor(chunks.length / 2)];
+      const start = platform.now();
+      const particles = chunk.layer.particleChildren;
+      particles.push(particles.shift());
+      particles.unshift(particles.pop());
+      chunk.layer.update();
+      chunk.layer.visible = true;
+      renderer.render(stage);
+      return platform.now() - start;
+    },
+    timing() {
+      return {
+        rendererMs: rendererReady - bootStart,
+        atlasMs: atlasReady - rendererReady,
+        sceneMs: sceneReady - atlasReady,
+        firstFrameMs: firstFrameAt - bootStart,
+      };
     },
     probe() {
       const gl = renderer.gl;

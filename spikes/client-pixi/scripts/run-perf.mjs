@@ -25,7 +25,7 @@ function stats(frames) {
   return {
     frames: frames.length,
     fpsP50: +(1000 / pick(dts, 0.5)).toFixed(1),
-    fpsP95Frame: +(1000 / pick(dts, 0.95)).toFixed(1),
+    fpsAtP95Frame: +(1000 / pick(dts, 0.95)).toFixed(1),
     frameP95ms: +pick(dts, 0.95).toFixed(1),
     frameMaxMs: +dts[dts.length - 1].toFixed(1),
     worstOneSecondFps: +worstSecond.toFixed(1),
@@ -41,40 +41,47 @@ const GPUS = {
   software: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
 };
 
-const cases = JSON.parse(process.argv[2] ?? 'null') ?? [
-  { gpu: 'hardware', cpu: 1, mode: 'particle' },
-  { gpu: 'hardware', cpu: 4, mode: 'particle' },
-  { gpu: 'hardware', cpu: 6, mode: 'particle' },
-  { gpu: 'hardware', cpu: 6, mode: 'sprite' },
-  { gpu: 'software', cpu: 1, mode: 'particle' },
-  { gpu: 'software', cpu: 4, mode: 'particle' },
-  { gpu: 'software', cpu: 6, mode: 'particle' },
-  { gpu: 'hardware', cpu: 1, mode: 'sprite' },
-];
-
-const outFile = process.argv[3] ?? 'out/perf-results.json';
+const cases = JSON.parse(process.argv[2]);
+const outFile = process.argv[3];
 const results = [];
 for (const test of cases) {
-  const browser = await chromium.launch({ channel: 'chrome', headless: true, args: GPUS[test.gpu] });
+  const args = [...GPUS[test.gpu]];
+  // --jitless 会连带禁用 WebAssembly，这里只关掉 JS 优化编译器，让 JS 走解释器。
+  if (test.noJit) args.push('--js-flags=--no-opt --no-maglev --no-sparkplug');
+  const browser = await chromium.launch({ channel: 'chrome', headless: true, args });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   const cdp = await page.context().newCDPSession(page);
-  const query = `w=390&h=844&dpr=${test.dpr ?? 2}&mode=${test.mode}&flow=${test.flow ?? 64}`;
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: test.cpu });
+  const query = `w=390&h=844&dpr=${test.dpr ?? 2}&mode=${test.mode}&flow=${test.flow ?? 64}&shift=${test.shift ?? 4}`;
   await page.goto(`http://127.0.0.1:${port}/dist/web/index.html?${query}`);
-  await page.waitForFunction(() => window.__ready || window.__error, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__ready || window.__error, null, { timeout: 90000 });
   const error = await page.evaluate(() => window.__error);
   if (error) throw new Error(error);
-  await page.waitForTimeout(1000);
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: test.cpu });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1500);
   const probe = await page.evaluate(() => window.__game.probe());
+  const timing = await page.evaluate(() => window.__game.timing());
+  const editMs = await page.evaluate(() => window.__game.measureEdit());
   await page.evaluate(() => window.__game.startRecording());
   await page.waitForTimeout(RECORD_MS);
   const frames = await page.evaluate(() => window.__game.stopRecording());
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-  const entry = { ...test, dpr: test.dpr ?? 2, glRenderer: probe.glRenderer, sprites: await page.evaluate(() => window.__game.count), ...stats(frames) };
+  const flowRounds = await page.evaluate(() => window.__game.flow.completedRounds);
+  const heap = await cdp.send('Runtime.getHeapUsage');
+  const entry = {
+    ...test,
+    dpr: test.dpr ?? 2,
+    noJit: !!test.noJit,
+    glRenderer: probe.glRenderer.slice(0, 48),
+    sprites: await page.evaluate(() => window.__game.count),
+    ...stats(frames),
+    flowRoundsIn12s: flowRounds,
+    bootToFirstFrameMs: +timing.firstFrameMs.toFixed(0),
+    sceneBuildMs: +timing.sceneMs.toFixed(0),
+    editToRenderMs: editMs === null ? null : +editMs.toFixed(1),
+    jsHeapMB: +(heap.usedSize / 1048576).toFixed(1),
+  };
   results.push(entry);
   console.log(JSON.stringify(entry));
+  fs.writeFileSync(outFile, JSON.stringify(results, null, 2));
   await browser.close();
 }
 server.close();
-fs.writeFileSync(outFile, JSON.stringify(results, null, 2));

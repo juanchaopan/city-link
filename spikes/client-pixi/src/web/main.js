@@ -24,7 +24,8 @@ const platform = {
 };
 
 createGame(platform, {
-  mode: params.get('mode') ?? 'particle',
+  mode: params.get('mode') ?? 'chunk',
+  chunkShift: Number(params.get('shift') ?? 4),
   flowSources: Number(params.get('flow') ?? 64),
 }).then((game) => {
   window.__game = game;
