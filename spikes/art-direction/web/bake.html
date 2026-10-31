@@ -11,7 +11,7 @@
     <script type="module">
       import { Baker } from './kit/bake.js';
       import { palettes } from './kit/palettes.js';
-      import { makeLayout } from './kit/layout.js';
+      import { generateCity, keysOf } from './sim/city.js';
       import { EXTRA_KEYS, specFor } from './kit/catalog.js';
 
       const baker = new Baker();
@@ -37,30 +37,7 @@
         return y + shelf + GUTTER;
       }
 
-      window.keysFor = (sizes) => {
-        const keys = new Set(EXTRA_KEYS);
-        for (const N of sizes) for (const key of makeLayout(N).keys) keys.add(key);
-        return [...keys].sort();
-      };
-
-      window.bakeAtlas = (paletteId, keys) => {
-        const palette = palettes[paletteId];
-        baker.usePalette(palette);
-        const groups = {};
-        const sprites = [];
-        const started = performance.now();
-        for (const key of keys) {
-          const spec = specFor(key, palette);
-          const t0 = performance.now();
-          const sprite = baker.bake(spec);
-          const ms = performance.now() - t0;
-          const entry = (groups[spec.group] ??= { count: 0, ms: 0 });
-          entry.count += 1;
-          entry.ms += ms;
-          sprites.push({ key, ...sprite });
-        }
-        const bakeMs = performance.now() - started;
-        const height = pack(sprites);
+      function draw(sprites, height) {
         const canvas = document.createElement('canvas');
         canvas.width = ATLAS_WIDTH;
         canvas.height = height;
@@ -70,11 +47,59 @@
           context.putImageData(new ImageData(sprite.data, sprite.w, sprite.h), sprite.x, sprite.y);
           frames[sprite.key] = { x: sprite.x, y: sprite.y, w: sprite.w, h: sprite.h, ax: sprite.ax, ay: sprite.ay };
         }
-        return {
-          png: canvas.toDataURL('image/png'),
-          frames,
-          stats: { count: sprites.length, bakeMs, groups, width: ATLAS_WIDTH, height },
-        };
+        return { png: canvas.toDataURL('image/png'), frames };
+      }
+
+      window.keysFor = (sizes) => {
+        const keys = new Set(EXTRA_KEYS);
+        const footprints = new Set();
+        for (const N of sizes) {
+          const city = generateCity(N);
+          for (const key of keysOf(city)) keys.add(key);
+          for (const object of city.objects) if (object.footprintKey) footprints.add(object.footprintKey);
+        }
+        return { keys: [...keys].sort(), footprints: [...footprints].sort() };
+      };
+
+      /** keys 进主图集，每个亮窗层单独一帧，和建筑在同一张纹理上，所以绘制时不用换纹理。 */
+      window.bakeAtlas = (paletteId, keys) => {
+        const palette = palettes[paletteId];
+        baker.usePalette(palette);
+        const groups = {};
+        const sprites = [];
+        const started = performance.now();
+        for (const key of keys) {
+          const spec = specFor(key, palette);
+          const t0 = performance.now();
+          const { glow, ...sprite } = baker.bake(spec);
+          const ms = performance.now() - t0;
+          const entry = (groups[spec.group] ??= { count: 0, ms: 0, pixels: 0 });
+          entry.count += 1;
+          entry.ms += ms;
+          entry.pixels += sprite.w * sprite.h;
+          sprites.push({ key, ...sprite });
+          if (glow) {
+            sprites.push({ key: `${key}~g`, ...glow });
+            const lit = (groups['亮窗层'] ??= { count: 0, ms: 0, pixels: 0 });
+            lit.count += 1;
+            lit.pixels += glow.w * glow.h;
+          }
+        }
+        const bakeMs = performance.now() - started;
+        const height = pack(sprites);
+        return { ...draw(sprites, height), stats: { count: keys.length, frames: sprites.length, bakeMs, groups, width: ATLAS_WIDTH, height } };
+      };
+
+      window.bakeFestival = (paletteId, footprints) => {
+        const palette = palettes[paletteId];
+        baker.usePalette({ ...palette, window: { ...palette.window, layer: false } });
+        const started = performance.now();
+        const sprites = footprints.map((footprint) => {
+          const key = `fx-${footprint}`;
+          return { key, ...baker.bake(specFor(key, palette)) };
+        });
+        const height = pack(sprites);
+        return { ...draw(sprites, height), stats: { count: sprites.length, bakeMs: performance.now() - started, width: ATLAS_WIDTH, height } };
       };
 
       window.bakerReady = true;

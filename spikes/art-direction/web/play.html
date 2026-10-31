@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>玩具城样张</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        touch-action: none;
+        font: 14px/1.4 "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      canvas {
+        display: block;
+      }
+      #controls {
+        position: fixed;
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 6px 10px;
+        align-items: center;
+        padding: 8px 12px;
+        background: rgba(243, 247, 244, 0.94);
+        color: #1f3a4d;
+        border-radius: 4px;
+      }
+      #controls[hidden] {
+        display: none;
+      }
+      #clock {
+        font-weight: 700;
+      }
+      #time {
+        width: 100%;
+      }
+      .row {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/node_modules/three/build/three.module.js",
+          "pixi.js": "/node_modules/pixi.js/dist/pixi.mjs"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="controls" hidden>
+      <span id="clock">12:00</span>
+      <input id="time" type="range" min="0" max="24" step="0.1" aria-label="时间" />
+      <button id="play" type="button">快放一天</button>
+      <div class="row">
+        <label>视图
+          <select id="view">
+            <option value="city">城市</option>
+            <option value="traffic">交通负担</option>
+            <option value="coverage">公共服务覆盖</option>
+            <option value="metro">地铁</option>
+          </select>
+        </label>
+        <label><input id="festival" type="checkbox" /> 国庆</label>
+      </div>
+    </div>
+    <script type="module" src="/web/play.js"></script>
+  </body>
+</html>

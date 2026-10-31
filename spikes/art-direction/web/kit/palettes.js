@@ -1,5 +1,22 @@
-// 同一份模型的三套配色。模型里只引用这里的颜色名，换配色时几何完全不变。
+// 配色。模型里只引用这里的颜色名，换配色时几何完全不变。
 // 灯光也算配色的一部分：太阳方向决定影子长短，太阳和天空的颜色决定冷暖。
+// sunny 是白天的素材，夜里靠调色和亮窗层；dusk 用来和"两套图集"的方案做对比。
+
+const festival = {
+  red: '#d42f2a',
+  gold: '#e8b93c',
+  bunting: ['#d42f2a', '#e8b93c', '#3f8bd8', '#3aa56b', '#f4f0e6'],
+};
+
+const service = {
+  hospital: '#2e9e6b',
+  school: '#d9744a',
+  police: '#2f5fa8',
+  fire: '#d6372f',
+  water: '#3a9fc8',
+  power: '#e0a92e',
+  track: '#c9644a',
+};
 
 export const palettes = {
   sunny: {
@@ -25,10 +42,12 @@ export const palettes = {
       plinthDark: '#9a8468',
       relief: 0.85,
     },
+    field: { wheat: '#e0b84e', greens: '#6fa84c', rape: '#ecd24a', furrow: '#a88656', soil: '#8f6e4c' },
     water: { deep: '#4a9fc4', mid: '#5cb0d0', light: '#c5e6ea' },
     road: {
       asphalt: '#646b76',
       walk: '#dcddd6',
+      curb: '#b9bbb4',
       line: '#fbf3d5',
       highway: '#555c68',
       shoulder: '#8b929a',
@@ -40,7 +59,7 @@ export const palettes = {
       rail: '#d9534a',
     },
     wall: { warm: '#f4ead8', cool: '#e4e9ee', brick: '#d39c80', concrete: '#c8ccd0', glass: '#86c0dc', glassDark: '#5a95b8' },
-    window: { day: '#5f9cc2', lit: '#ffe9a8', litRatio: 0 },
+    window: { day: '#5f9cc2', lit: '#ffdf8e', litRatio: 0.55, layer: true },
     tree: { leaf: ['#4f9c5a', '#67aa58', '#3f8f68'], pine: ['#3a8562', '#2f7a5c'], trunk: '#8a6240', autumn: '#e0a33e' },
     wood: '#b98a58',
     zones: {
@@ -50,55 +69,8 @@ export const palettes = {
       farm: ['#c4543f', '#d9a441', '#86a050'],
     },
     cars: ['#e0483e', '#efc030', '#3f8bd8', '#f4f4f0'],
-  },
-  maquette: {
-    id: 'maquette',
-    name: '沙盘',
-    backdrop: '#e4e8e6',
-    table: { line: '#d0d8d5', shadow: '#a9b5b2' },
-    sun: { direction: [-0.8, 1.2, 0.5], spread: 0.16, color: '#fff8ee', energy: 0.6 },
-    sky: { color: '#e9eff2', energy: 0.54 },
-    bounce: { sky: '#ffffff', ground: '#e6e1d4', energy: 0.12 },
-    grade: { saturation: 1.0, contrast: 1.02 },
-    shadow: { color: [58, 66, 78], strength: 0.5 },
-    ground: {
-      grass0: '#b4cba0',
-      grass1: '#c3d2a8',
-      grass2: '#d2d9b4',
-      rock: '#d0cabc',
-      lawn: '#c6d9b2',
-      sand: '#f0e7cf',
-      wetSand: '#dccfae',
-      soil: '#b5a083',
-      plinth: '#f1ece0',
-      plinthDark: '#c9c0ac',
-      relief: 0.8,
-    },
-    water: { deep: '#7fb6c6', mid: '#93c4d0', light: '#dceff0' },
-    road: {
-      asphalt: '#8a919b',
-      walk: '#f4f2ea',
-      line: '#ffffff',
-      highway: '#757d88',
-      shoulder: '#a4abb2',
-      median: '#adc69a',
-      yard: '#bcbdba',
-      wall: '#ddd7c9',
-      fill: '#c8b698',
-      bridge: '#f2eee3',
-      rail: '#dc5f4e',
-    },
-    wall: { warm: '#fbf6ec', cool: '#f1f3f2', brick: '#e5cfba', concrete: '#e6e6e2', glass: '#bbdae6', glassDark: '#98c0d2' },
-    window: { day: '#a4c4d5', lit: '#ffe9a8', litRatio: 0 },
-    tree: { leaf: ['#82b58c', '#98c28c', '#6fa98c'], pine: ['#6a9e82', '#5d917a'], trunk: '#b39a7c', autumn: '#e0b36a' },
-    wood: '#dac09a',
-    zones: {
-      residential: ['#ee9a7a', '#f2b98a', '#e78a7e', '#a9bfd6'],
-      commercial: ['#7fb4d9', '#7fc7c2', '#8fa8e0', '#f0cf7a'],
-      industrial: ['#c0c3c8', '#cdb79e', '#b5bfc8', '#d9a486'],
-      farm: ['#e58b7a', '#efc77e', '#b0c47e'],
-    },
-    cars: ['#ec665a', '#f4cd58', '#68a6e8', '#ffffff'],
+    service,
+    festival,
   },
   dusk: {
     id: 'dusk',
@@ -123,10 +95,12 @@ export const palettes = {
       plinthDark: '#4a3a55',
       relief: 1.0,
     },
+    field: { wheat: '#c99a3e', greens: '#5f8a40', rape: '#d4b03e', furrow: '#8a6a4a', soil: '#6e543f' },
     water: { deep: '#4a6aae', mid: '#6280c0', light: '#f0ad90' },
     road: {
       asphalt: '#50506a',
       walk: '#b9b1b8',
+      curb: '#8f8798',
       line: '#ffe7b0',
       highway: '#44445e',
       shoulder: '#6a6a82',
@@ -138,7 +112,7 @@ export const palettes = {
       rail: '#e2574c',
     },
     wall: { warm: '#f3dfc8', cool: '#d9d6e4', brick: '#cc8a72', concrete: '#c0bcc8', glass: '#7a8fc8', glassDark: '#555f9c' },
-    window: { day: '#4f5a94', lit: '#ffd27a', litRatio: 0.55 },
+    window: { day: '#4f5a94', lit: '#ffd27a', litRatio: 0.55, layer: false },
     tree: { leaf: ['#4f8a55', '#6a9a4f', '#3f7a60'], pine: ['#3a7058', '#30604f'], trunk: '#6e4f42', autumn: '#e0903a' },
     wood: '#a0765a',
     zones: {
@@ -148,5 +122,7 @@ export const palettes = {
       farm: ['#c9503f', '#d9a441', '#8a9a4a'],
     },
     cars: ['#e8493f', '#f2c230', '#5a8fe0', '#f4f0e8'],
+    service,
+    festival,
   },
 };

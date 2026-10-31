@@ -87,7 +87,7 @@ export class Baker {
 
     this.light = new THREE.DirectionalLight(0xffffff, 1);
     this.light.castShadow = true;
-    this.light.shadow.mapSize.set(1536, 1536);
+    this.light.shadow.mapSize.set(2048, 2048);
     this.light.shadow.bias = -0.0004;
     this.light.shadow.normalBias = 0.01;
 
@@ -126,13 +126,14 @@ export class Baker {
     this.solid = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
     this.glow = new THREE.MeshBasicMaterial({ vertexColors: true });
     this.invisible = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+    this.depthOnly = new THREE.MeshBasicMaterial({ colorWrite: false });
     this.white = new THREE.MeshLambertMaterial({ color: 0xffffff });
     this.targets = new Map();
     this.shadowBaseline = new Map();
   }
 
   targetsFor(w, h) {
-    const key = `${w}x${h}`;
+    const key = `${String(w)}x${String(h)}`;
     if (!this.targets.has(key)) {
       const options = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter };
       const float = { ...options, type: THREE.HalfFloatType };
@@ -290,25 +291,55 @@ export class Baker {
     return { pixels, baseline };
   }
 
+  /** 夜间亮窗层：实体只写深度，窗户只有在不被遮挡时才出现。 */
+  glowLayer({ parts, w, h, anchorY, focus }) {
+    const targets = this.targetsFor(w, h);
+    const camera = this.camera(w, h, anchorY, focus);
+    const scene = new THREE.Scene();
+    for (const { geometry, glow } of parts) {
+      const mesh = new THREE.Mesh(geometry, glow ? this.glow : this.depthOnly);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = glow ? 1 : 0;
+      scene.add(mesh);
+    }
+    this.renderer.setRenderTarget(targets.scene);
+    this.renderer.clear();
+    this.renderer.render(scene, camera);
+    this.quad.material = this.addMaterial;
+    this.addMaterial.uniforms.source.value = targets.scene.texture;
+    this.addMaterial.uniforms.weight.value = 2;
+    this.renderer.setRenderTarget(targets.sum);
+    this.renderer.clear();
+    this.renderer.autoClear = false;
+    this.renderer.render(this.quadScene, this.quadCamera);
+    this.renderer.autoClear = true;
+    return this.resolve(targets, w, h);
+  }
+
   /**
    * 烘焙一张精灵。返回裁掉透明边后的像素和格子中心在图内的位置。
-   * spec: { w, h, anchorY, build(builder), focus, reach, shadow, groundY, lit }
+   * spec: { w, h, anchorY, build(), extra(), focus, reach, shadow, groundY, lit }
    * lit 为 false 时不算阴影，地表用这个模式，相邻格的光照才完全一致。
+   * 配色要求单独的亮窗层时，额外返回 glow。
    */
   bake(spec) {
     const { w, h, anchorY } = spec;
     const focus = spec.focus ?? [0, 0, 0];
     const reach = spec.reach ?? 2;
     const parts = spec.build().meshes();
+    const separateGlow = this.palette.window.layer === true;
+    const colorParts = separateGlow ? parts.filter((part) => !part.glow) : parts;
+    const extras = spec.extra?.() ?? [];
     const targets = this.targetsFor(w, h);
     const camera = this.camera(w, h, anchorY, focus);
-    const scene = this.sceneFor(parts, spec.lit !== false);
+    const scene = this.sceneFor(colorParts, spec.lit !== false);
+    for (const mesh of extras) scene.add(mesh);
     this.accumulate(scene, camera, targets, reach, focus);
     let pixels = this.resolve(targets, w, h);
 
     if (spec.shadow) {
       const layer = this.shadowLayer({
-        parts,
+        parts: colorParts,
         w,
         h,
         anchorY,
@@ -318,8 +349,16 @@ export class Baker {
       });
       pixels = compositeShadow(pixels, layer, this.palette.shadow);
     }
+    const result = trim(pixels, w, h, anchorY);
+    if (separateGlow && parts.some((part) => part.glow)) {
+      result.glow = trim(this.glowLayer({ parts, w, h, anchorY, focus }), w, h, anchorY, true);
+    }
     for (const { geometry } of parts) geometry.dispose();
-    return trim(pixels, w, h, anchorY);
+    for (const mesh of extras) {
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+    }
+    return result;
   }
 }
 
@@ -342,7 +381,7 @@ function compositeShadow(object, { pixels: ground, baseline }, shadow) {
   return out;
 }
 
-function trim(pixels, w, h, anchorY) {
+function trim(pixels, w, h, anchorY, allowEmpty = false) {
   let minX = w;
   let minY = h;
   let maxX = -1;
@@ -357,7 +396,10 @@ function trim(pixels, w, h, anchorY) {
       }
     }
   }
-  if (maxX < 0) throw new Error('精灵是空的');
+  if (maxX < 0) {
+    if (allowEmpty) return null;
+    throw new Error('精灵是空的');
+  }
   const tw = maxX - minX + 1;
   const th = maxY - minY + 1;
   const data = new Uint8ClampedArray(tw * th * 4);

@@ -1,0 +1,1639 @@
+{
+  "32": {
+    "generateMs": 222,
+    "parcels": 130,
+    "hash": "7314a55b61736a3d",
+    "sameOnSecondRun": true,
+    "sameWithShuffledInput": true,
+    "area": {
+      "buildableArea": 580.5,
+      "parcelArea": 415,
+      "overlappingAtoms": 0,
+      "atomsOutsideBuildable": 0,
+      "polygonLargerThanParcel": 0,
+      "usage": 0.7149009474590869
+    },
+    "capacity": {
+      "rows": 49,
+      "rowsNotProportional": 0
+    },
+    "capacityTable": [
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 2,
+        "area": 16,
+        "capacity": 128,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "bigTriangle",
+        "size": "3×3",
+        "use": "",
+        "count": 2,
+        "area": 9,
+        "capacity": 72,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "diagonal",
+        "size": "1×1",
+        "use": "",
+        "count": 3,
+        "area": 1.5,
+        "capacity": 12,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "3×1",
+        "use": "",
+        "count": 4,
+        "area": 12,
+        "capacity": 96,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "2×1",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 16,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×3",
+        "use": "",
+        "count": 9,
+        "area": 27,
+        "capacity": 216,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×1",
+        "use": "",
+        "count": 2,
+        "area": 2,
+        "capacity": 16,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×2",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 16,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "parking",
+        "count": 5,
+        "area": 2.5,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "garden",
+        "count": 7,
+        "area": 3.5,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 1,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 1,
+        "area": 8,
+        "capacity": 192,
+        "density": 24
+      },
+      {
+        "zone": 1,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "2×2",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 48,
+        "density": 24
+      },
+      {
+        "zone": 1,
+        "level": 2,
+        "shape": "rect",
+        "size": "2×2",
+        "use": "",
+        "count": 1,
+        "area": 4,
+        "capacity": 96,
+        "density": 24
+      },
+      {
+        "zone": 1,
+        "level": 2,
+        "shape": "rect",
+        "size": "2×1",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 48,
+        "density": 24
+      },
+      {
+        "zone": 1,
+        "level": 3,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 1,
+        "area": 8,
+        "capacity": 384,
+        "density": 48
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 2,
+        "area": 16,
+        "capacity": 64,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "bigTriangle",
+        "size": "3×3",
+        "use": "",
+        "count": 4,
+        "area": 18,
+        "capacity": 72,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "bigTriangle",
+        "size": "2×2",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 8,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "3×1",
+        "use": "",
+        "count": 3,
+        "area": 9,
+        "capacity": 36,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×3",
+        "use": "",
+        "count": 3,
+        "area": 9,
+        "capacity": 36,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×2",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 8,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "2×2",
+        "use": "",
+        "count": 2,
+        "area": 8,
+        "capacity": 32,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×1",
+        "use": "",
+        "count": 2,
+        "area": 2,
+        "capacity": 8,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "parking",
+        "count": 11,
+        "area": 5.5,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "shop",
+        "count": 24,
+        "area": 12,
+        "capacity": 48,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 1,
+        "area": 8,
+        "capacity": 96,
+        "density": 12
+      },
+      {
+        "zone": 2,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "3×3",
+        "use": "",
+        "count": 2,
+        "area": 9,
+        "capacity": 108,
+        "density": 12
+      },
+      {
+        "zone": 2,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "2×2",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 24,
+        "density": 12
+      },
+      {
+        "zone": 2,
+        "level": 2,
+        "shape": "rect",
+        "size": "1×1",
+        "use": "",
+        "count": 2,
+        "area": 2,
+        "capacity": 24,
+        "density": 12
+      },
+      {
+        "zone": 2,
+        "level": 3,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 1,
+        "area": 8,
+        "capacity": 192,
+        "density": 24
+      },
+      {
+        "zone": 3,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "parking",
+        "count": 4,
+        "area": 2,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 3,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "garden",
+        "count": 3,
+        "area": 1.5,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 3,
+        "level": 3,
+        "shape": "bigTriangle",
+        "size": "3×3",
+        "use": "",
+        "count": 2,
+        "area": 9,
+        "capacity": 144,
+        "density": 16
+      },
+      {
+        "zone": 3,
+        "level": 3,
+        "shape": "diagonal",
+        "size": "1×1",
+        "use": "",
+        "count": 1,
+        "area": 0.5,
+        "capacity": 8,
+        "density": 16
+      },
+      {
+        "zone": 3,
+        "level": 3,
+        "shape": "rect",
+        "size": "1×1",
+        "use": "",
+        "count": 1,
+        "area": 1,
+        "capacity": 16,
+        "density": 16
+      },
+      {
+        "zone": 3,
+        "level": 3,
+        "shape": "rect",
+        "size": "3×1",
+        "use": "",
+        "count": 1,
+        "area": 3,
+        "capacity": 48,
+        "density": 16
+      },
+      {
+        "zone": 4,
+        "level": 1,
+        "shape": "farmhouse",
+        "size": "1×1",
+        "use": "",
+        "count": 1,
+        "area": 1,
+        "capacity": 4,
+        "density": 4
+      },
+      {
+        "zone": 4,
+        "level": 1,
+        "shape": "field",
+        "size": "0×0",
+        "use": "",
+        "count": 2,
+        "area": 112,
+        "capacity": 448,
+        "density": 4
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "2×1",
+        "use": "plaza",
+        "count": 1,
+        "area": 2,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "1×1",
+        "use": "park",
+        "count": 1,
+        "area": 1,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "3×3",
+        "use": "hospital",
+        "count": 2,
+        "area": 18,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "2×2",
+        "use": "school",
+        "count": 2,
+        "area": 8,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "3×3",
+        "use": "school",
+        "count": 1,
+        "area": 9,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "3×2",
+        "use": "school",
+        "count": 1,
+        "area": 6,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "2×1",
+        "use": "police",
+        "count": 2,
+        "area": 4,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "1×2",
+        "use": "fire",
+        "count": 1,
+        "area": 2,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "3×2",
+        "use": "water",
+        "count": 1,
+        "area": 6,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "3×3",
+        "use": "water",
+        "count": 1,
+        "area": 9,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "2×3",
+        "use": "power",
+        "count": 1,
+        "area": 6,
+        "capacity": 0,
+        "density": 0
+      }
+    ],
+    "triangles": {
+      "lands": 21,
+      "complete": 21,
+      "fragmented": 0,
+      "squarePlusTriangles": 0,
+      "bySize": {
+        "2": {
+          "lands": 3,
+          "complete": 3
+        },
+        "3": {
+          "lands": 10,
+          "complete": 10
+        },
+        "4": {
+          "lands": 8,
+          "complete": 8
+        }
+      }
+    },
+    "properties": {
+      "counts": {
+        "bigTriangle": 21,
+        "diagonal": 4,
+        "rect": 34,
+        "farmhouse": 1,
+        "field": 2,
+        "service": 12,
+        "public": 2,
+        "triangle": 54
+      },
+      "largeProperties": 63,
+      "withoutEntrance": 0,
+      "services": {
+        "hospital": 2,
+        "school": 4,
+        "police": 2,
+        "fire": 1,
+        "water": 2,
+        "power": 1
+      }
+    },
+    "publicLand": {
+      "publicAtoms": 124,
+      "emptyAtoms": 0
+    },
+    "coverage": {
+      "spread": {
+        "population": 1340,
+        "blindShare": 0.5761194029850746,
+        "missing": {
+          "hospital": 64,
+          "school": 108,
+          "police": 216,
+          "fire": 736,
+          "water": 0,
+          "power": 0
+        }
+      },
+      "concentrated": {
+        "population": 1616,
+        "blindShare": 0.9504950495049505,
+        "missing": {
+          "hospital": 0,
+          "school": 1244,
+          "police": 832,
+          "fire": 832,
+          "water": 0,
+          "power": 0
+        }
+      }
+    },
+    "metro": {
+      "lines": 3,
+      "branching": [],
+      "loops": 1,
+      "interchanges": 2,
+      "passThroughs": 1
+    },
+    "roads": {
+      "checked": 128,
+      "overlaps": 0,
+      "smallestMargin": 0.09666666666666685
+    },
+    "traffic": {
+      "segments": 247,
+      "generated": 1340,
+      "assigned": 1340.0000000000007,
+      "unreachable": 0,
+      "overloaded": 0,
+      "busiest": 0.24254669389751468,
+      "deterministic": true
+    },
+    "order": {
+      "items": 264,
+      "cycles": 0,
+      "violations": 0,
+      "violationsIfSortedByCenter": 26
+    }
+  },
+  "64": {
+    "generateMs": 385,
+    "parcels": 403,
+    "hash": "e842dc316a4fa65e",
+    "sameOnSecondRun": true,
+    "sameWithShuffledInput": true,
+    "area": {
+      "buildableArea": 2907,
+      "parcelArea": 1551.5,
+      "overlappingAtoms": 0,
+      "atomsOutsideBuildable": 0,
+      "polygonLargerThanParcel": 0,
+      "usage": 0.5337117303061576
+    },
+    "capacity": {
+      "rows": 77,
+      "rowsNotProportional": 0
+    },
+    "capacityTable": [
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 6,
+        "area": 48,
+        "capacity": 384,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "bigTriangle",
+        "size": "3×3",
+        "use": "",
+        "count": 3,
+        "area": 13.5,
+        "capacity": 108,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "diagonal",
+        "size": "1×1",
+        "use": "",
+        "count": 3,
+        "area": 1.5,
+        "capacity": 12,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "3×1",
+        "use": "",
+        "count": 4,
+        "area": 12,
+        "capacity": 96,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×1",
+        "use": "",
+        "count": 7,
+        "area": 7,
+        "capacity": 56,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×3",
+        "use": "",
+        "count": 18,
+        "area": 54,
+        "capacity": 432,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "2×2",
+        "use": "",
+        "count": 1,
+        "area": 4,
+        "capacity": 32,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "3×3",
+        "use": "",
+        "count": 4,
+        "area": 36,
+        "capacity": 288,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "2×3",
+        "use": "",
+        "count": 1,
+        "area": 6,
+        "capacity": 48,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×2",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 16,
+        "density": 8
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "parking",
+        "count": 12,
+        "area": 6,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 1,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "garden",
+        "count": 21,
+        "area": 10.5,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 1,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 3,
+        "area": 24,
+        "capacity": 576,
+        "density": 24
+      },
+      {
+        "zone": 1,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "3×3",
+        "use": "",
+        "count": 4,
+        "area": 18,
+        "capacity": 432,
+        "density": 24
+      },
+      {
+        "zone": 1,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "2×2",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 48,
+        "density": 24
+      },
+      {
+        "zone": 1,
+        "level": 2,
+        "shape": "rect",
+        "size": "1×1",
+        "use": "",
+        "count": 3,
+        "area": 3,
+        "capacity": 72,
+        "density": 24
+      },
+      {
+        "zone": 1,
+        "level": 2,
+        "shape": "rect",
+        "size": "2×1",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 48,
+        "density": 24
+      },
+      {
+        "zone": 1,
+        "level": 2,
+        "shape": "rect",
+        "size": "3×2",
+        "use": "",
+        "count": 2,
+        "area": 12,
+        "capacity": 288,
+        "density": 24
+      },
+      {
+        "zone": 1,
+        "level": 2,
+        "shape": "rect",
+        "size": "1×2",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 48,
+        "density": 24
+      },
+      {
+        "zone": 1,
+        "level": 3,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 2,
+        "area": 16,
+        "capacity": 768,
+        "density": 48
+      },
+      {
+        "zone": 1,
+        "level": 3,
+        "shape": "bigTriangle",
+        "size": "3×3",
+        "use": "",
+        "count": 6,
+        "area": 27,
+        "capacity": 1296,
+        "density": 48
+      },
+      {
+        "zone": 1,
+        "level": 3,
+        "shape": "rect",
+        "size": "3×1",
+        "use": "",
+        "count": 1,
+        "area": 3,
+        "capacity": 144,
+        "density": 48
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 9,
+        "area": 72,
+        "capacity": 288,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "bigTriangle",
+        "size": "3×3",
+        "use": "",
+        "count": 11,
+        "area": 49.5,
+        "capacity": 198,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "bigTriangle",
+        "size": "2×2",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 8,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "3×1",
+        "use": "",
+        "count": 6,
+        "area": 18,
+        "capacity": 72,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "2×1",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 8,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×3",
+        "use": "",
+        "count": 9,
+        "area": 27,
+        "capacity": 108,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×2",
+        "use": "",
+        "count": 4,
+        "area": 8,
+        "capacity": 32,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "2×3",
+        "use": "",
+        "count": 2,
+        "area": 12,
+        "capacity": 48,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "1×1",
+        "use": "",
+        "count": 6,
+        "area": 6,
+        "capacity": 24,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "3×2",
+        "use": "",
+        "count": 2,
+        "area": 12,
+        "capacity": 48,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "rect",
+        "size": "2×2",
+        "use": "",
+        "count": 2,
+        "area": 8,
+        "capacity": 32,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "shop",
+        "count": 94,
+        "area": 47,
+        "capacity": 188,
+        "density": 4
+      },
+      {
+        "zone": 2,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "parking",
+        "count": 36,
+        "area": 18,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 2,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 3,
+        "area": 24,
+        "capacity": 288,
+        "density": 12
+      },
+      {
+        "zone": 2,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "3×3",
+        "use": "",
+        "count": 9,
+        "area": 40.5,
+        "capacity": 486,
+        "density": 12
+      },
+      {
+        "zone": 2,
+        "level": 2,
+        "shape": "rect",
+        "size": "2×2",
+        "use": "",
+        "count": 1,
+        "area": 4,
+        "capacity": 48,
+        "density": 12
+      },
+      {
+        "zone": 2,
+        "level": 2,
+        "shape": "rect",
+        "size": "1×1",
+        "use": "",
+        "count": 7,
+        "area": 7,
+        "capacity": 84,
+        "density": 12
+      },
+      {
+        "zone": 2,
+        "level": 2,
+        "shape": "rect",
+        "size": "1×2",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 24,
+        "density": 12
+      },
+      {
+        "zone": 2,
+        "level": 3,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 3,
+        "area": 24,
+        "capacity": 576,
+        "density": 24
+      },
+      {
+        "zone": 2,
+        "level": 3,
+        "shape": "bigTriangle",
+        "size": "3×3",
+        "use": "",
+        "count": 4,
+        "area": 18,
+        "capacity": 432,
+        "density": 24
+      },
+      {
+        "zone": 2,
+        "level": 3,
+        "shape": "rect",
+        "size": "1×1",
+        "use": "",
+        "count": 2,
+        "area": 2,
+        "capacity": 48,
+        "density": 24
+      },
+      {
+        "zone": 2,
+        "level": 3,
+        "shape": "rect",
+        "size": "3×1",
+        "use": "",
+        "count": 1,
+        "area": 3,
+        "capacity": 72,
+        "density": 24
+      },
+      {
+        "zone": 3,
+        "level": 1,
+        "shape": "bigTriangle",
+        "size": "2×2",
+        "use": "",
+        "count": 1,
+        "area": 2,
+        "capacity": 16,
+        "density": 8
+      },
+      {
+        "zone": 3,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "parking",
+        "count": 8,
+        "area": 4,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 3,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "garden",
+        "count": 4,
+        "area": 2,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 3,
+        "level": 2,
+        "shape": "bigTriangle",
+        "size": "3×3",
+        "use": "",
+        "count": 2,
+        "area": 9,
+        "capacity": 108,
+        "density": 12
+      },
+      {
+        "zone": 3,
+        "level": 2,
+        "shape": "rect",
+        "size": "2×3",
+        "use": "",
+        "count": 1,
+        "area": 6,
+        "capacity": 72,
+        "density": 12
+      },
+      {
+        "zone": 3,
+        "level": 2,
+        "shape": "rect",
+        "size": "3×3",
+        "use": "",
+        "count": 1,
+        "area": 9,
+        "capacity": 108,
+        "density": 12
+      },
+      {
+        "zone": 3,
+        "level": 2,
+        "shape": "rect",
+        "size": "1×1",
+        "use": "",
+        "count": 2,
+        "area": 2,
+        "capacity": 24,
+        "density": 12
+      },
+      {
+        "zone": 3,
+        "level": 2,
+        "shape": "rect",
+        "size": "3×2",
+        "use": "",
+        "count": 1,
+        "area": 6,
+        "capacity": 72,
+        "density": 12
+      },
+      {
+        "zone": 3,
+        "level": 3,
+        "shape": "bigTriangle",
+        "size": "4×4",
+        "use": "",
+        "count": 1,
+        "area": 8,
+        "capacity": 128,
+        "density": 16
+      },
+      {
+        "zone": 3,
+        "level": 3,
+        "shape": "rect",
+        "size": "1×3",
+        "use": "",
+        "count": 1,
+        "area": 3,
+        "capacity": 48,
+        "density": 16
+      },
+      {
+        "zone": 3,
+        "level": 3,
+        "shape": "rect",
+        "size": "1×2",
+        "use": "",
+        "count": 2,
+        "area": 4,
+        "capacity": 64,
+        "density": 16
+      },
+      {
+        "zone": 3,
+        "level": 3,
+        "shape": "rect",
+        "size": "3×1",
+        "use": "",
+        "count": 1,
+        "area": 3,
+        "capacity": 48,
+        "density": 16
+      },
+      {
+        "zone": 3,
+        "level": 3,
+        "shape": "rect",
+        "size": "2×2",
+        "use": "",
+        "count": 1,
+        "area": 4,
+        "capacity": 64,
+        "density": 16
+      },
+      {
+        "zone": 3,
+        "level": 3,
+        "shape": "rect",
+        "size": "3×2",
+        "use": "",
+        "count": 1,
+        "area": 6,
+        "capacity": 96,
+        "density": 16
+      },
+      {
+        "zone": 4,
+        "level": 1,
+        "shape": "farmhouse",
+        "size": "1×1",
+        "use": "",
+        "count": 16,
+        "area": 16,
+        "capacity": 64,
+        "density": 4
+      },
+      {
+        "zone": 4,
+        "level": 1,
+        "shape": "field",
+        "size": "0×0",
+        "use": "",
+        "count": 2,
+        "area": 644,
+        "capacity": 2576,
+        "density": 4
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "2×1",
+        "use": "park",
+        "count": 4,
+        "area": 8,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "1×1",
+        "use": "park",
+        "count": 8,
+        "area": 8,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "2×1",
+        "use": "plaza",
+        "count": 1,
+        "area": 2,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "1×2",
+        "use": "plaza",
+        "count": 3,
+        "area": 6,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "1×2",
+        "use": "park",
+        "count": 1,
+        "area": 2,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "public",
+        "size": "1×1",
+        "use": "plaza",
+        "count": 2,
+        "area": 2,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "3×3",
+        "use": "hospital",
+        "count": 2,
+        "area": 18,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "2×3",
+        "use": "school",
+        "count": 1,
+        "area": 6,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "3×3",
+        "use": "school",
+        "count": 1,
+        "area": 9,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "1×2",
+        "use": "police",
+        "count": 1,
+        "area": 2,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "2×1",
+        "use": "police",
+        "count": 1,
+        "area": 2,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "2×2",
+        "use": "fire",
+        "count": 1,
+        "area": 4,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "1×2",
+        "use": "fire",
+        "count": 1,
+        "area": 2,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "3×3",
+        "use": "water",
+        "count": 1,
+        "area": 9,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "3×3",
+        "use": "power",
+        "count": 2,
+        "area": 18,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "service",
+        "size": "3×2",
+        "use": "power",
+        "count": 1,
+        "area": 6,
+        "capacity": 0,
+        "density": 0
+      },
+      {
+        "zone": 5,
+        "level": 1,
+        "shape": "triangle",
+        "size": "1×1",
+        "use": "garden",
+        "count": 8,
+        "area": 4,
+        "capacity": 0,
+        "density": 0
+      }
+    ],
+    "triangles": {
+      "lands": 69,
+      "complete": 69,
+      "fragmented": 0,
+      "squarePlusTriangles": 0,
+      "bySize": {
+        "2": {
+          "lands": 3,
+          "complete": 3
+        },
+        "3": {
+          "lands": 39,
+          "complete": 39
+        },
+        "4": {
+          "lands": 27,
+          "complete": 27
+        }
+      }
+    },
+    "properties": {
+      "counts": {
+        "bigTriangle": 69,
+        "diagonal": 3,
+        "rect": 99,
+        "farmhouse": 16,
+        "field": 2,
+        "service": 12,
+        "public": 19,
+        "triangle": 183
+      },
+      "largeProperties": 164,
+      "withoutEntrance": 0,
+      "services": {
+        "hospital": 2,
+        "school": 2,
+        "police": 2,
+        "fire": 2,
+        "water": 1,
+        "power": 3
+      }
+    },
+    "publicLand": {
+      "publicAtoms": 396,
+      "emptyAtoms": 0
+    },
+    "coverage": {
+      "spread": {
+        "population": 5192,
+        "blindShare": 0.8805855161787365,
+        "missing": {
+          "hospital": 1128,
+          "school": 3164,
+          "police": 3612,
+          "fire": 2828,
+          "water": 88,
+          "power": 0
+        }
+      },
+      "concentrated": {
+        "population": 5244,
+        "blindShare": 0.969488939740656,
+        "missing": {
+          "hospital": 3520,
+          "school": 4952,
+          "police": 4536,
+          "fire": 4588,
+          "water": 0,
+          "power": 0
+        }
+      }
+    },
+    "metro": {
+      "lines": 3,
+      "branching": [],
+      "loops": 1,
+      "interchanges": 2,
+      "passThroughs": 1
+    },
+    "roads": {
+      "checked": 401,
+      "overlaps": 0,
+      "smallestMargin": 0.09666666666666685
+    },
+    "traffic": {
+      "segments": 664,
+      "generated": 5192,
+      "assigned": 5192.0000000000055,
+      "unreachable": 0,
+      "overloaded": 0,
+      "busiest": 0.8046111638294291,
+      "deterministic": true
+    },
+    "order": {
+      "items": 1349,
+      "cycles": 0,
+      "violations": 0,
+      "violationsIfSortedByCenter": 88
+    }
+  },
+  "styles": {
+    "missingStyleFallsBack": true,
+    "missingSpecFallsBack": true,
+    "unknownSpecIsEmpty": true,
+    "festivalActiveOnDate": true,
+    "festivalEndsByItself": true,
+    "ownDecorationWins": true,
+    "decorationFallsBack": true,
+    "noDecorationIsSafe": true,
+    "noFestivalIsSafe": true
+  }
+}

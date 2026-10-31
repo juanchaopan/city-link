@@ -7,8 +7,6 @@ CanvasTextMetrics.BASELINE_SYMBOL = '国';
 
 export const hudThemes = {
   sunny: { paper: '#f3f7f4', paperLine: '#d5e2df', ink: '#1f3a4d', muted: '#5f7683', seal: '#c8372d', mark: '#f2c230', markInk: '#1f3a4d', ruler: '#e6d3a6', rulerInk: '#4a3a1e', good: '#2d8f62' },
-  maquette: { paper: '#fbfaf5', paperLine: '#dfe4df', ink: '#2c3a42', muted: '#74828a', seal: '#c8372d', mark: '#2c3a42', markInk: '#fbfaf5', ruler: '#e5e0d2', rulerInk: '#2c3a42', good: '#3f8f6a' },
-  dusk: { paper: '#2b2b48', paperLine: '#40406a', ink: '#f6ead8', muted: '#b3adc8', seal: '#ef6a5c', mark: '#ffc76a', markInk: '#2b2b48', ruler: '#453a5c', rulerInk: '#f6ead8', good: '#7fd0a0' },
 };
 
 const FONT = '"PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif';
@@ -134,10 +132,10 @@ function item(atlas, theme, { key, title, price, selected }, width) {
 }
 
 const SHEET_ITEMS = [
-  { key: 'r-road-11', title: '普通道路', price: '每格 ¥20', selected: true },
-  { key: 'r-road-22', title: '斜向道路', price: '每格 ¥28' },
-  { key: 'r-highway-11', title: '高速公路', price: '每格 ¥120' },
-  { key: 'br-road-11', title: '桥', price: '每格 ¥80' },
+  { key: 'r-11-0', title: '普通道路', price: '每格 ¥20', selected: true },
+  { key: 'r-22-0', title: '斜向道路', price: '每格 ¥28' },
+  { key: 'r-0-11', title: '高速公路', price: '每格 ¥120' },
+  { key: 'br-11-0', title: '桥', price: '每格 ¥80' },
 ];
 
 function sheet(atlas, theme, width, bottom) {
