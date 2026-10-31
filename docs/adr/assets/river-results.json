@@ -1,0 +1,283 @@
+{
+  "node": "v24.22.1",
+  "opt": {
+    "plateau": 0.14,
+    "low": 0.3,
+    "high": 0.64,
+    "peak": 0.78,
+    "forest": 0.68,
+    "mineralChance": 0.5,
+    "buildableFloor": 0.6,
+    "cornerPad": true,
+    "mainShare": 0.45,
+    "riverShare": 0.8,
+    "meanderCell": 14,
+    "meanderWeight": 3,
+    "routeMargin": 4,
+    "relaxPasses": 40,
+    "relaxFinish": 4,
+    "wiggleMin": 1.8,
+    "wiggleSpread": 1.2,
+    "waveMin": 22,
+    "waveSpread": 12,
+    "waypointTries": 6,
+    "swingMin": 9,
+    "swingSpread": 9,
+    "straightMax": 28,
+    "valley": 3,
+    "lakeChance": 0.25,
+    "lakeFit": 0.9,
+    "lakeMin": 8,
+    "lakeSpread": 4,
+    "lakeStretchMin": 0.05,
+    "lakeStretchSpread": 0.45,
+    "sourceLakeMin": 8,
+    "sourceLakeSpread": 4,
+    "pondMin": 4,
+    "pondSpread": 2
+  },
+  "stats": {
+    "name": "cluster",
+    "N": 64,
+    "maxLevel": 3,
+    "clusters": 30,
+    "cities": 1920,
+    "hardFailures": 0,
+    "failureReasons": {},
+    "retried": 0,
+    "attemptsMax": 1,
+    "seams": {
+      "heightSeam": 0,
+      "waterSeam": 0,
+      "slope": 0,
+      "waterLevel": 0,
+      "range": 0
+    },
+    "coverage": {
+      "mean": 0.797,
+      "min": 0.797
+    },
+    "network": {
+      "mainSlots": 909,
+      "mainReached": 909,
+      "mouths": 3000,
+      "mouthsBroken": 0
+    },
+    "buildable": {
+      "mean": 0.782,
+      "p05": 0.687,
+      "min": 0.609
+    },
+    "water": {
+      "mean": 0.068,
+      "p05": 0,
+      "min": 0
+    },
+    "hill": {
+      "mean": 0.165,
+      "p05": 0.042,
+      "min": 0
+    },
+    "forest": {
+      "mean": 0.186,
+      "p05": 0.106,
+      "min": 0.022
+    },
+    "mineral": {
+      "mean": 0.008,
+      "p05": 0,
+      "min": 0
+    },
+    "slope": {
+      "mean": 0.15,
+      "p05": 0.106,
+      "min": 0.039
+    },
+    "byKind": {
+      "main": {
+        "count": 909,
+        "buildable": {
+          "mean": 0.741,
+          "p05": 0.669,
+          "min": 0.609
+        },
+        "water": {
+          "mean": 0.106,
+          "p05": 0.054,
+          "min": 0.012
+        }
+      },
+      "trib": {
+        "count": 621,
+        "buildable": {
+          "mean": 0.806,
+          "p05": 0.728,
+          "min": 0.641
+        },
+        "water": {
+          "mean": 0.042,
+          "p05": 0.012,
+          "min": 0.005
+        }
+      },
+      "none": {
+        "count": 390,
+        "buildable": {
+          "mean": 0.843,
+          "p05": 0.763,
+          "min": 0.723
+        },
+        "water": {
+          "mean": 0.02,
+          "p05": 0,
+          "min": 0
+        }
+      }
+    },
+    "firstTradeFail": 0,
+    "connectFail": 0,
+    "ms": {
+      "p50": 20.33,
+      "p95": 37.09,
+      "max": 104.75
+    },
+    "createMs": {
+      "mean": 1.19,
+      "max": 5.88
+    },
+    "skeletonJsonBytes": {
+      "mean": 3364,
+      "max": 3373
+    },
+    "look": {
+      "main": {
+        "tiles": 64848,
+        "sharp": 77,
+        "loops": 0,
+        "sharpPer100": 0.12,
+        "straightP50": 17,
+        "straightP95": 25,
+        "straightMax": 36
+      },
+      "trib": {
+        "tiles": 50750,
+        "sharp": 67,
+        "loops": 0,
+        "sharpPer100": 0.13,
+        "straightP50": 14,
+        "straightP95": 23,
+        "straightMax": 29
+      }
+    },
+    "roadPieces": {
+      "flat:straight:0:0": 68425,
+      "flat:diagonal:0:3": 25567,
+      "flat:straight:0:1": 55956,
+      "corner:straight:7:1": 444,
+      "corner:straight:2:1": 518,
+      "ramp:straight:9:1": 1250,
+      "ramp:straight:3:0": 1303,
+      "ramp:straight:12:0": 1220,
+      "corner:straight:14:0": 490,
+      "corner:straight:4:0": 561,
+      "flat:diagonal:0:2": 26783,
+      "corner:straight:8:0": 452,
+      "corner:straight:13:0": 449,
+      "ramp:straight:6:1": 1265,
+      "ramp:straight:3:1": 431,
+      "bridge:2": 2884,
+      "bridge:0": 1823,
+      "bridge:1": 1799,
+      "bridge:3": 2868,
+      "ramp:diagonal:12:3": 728,
+      "ramp:diagonal:6:3": 610,
+      "corner:diagonal:4:3": 111,
+      "ramp:diagonal:9:3": 668,
+      "corner:straight:2:0": 532,
+      "ramp:diagonal:12:2": 863,
+      "corner:diagonal:11:2": 440,
+      "corner:straight:1:1": 509,
+      "corner:straight:11:1": 435,
+      "ramp:straight:6:0": 421,
+      "corner:straight:7:0": 461,
+      "ramp:diagonal:3:3": 732,
+      "corner:diagonal:11:3": 74,
+      "corner:diagonal:4:2": 471,
+      "corner:straight:14:1": 418,
+      "corner:straight:4:1": 438,
+      "corner:diagonal:1:2": 418,
+      "corner:diagonal:2:3": 605,
+      "corner:straight:8:1": 445,
+      "corner:straight:13:1": 425,
+      "corner:diagonal:1:3": 154,
+      "corner:diagonal:14:2": 446,
+      "ramp:diagonal:6:2": 712,
+      "corner:straight:1:0": 419,
+      "corner:straight:11:0": 416,
+      "corner:diagonal:13:3": 527,
+      "corner:diagonal:13:2": 98,
+      "ramp:diagonal:9:2": 619,
+      "corner:diagonal:8:2": 123,
+      "ramp:diagonal:3:2": 905,
+      "corner:diagonal:7:3": 461,
+      "corner:diagonal:8:3": 497,
+      "corner:diagonal:2:2": 158,
+      "corner:diagonal:14:3": 85,
+      "corner:diagonal:7:2": 88,
+      "ramp:straight:12:1": 444,
+      "ramp:straight:9:0": 439
+    },
+    "shapes": {
+      "0": 6685436,
+      "1": 73021,
+      "2": 73149,
+      "3": 153148,
+      "4": 72400,
+      "5": 616,
+      "6": 151591,
+      "7": 66282,
+      "8": 73120,
+      "9": 158631,
+      "10": 604,
+      "11": 66160,
+      "12": 158382,
+      "13": 66235,
+      "14": 65545
+    },
+    "river": {
+      "mainSlots": 909,
+      "mainWithSites": 909,
+      "bankTiles": {
+        "mean": 163.8,
+        "p05": 77,
+        "min": 27,
+        "max": 334
+      },
+      "portSites": {
+        "mean": 102.6,
+        "p05": 48,
+        "min": 16,
+        "max": 255
+      },
+      "bridgeSpans": {
+        "mean": 371.7,
+        "p05": 148,
+        "min": 50,
+        "max": 880
+      },
+      "routes": 900,
+      "routesFailed": 0,
+      "slotPathMismatch": 0,
+      "routeTilesMean": 577,
+      "routeTilesMax": 1624,
+      "viaCitiesMean": 6.7,
+      "reachedWithBridgesPassable": 909,
+      "reachedIfBridgesBlockedShips": 55,
+      "bridgesPlaced": 1818
+    },
+    "storage": {
+      "gzipMean": 633,
+      "gzipMax": 810
+    }
+  }
+}
