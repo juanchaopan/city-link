@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>素材生成器</title>
+    <script type="importmap">
+      { "imports": { "three": "/node_modules/three/build/three.module.js" } }
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      import { Baker } from './kit/bake.js';
+      import { palettes } from './kit/palettes.js';
+      import { makeLayout } from './kit/layout.js';
+      import { EXTRA_KEYS, specFor } from './kit/catalog.js';
+
+      const baker = new Baker();
+      const GUTTER = 2;
+      const ATLAS_WIDTH = 4096;
+
+      function pack(sprites) {
+        const sorted = [...sprites].sort((a, b) => b.h - a.h || b.w - a.w);
+        let x = GUTTER;
+        let y = GUTTER;
+        let shelf = 0;
+        for (const sprite of sorted) {
+          if (x + sprite.w + GUTTER > ATLAS_WIDTH) {
+            x = GUTTER;
+            y += shelf + GUTTER;
+            shelf = 0;
+          }
+          sprite.x = x;
+          sprite.y = y;
+          x += sprite.w + GUTTER;
+          shelf = Math.max(shelf, sprite.h);
+        }
+        return y + shelf + GUTTER;
+      }
+
+      window.keysFor = (sizes) => {
+        const keys = new Set(EXTRA_KEYS);
+        for (const N of sizes) for (const key of makeLayout(N).keys) keys.add(key);
+        return [...keys].sort();
+      };
+
+      window.bakeAtlas = (paletteId, keys) => {
+        const palette = palettes[paletteId];
+        baker.usePalette(palette);
+        const groups = {};
+        const sprites = [];
+        const started = performance.now();
+        for (const key of keys) {
+          const spec = specFor(key, palette);
+          const t0 = performance.now();
+          const sprite = baker.bake(spec);
+          const ms = performance.now() - t0;
+          const entry = (groups[spec.group] ??= { count: 0, ms: 0 });
+          entry.count += 1;
+          entry.ms += ms;
+          sprites.push({ key, ...sprite });
+        }
+        const bakeMs = performance.now() - started;
+        const height = pack(sprites);
+        const canvas = document.createElement('canvas');
+        canvas.width = ATLAS_WIDTH;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        const frames = {};
+        for (const sprite of sprites) {
+          context.putImageData(new ImageData(sprite.data, sprite.w, sprite.h), sprite.x, sprite.y);
+          frames[sprite.key] = { x: sprite.x, y: sprite.y, w: sprite.w, h: sprite.h, ax: sprite.ax, ay: sprite.ay };
+        }
+        return {
+          png: canvas.toDataURL('image/png'),
+          frames,
+          stats: { count: sprites.length, bakeMs, groups, width: ATLAS_WIDTH, height },
+        };
+      };
+
+      window.bakerReady = true;
+    </script>
+  </body>
+</html>

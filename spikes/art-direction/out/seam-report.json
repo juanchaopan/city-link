@@ -1,0 +1,40 @@
+{
+  "sunny": [
+    {
+      "zoom": 0.25,
+      "solid": 1472397,
+      "tinted": 573,
+      "total": 2962440
+    },
+    {
+      "zoom": 0.3333,
+      "solid": 862698,
+      "tinted": 420,
+      "total": 2962440
+    },
+    {
+      "zoom": 0.5,
+      "solid": 32195,
+      "tinted": 131,
+      "total": 2962440
+    },
+    {
+      "zoom": 0.75,
+      "solid": 0,
+      "tinted": 0,
+      "total": 2962440
+    },
+    {
+      "zoom": 1,
+      "solid": 0,
+      "tinted": 0,
+      "total": 2962440
+    },
+    {
+      "zoom": 2,
+      "solid": 0,
+      "tinted": 0,
+      "total": 2962440
+    }
+  ]
+}

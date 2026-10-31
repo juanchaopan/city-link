@@ -1,0 +1,17 @@
+{
+  "name": "art-direction-spike",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen": "node scripts/gen.js",
+    "shots": "node scripts/shots.js",
+    "serve": "node scripts/serve.js"
+  },
+  "dependencies": {
+    "pixi.js": "8.22.0",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}
