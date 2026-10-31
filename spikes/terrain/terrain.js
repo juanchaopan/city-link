@@ -13,7 +13,9 @@ const DIR8 = [
 const CONNECT_LEVEL = 1;
 const PAD_HALF = 2;
 const MAX_ATTEMPTS = 8;
+const LAKE_FALLBACK_ATTEMPT = 3;
 const BRIDGE_SPAN = 5;
+const BORDER_BAND = 6;
 
 function makeRng(seed) {
   let a = seed >>> 0;
@@ -89,11 +91,24 @@ function bounds(pins, V, maxLevel) {
   return { lower, upper };
 }
 
+// 高度、森林和河流走向的噪声按全群坐标取值，相邻城市自然连续，贴合约束只负责兜底。
 function createCluster(seed, N, maxLevel) {
   const rng = makeRng(seed);
   const edges = {};
   for (const side of Object.keys(SIDES)) edges[side] = rng() < 0.5 ? 'coast' : 'mountain';
-  return { seed, N, maxLevel, edges, slots: new Array(64).fill(null) };
+  const size = N * 8 + 1;
+  const cell = Math.max(10, (N / 3.5) | 0);
+  return {
+    seed,
+    N,
+    maxLevel,
+    edges,
+    slots: new Array(64).fill(null),
+    heightA: valueNoise(size, cell, rng),
+    heightB: valueNoise(size, (cell / 2.5) | 0 || 4, rng),
+    forestNoise: valueNoise(size, Math.max(6, (N / 7) | 0), rng),
+    meander: valueNoise(size, Math.max(5, (N / 10) | 0), rng),
+  };
 }
 
 function slotAt(cluster, sx, sy) {
@@ -116,7 +131,7 @@ function sideVertices(side, N) {
   return out;
 }
 
-function attemptGenerate(cluster, sx, sy, seed, opt) {
+function attemptGenerate(cluster, sx, sy, seed, attempt, opt) {
   const { N, maxLevel } = cluster;
   const V = N + 1;
   const rng = makeRng(seed);
@@ -126,6 +141,8 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
   let pinConflicts = 0;
   const vid = (x, y) => y * V + x;
   const tid = (x, y) => y * N + x;
+  const originX = sx * N;
+  const originY = sy * N;
   const pin = (x, y, level) => {
     const i = vid(x, y);
     if (pins[i] >= 0 && pins[i] !== level) pinConflicts++;
@@ -173,8 +190,8 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
       if (type === 'coast') {
         pin(x, y, 0);
       } else {
-        const gx = sx * N + x;
-        const gy = sy * N + y;
+        const gx = originX + x;
+        const gy = originY + y;
         const size = 8 * N;
         const along = side === 'W' || side === 'E' ? gy : gx;
         const startSide = side === 'W' || side === 'E' ? 'N' : 'W';
@@ -222,11 +239,10 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
     }
   }
 
-  const noiseCell = Math.max(10, (N / 3.5) | 0);
-  const noiseA = valueNoise(V, noiseCell, rng);
-  const noiseB = valueNoise(V, (noiseCell / 2.5) | 0 || 4, rng);
   const heightAt = (x, y) => {
-    const n = noiseA(x, y) * 0.8 + noiseB(x, y) * 0.2;
+    const gx = originX + x;
+    const gy = originY + y;
+    const n = cluster.heightA(gx, gy) * 0.8 + cluster.heightB(gx, gy) * 0.2;
     if (n < opt.low) return 0;
     if (maxLevel >= 2 && n >= opt.high) {
       if (maxLevel >= 3 && n >= opt.peak) return 3;
@@ -261,16 +277,18 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
     pinTile(t % N, (t / N) | 0, 0);
   }
 
+  // 重试到后面时河流不再穿城，各自汇入湖泊，避免把中心平地围死。
+  const lakeOnly = attempt >= LAKE_FALLBACK_ATTEMPT;
   const freeSides = Object.keys(SIDES).filter((side) => {
     const s = SIDES[side];
     if (isOuter(side, sx, sy)) return cluster.edges[side] === 'coast';
     return !slotAt(cluster, sx + s.dx, sy + s.dy);
   });
-  if (rivers.length === 0 && freeSides.length >= 2 && rng() < opt.riverChance) {
+  if (rivers.length === 0 && !lakeOnly && freeSides.length >= 2 && rng() < opt.riverChance) {
     const inner = freeSides.filter((side) => !isOuter(side, sx, sy));
     if (inner.length > 0) {
       const startSide = inner[(rng() * inner.length) | 0];
-      const a = 6 + ((rng() * (N - 12)) | 0);
+      const a = 8 + ((rng() * (N - 16)) | 0);
       const [x, y] = startSide === 'W' ? [0, a] : startSide === 'E' ? [N - 1, a] : startSide === 'N' ? [a, 0] : [a, N - 1];
       if (!blocked[tid(x, y)]) {
         water[tid(x, y)] = 1;
@@ -284,12 +302,13 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
   const canBeWater = (x, y) => lower[vid(x, y)] <= 0 && lower[vid(x + 1, y)] <= 0
     && lower[vid(x, y + 1)] <= 0 && lower[vid(x + 1, y + 1)] <= 0;
   const onBorder = (x, y) => x === 0 || y === 0 || x === N - 1 || y === N - 1;
+  const borderDistance = (x, y) => Math.min(x, y, N - 1 - x, N - 1 - y);
   const exitOk = (x, y) => {
     for (const side of freeSides) {
       const onSide = (side === 'W' && x === 0) || (side === 'E' && x === N - 1) || (side === 'N' && y === 0) || (side === 'S' && y === N - 1);
       if (!onSide) continue;
       const along = side === 'W' || side === 'E' ? y : x;
-      if (along >= 4 && along < N - 4) return true;
+      if (along >= 6 && along < N - 6) return true;
     }
     return false;
   };
@@ -313,8 +332,13 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
     const done = new Uint8Array(N * N);
     const open = [source];
     dist[source] = 0;
-    const weight = new Float32Array(N * N);
-    for (let i = 0; i < weight.length; i++) weight[i] = 1 + rng() * 2;
+    const sourceX = source % N;
+    const sourceY = (source / N) | 0;
+    const stepCost = (x, y) => {
+      const wander = 1 + 4 * cluster.meander(originX + x, originY + y);
+      const band = borderDistance(x, y);
+      return band < BORDER_BAND ? wander + (BORDER_BAND - band) * 3 : wander;
+    };
     const reachable = [];
     let found = -1;
     while (open.length) {
@@ -328,10 +352,10 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
       const x = t % N;
       const y = (t / N) | 0;
       if (t !== source) {
-        reachable.push(t);
-        const merged = index > 0 && water[t];
-        const exits = onBorder(x, y) && exitOk(x, y)
-          && Math.abs(x - source % N) + Math.abs(y - ((source / N) | 0)) > N / 3;
+        const separation = Math.abs(x - sourceX) + Math.abs(y - sourceY);
+        if (!onBorder(x, y) && (!lakeOnly || separation <= N / 5)) reachable.push(t);
+        const merged = index > 0 && water[t] && !lakeOnly;
+        const exits = !lakeOnly && onBorder(x, y) && exitOk(x, y) && separation > N / 2;
         if (merged || exits) {
           found = t;
           break;
@@ -344,7 +368,7 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
         const nt = tid(nx, ny);
         if (done[nt] || blocked[nt] || !canBeWater(nx, ny)) continue;
         if (onBorder(nx, ny) && !exitOk(nx, ny)) continue;
-        const next = dist[t] + weight[nt];
+        const next = dist[t] + stepCost(nx, ny);
         if (next < dist[nt]) {
           dist[nt] = next;
           from[nt] = t;
@@ -354,12 +378,11 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
     }
     let lake = false;
     if (found < 0) {
-      const interior = reachable.filter((t) => !onBorder(t % N, (t / N) | 0));
-      if (interior.length === 0) {
+      if (reachable.length === 0) {
         deadEnds++;
         return;
       }
-      found = interior[(interior.length * (0.6 + rng() * 0.4)) | 0];
+      found = reachable[(reachable.length * (0.6 + rng() * 0.4)) | 0];
       lake = true;
     }
     for (let t = found; t !== -1; t = from[t]) {
@@ -401,10 +424,10 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
 
   const forest = new Uint8Array(N * N);
   const mineral = new Uint8Array(N * N);
-  const noiseForest = valueNoise(N, Math.max(6, (N / 7) | 0), rng);
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {
-      if (!water[tid(x, y)] && noiseForest(x, y) > opt.forest && !blocked[tid(x, y)]) forest[tid(x, y)] = 1;
+      const t = tid(x, y);
+      if (!water[t] && !blocked[t] && cluster.forestNoise(originX + x, originY + y) > opt.forest) forest[t] = 1;
     }
   }
   if (rng() < opt.mineralChance) {
@@ -631,7 +654,7 @@ function generate(cluster, sx, sy, opt) {
   let last = null;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const seed = (cluster.seed * 1009 + (sy * 8 + sx) * 31 + attempt * 7919) >>> 0;
-    const result = attemptGenerate(cluster, sx, sy, seed, opt);
+    const result = attemptGenerate(cluster, sx, sy, seed, attempt, opt);
     if (result.ok) {
       cluster.slots[sy * 8 + sx] = result.terrain;
       return { ok: true, attempts: attempt + 1, failures, terrain: result.terrain };
@@ -646,7 +669,10 @@ function generate(cluster, sx, sy, opt) {
 function verifyCluster(cluster) {
   const { N, maxLevel } = cluster;
   const V = N + 1;
-  const problems = { heightSeam: 0, waterSeam: 0, slope: 0, waterLevel: 0, range: 0 };
+  const problems = {
+    heightSeam: 0, waterSeam: 0, slope: 0, waterLevel: 0, range: 0,
+    forestSeam: 0, seamTiles: 0, riverTiles: 0, riverNearBorder: 0,
+  };
   for (let sy = 0; sy < 8; sy++) {
     for (let sx = 0; sx < 8; sx++) {
       const slot = slotAt(cluster, sx, sy);
@@ -670,6 +696,11 @@ function verifyCluster(cluster) {
         for (const [ox, oy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
           if (slot.h[(y + oy) * V + x + ox] !== 0) problems.waterLevel++;
         }
+        const band = Math.min(x, y, N - 1 - x, N - 1 - y);
+        if (band >= 1) {
+          problems.riverTiles++;
+          if (band <= 2) problems.riverNearBorder++;
+        }
       }
       const east = slotAt(cluster, sx + 1, sy);
       const south = slotAt(cluster, sx, sy + 1);
@@ -678,8 +709,16 @@ function verifyCluster(cluster) {
         if (south && slot.h[N * V + i] !== south.h[i]) problems.heightSeam++;
       }
       for (let i = 0; i < N; i++) {
-        if (east && slot.water[i * N + N - 1] !== east.water[i * N]) problems.waterSeam++;
-        if (south && slot.water[(N - 1) * N + i] !== south.water[i]) problems.waterSeam++;
+        if (east) {
+          problems.seamTiles++;
+          if (slot.water[i * N + N - 1] !== east.water[i * N]) problems.waterSeam++;
+          if (slot.forest[i * N + N - 1] !== east.forest[i * N]) problems.forestSeam++;
+        }
+        if (south) {
+          problems.seamTiles++;
+          if (slot.water[(N - 1) * N + i] !== south.water[i]) problems.waterSeam++;
+          if (slot.forest[(N - 1) * N + i] !== south.forest[i]) problems.forestSeam++;
+        }
       }
     }
   }

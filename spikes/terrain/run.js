@@ -54,8 +54,7 @@ function round(value, digits = 3) {
 
 function experiment(name, clusters, N, maxLevel, opt) {
   const stats = {
-    name, N, maxLevel, clusters, cities: 0, hardFailures: 0, failureReasons: {}, retried: 0,
-    seams: { heightSeam: 0, waterSeam: 0, slope: 0, waterLevel: 0, range: 0 },
+    name, N, maxLevel, clusters, cities: 0, hardFailures: 0, failureReasons: {}, retried: 0, attemptsMax: 0, seams: {},
   };
   const metrics = [];
   const times = [];
@@ -68,6 +67,7 @@ function experiment(name, clusters, N, maxLevel, opt) {
     for (const { ms, result } of records) {
       times.push(ms);
       stats.cities++;
+      stats.attemptsMax = Math.max(stats.attemptsMax, result.attempts);
       for (const [reason, count] of Object.entries(result.failures)) {
         stats.failureReasons[reason] = (stats.failureReasons[reason] || 0) + count;
       }
@@ -82,8 +82,10 @@ function experiment(name, clusters, N, maxLevel, opt) {
       for (const [k, v] of Object.entries(m.pieces)) pieces[k] = (pieces[k] || 0) + v;
     }
     const seams = verifyCluster(cluster);
-    for (const key of Object.keys(seams)) stats.seams[key] += seams[key];
+    for (const key of Object.keys(seams)) stats.seams[key] = (stats.seams[key] || 0) + seams[key];
   }
+  stats.forestSeamRate = round(stats.seams.forestSeam / Math.max(1, stats.seams.seamTiles));
+  stats.riverNearBorderRate = round(stats.seams.riverNearBorder / Math.max(1, stats.seams.riverTiles));
   const pick = (key) => metrics.map((m) => m[key]);
   const summary = (key) => ({
     mean: round(pick(key).reduce((a, b) => a + b, 0) / Math.max(1, metrics.length)),
@@ -191,7 +193,7 @@ function pieceSummary(pieces) {
   const groups = { 'flat:straight': 0, 'flat:diagonal': 0, ramp: 0, corner: 0, bridge: 0 };
   const distinct = { ramp: new Set(), corner: new Set(), bridge: new Set() };
   for (const [key, count] of Object.entries(pieces)) {
-    const [kind, style, shape, axis] = key.split(':');
+    const [kind, style, shape] = key.split(':');
     if (kind === 'flat') groups[`flat:${style}`] += count;
     if (kind === 'ramp') {
       groups.ramp += count;
@@ -217,7 +219,8 @@ function pieceSummary(pieces) {
 function main() {
   const mode = process.argv[2] || 'quick';
   const main64 = mode === 'full' ? 30 : 3;
-  const sized = mode === 'full' ? 10 : 2;
+  const compare = mode === 'full' ? 15 : 2;
+  const sized = mode === 'full' ? 6 : 1;
   fs.mkdirSync(OUT, { recursive: true });
   const results = { node: process.version, base: BASE, runs: [] };
 
@@ -228,20 +231,16 @@ function main() {
     results.runs.push(stats);
     const { shapes, pieces, ...brief } = stats;
     console.log(JSON.stringify(brief));
+    fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(results, null, 2));
     if (draw) drawCluster(path.join(OUT, `cluster-${name}.png`), sample, 2);
   };
 
   record('L3-pad', main64, 64, 2, {}, true);
   record('L4-pad', main64, 64, 3, {}, true);
-  record('L3-nopad', main64, 64, 2, { cornerPad: false }, false);
-  record('L4-nopad', main64, 64, 3, { cornerPad: false }, false);
-  record('L3-straight-only', main64, 64, 2, { diagonalRamp: false }, false);
-  record('L4-straight-only', main64, 64, 3, { diagonalRamp: false }, false);
-  record('L3-N48', sized, 48, 2, {}, false);
+  record('L3-straight-only', compare, 64, 2, { diagonalRamp: false }, false);
+  record('L4-straight-only', compare, 64, 3, { diagonalRamp: false }, false);
   record('L3-N96', sized, 96, 2, {}, false);
   record('L3-N128', sized, 128, 2, {}, false);
-  record('L4-N128', sized, 128, 3, {}, false);
-  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(results, null, 2));
 }
 
 main();
