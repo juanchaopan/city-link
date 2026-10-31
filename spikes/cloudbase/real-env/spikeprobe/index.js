@@ -6,6 +6,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
 const COLL = 'spike_probe';
+const LATENCY_SAMPLES = 30;
 
 const moduleLoadedAt = Date.now();
 let invocations = 0;
@@ -23,6 +24,15 @@ async function timed(count, fn) {
     samples.push(Date.now() - start);
   }
   return { count, p50: percentile(samples, 50), p95: percentile(samples, 95), max: Math.max(...samples) };
+}
+
+// 集合已存在时创建会报错，这里忽略，让探针可以重复运行。
+async function ensureCollection() {
+  try {
+    await db.createCollection(COLL);
+  } catch {
+    return;
+  }
 }
 
 // 结算入账依赖：带条件的单文档更新是原子的，并发时只有符合条件的次数生效。
@@ -47,14 +57,25 @@ async function uniqueInsert() {
   return { expectedSuccess: 1, success: results.filter((r) => r.status === 'fulfilled').length };
 }
 
-async function latency() {
+async function latencyDocument() {
   const id = `latency-${Date.now()}`;
   await db.collection(COLL).add({ data: { _id: id, n: 0, group: id } });
-  return {
-    read: await timed(50, () => db.collection(COLL).doc(id).get()),
-    write: await timed(50, () => db.collection(COLL).doc(id).update({ data: { n: _.inc(1) } })),
-    latest: await timed(50, () => db.collection(COLL).where({ group: id }).orderBy('n', 'desc').limit(1).get()),
-  };
+  return id;
+}
+
+async function latencyRead() {
+  const id = await latencyDocument();
+  return timed(LATENCY_SAMPLES, () => db.collection(COLL).doc(id).get());
+}
+
+async function latencyWrite() {
+  const id = await latencyDocument();
+  return timed(LATENCY_SAMPLES, () => db.collection(COLL).doc(id).update({ data: { n: _.inc(1) } }));
+}
+
+async function latencyQuery() {
+  const id = await latencyDocument();
+  return timed(LATENCY_SAMPLES, () => db.collection(COLL).where({ group: id }).orderBy('n', 'desc').limit(1).get());
 }
 
 async function terrain(count) {
@@ -76,12 +97,15 @@ exports.main = async (event) => {
   invocations += 1;
   const cold = invocations === 1;
   const start = Date.now();
-  const action = event.action ?? 'all';
+  const action = event.action ?? 'ping';
   const result = {};
+  if (invocations === 1) await ensureCollection();
   if (action === 'ping') result.ping = await ping();
-  if (action === 'all' || action === 'atomic') result.atomic = await atomicCondition();
-  if (action === 'all' || action === 'unique') result.unique = await uniqueInsert();
-  if (action === 'all' || action === 'latency') result.latency = await latency();
-  if (action === 'all' || action === 'terrain') result.terrain = await terrain(event.count ?? 20);
+  if (action === 'atomic') result.atomic = await atomicCondition();
+  if (action === 'unique') result.unique = await uniqueInsert();
+  if (action === 'read') result.read = await latencyRead();
+  if (action === 'write') result.write = await latencyWrite();
+  if (action === 'query') result.query = await latencyQuery();
+  if (action === 'terrain') result.terrain = await terrain(event.count ?? 8);
   return { cold, sinceModuleLoadMs: start - moduleLoadedAt, totalMs: Date.now() - start, ...result };
 };

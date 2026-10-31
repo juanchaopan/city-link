@@ -1,0 +1,11 @@
+{
+  "appid": "wx6d2720f10f885207",
+  "compileType": "game",
+  "projectname": "city-planner-cloud-probe",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "setting": {
+    "es6": true,
+    "minified": false,
+    "urlCheck": false
+  }
+}
