@@ -1,7 +1,9 @@
 import { DIRECTIONS, spokesOf } from './network.js';
+import { ringKey } from './roundabout.js';
+import { shapeOf } from './surface.js';
 
 // 把路网变成要画的精灵。纯函数，生成城市和路面检查共用同一份逻辑。
-// 全图分三层绘制：先是所有人行道，再是所有路缘，最后是所有车道。
+// 全图分三层绘制：先是所有人行道，再是所有路缘，最后是所有车道。环岛占的格子不画普通路面，由一张环岛精灵盖住。
 
 const number = (value) => String(Math.round(value * 1000)).replace('-', 'n');
 
@@ -19,7 +21,7 @@ function boundaryHeight(corners, dir) {
  * 连续坡段的纵坡。一条直路穿过若干格坡地时，路面从起点到终点匀速升降，
  * 每格只存两端高度和切线，两头切线为 0，所以和平地的路平滑相接。
  */
-function gradeRuns({ N, cells, cornersOf, isFlat, levelOf }) {
+export function gradeRuns({ N, cells, cornersOf, isFlat, levelOf }) {
   const grades = new Map();
   const straightAlong = (id, spokes) => {
     const entry = cells.get(id);
@@ -83,7 +85,10 @@ export function roadTag({ road, highway, arterial = 0 }) {
   return `${local}-${highway.toString(16)}`;
 }
 
-/** 输入路网，输出三层路面、桥和地形信息之外的一切路面精灵。gates 是地图边界上的连接点。 */
+/**
+ * 输入路网，输出三层路面、桥和地形信息之外的一切路面精灵。gates 是地图边界上的连接点。
+ * rings 是环岛，返回的 cells 不含它们占的格子，路面检查只看普通路面。
+ */
 export function roadSprites({
   N,
   roads,
@@ -93,16 +98,15 @@ export function roadSprites({
   isWater,
   gates = [],
   linked = false,
+  rings = [],
 }) {
   const cells = new Map([...roads.entries()].map(([id, entry]) => [id, { ...entry }]));
   const planned = [];
-  const neighbors = [];
   for (const gate of gates) {
     const id = gate.y * N + gate.x;
     if (linked) {
       const entry = cells.get(id);
       entry[gate.kind === 'highway' ? 'highway' : 'road'] |= 1 << ((gate.inward + 4) % 8);
-      neighbors.push({ key: `nb-${gate.axis}-${gate.kind}`, x: gate.x, y: gate.y, level: 0 });
     } else {
       planned.push({
         key: `gate-${gate.kind}-${String(gate.inward)}`,
@@ -113,6 +117,7 @@ export function roadSprites({
     }
   }
   const grades = gradeRuns({ N, cells, cornersOf, isFlat, levelOf });
+  for (const ring of rings) for (const id of ring.cells) cells.delete(id);
   const walks = [];
   const curbs = [];
   const decks = [];
@@ -133,9 +138,7 @@ export function roadSprites({
       curbs.push({ key: `rc-${tag}`, x, y, level });
       decks.push({ key: `rd-${tag}`, x, y, level });
     } else {
-      const shape = cornersOf(x, y)
-        .map((v) => v - level)
-        .join('');
+      const shape = shapeOf(cornersOf(x, y), level);
       const grade = grades.get(id);
       const suffix = grade ? `-${grade.map(number).join('_')}` : '';
       walks.push({ key: `srw-${tag}-${shape}${suffix}`, x, y, level });
@@ -143,5 +146,8 @@ export function roadSprites({
       decks.push({ key: `srd-${tag}-${shape}${suffix}`, x, y, level });
     }
   }
-  return { walks, curbs, decks, bridges, planned, neighbors, grades, cells };
+  for (const ring of rings) {
+    decks.push({ key: ringKey(ring, roads), x: ring.x, y: ring.y, level: levelOf(ring.x, ring.y) });
+  }
+  return { walks, curbs, decks, bridges, planned, grades, cells };
 }

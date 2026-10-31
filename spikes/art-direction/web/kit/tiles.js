@@ -2,6 +2,7 @@ import { LEVEL } from './bake.js';
 import { Builder, hashString, linear, mix, shade } from './builder.js';
 import { LAYER, roadMesh } from './roadshader.js';
 import { cellPaths, DIRECTIONS, ROAD_SPEC, spokeEnd, spokesOf } from '../sim/network.js';
+import { cornerHeight, cornerPlane, hermite, smooth } from '../sim/surface.js';
 
 // 地表、水面、河岸、线路和农田。线路分三层绘制：全图先画人行道，再画路缘，最后画车道。
 // cell 是一格路网：road、highway 两组方向位，arterial 标出 road 里的双向四车道。
@@ -13,29 +14,17 @@ const NEIGHBOR_DEPTH = 3;
 const NEIGHBOR_HALF_WIDTH = 2.5;
 const EMBANKMENT_WIDTH = 0.2;
 const EMBANKMENT_FADE = 0.9;
+const FACE_MIN = 0.06;
 
-export { DIRECTIONS, LAYER };
+export { DIRECTIONS, hermite, LAYER };
 
-const smooth = (t) => {
-  const c = Math.max(0, Math.min(1, t));
-  return c * c * (3 - 2 * c);
-};
-
-/**
- * 四个角的高度插值，单位是世界坐标。插值用平滑曲线，格子边界处的坡度正好是 0，
- * 所以坡到平地的过渡是连续的，不会出现一条折线。corners 依次是 (-,-)、(+,-)、(+,+)、(-,+)。
- */
-export function heightAt([a, b, c, d], x, z) {
-  const u = smooth(x + 0.5);
-  const v = smooth(z + 0.5);
-  return (a * (1 - u) * (1 - v) + b * u * (1 - v) + c * u * v + d * (1 - u) * v) * LEVEL;
+/** 四个角的高度插值，单位是世界坐标，x、z 相对格子中心。 */
+export function heightAt(corners, x, z) {
+  return cornerHeight(corners, x + 0.5, z + 0.5) * LEVEL;
 }
 
-/** 同样四个角的线性外推。路基的边会伸到邻格，这时用坡面的延长线，相邻两格算出来的才是同一个面。 */
-function planeAt([a, b, c, d], x, z) {
-  const u = x + 0.5;
-  const v = z + 0.5;
-  return (a * (1 - u) * (1 - v) + b * u * (1 - v) + c * u * v + d * (1 - u) * v) * LEVEL;
+function planeAt(corners, x, z) {
+  return cornerPlane(corners, x + 0.5, z + 0.5) * LEVEL;
 }
 
 function grid(n, fn) {
@@ -292,15 +281,6 @@ function nearestAlong(points, x, z) {
   return Math.max(0, Math.min(1, t));
 }
 
-/** 一格坡路的路面高度，单位是层。grade 是两端高度和两端切线。 */
-export function hermite([h0, h1, m0, m1], t) {
-  const t2 = t * t;
-  const t3 = t2 * t;
-  return (
-    (2 * t3 - 3 * t2 + 1) * h0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * h1 + (t3 - t2) * m1
-  );
-}
-
 /**
  * 坡段两端的路基渐变。切线为 0 的一头是坡段的端点，路在那里回到平地，
  * 挡墙和填方要在这一格里收到 0，否则会带着整段的高度竖直截断。
@@ -313,8 +293,8 @@ function embankmentFade([, , m0, m1], t) {
 
 /**
  * 坡上的路。整段路的纵坡由 grade 给定，路面平直，不跟着地形起伏，屏幕上也就不会走出 S 形。
- * 路面横向保持水平，靠山一侧用挡墙接地形，靠外一侧是等宽的填方。填方不按高差放宽，
- * 否则地形的起伏会让它一段宽一段窄，看起来就是一串鼓包。
+ * 地形已经顺着路面抬起或压低（sim/sculpt.js），路贴在地上，两侧通常什么都不用画。
+ * 只有高差实在放不下土坡时才留下路基：靠山一侧是矮挡墙，靠外一侧是等宽的填方。
  * 相机只看得见朝南、朝东的挡墙，背对相机的一侧不画，否则墙面会盖住路面。
  */
 export function buildSlopeRoad(cell, corners, grade, P, layer) {
@@ -366,7 +346,7 @@ export function buildSlopeRoad(cell, corners, grade, P, layer) {
         const d1 = e1.ground - e1.point[1];
         const p0 = e0.point;
         const p1 = e1.point;
-        if (wallVisible && (d0 > 0.002 || d1 > 0.002)) {
+        if (wallVisible && (d0 > FACE_MIN || d1 > FACE_MIN)) {
           const top0 = Math.max(p0[1], e0.ground);
           const top1 = Math.max(p1[1], e1.ground);
           const face = shade(wall, Math.floor(i / 4) % 2 === 0 ? 0.95 : 1);
@@ -388,12 +368,12 @@ export function buildSlopeRoad(cell, corners, grade, P, layer) {
             [-nx * side, 0, -nz * side],
           );
         }
-        if (!wallVisible && (d0 < -0.002 || d1 < -0.002)) {
-          b.poly(
-            [p0, p1, toe(e1, side), toe(e0, side)],
-            shade(fill, 0.98 + (Math.floor(i / 4) % 2) * 0.03),
-            [nx * side, 0.6, nz * side],
-          );
+        if (!wallVisible && (d0 < -FACE_MIN || d1 < -FACE_MIN)) {
+          b.poly([p0, p1, toe(e1, side), toe(e0, side)], shade(fill, 0.98 + (Math.floor(i / 4) % 2) * 0.03), [
+            nx * side,
+            0.6,
+            nz * side,
+          ]);
         }
       }
     }
@@ -424,11 +404,11 @@ export function buildBridge(cell, P) {
       y,
       a[1] + dz * t + nz * side * half,
     ];
-    b.poly(
-      [corner(0, 1, -0.05), corner(1, 1, -0.05), corner(1, 1, 0), corner(0, 1, 0)],
-      deckColor,
-      [nx, 0, nz],
-    );
+    b.poly([corner(0, 1, -0.05), corner(1, 1, -0.05), corner(1, 1, 0), corner(0, 1, 0)], deckColor, [
+      nx,
+      0,
+      nz,
+    ]);
     b.poly(
       [corner(0, -1, -0.05), corner(1, -1, -0.05), corner(1, -1, 0), corner(0, -1, 0)],
       deckColor,

@@ -6,7 +6,9 @@ import { roadMesh as legacyMesh } from './kit/roadshader.legacy.js';
 import { heightAt } from './kit/tiles.js';
 import { traceRoads } from './sim/city.js';
 import { cellPaths, spokesOf } from './sim/network.js';
-import { roadSprites, roadTag } from './sim/roadsprites.js';
+import { roadTag } from './sim/roadsprites.js';
+import { shapeOf } from './sim/surface.js';
+import { roadWorld, terrainOf } from './sim/terrainworld.js';
 
 // 路面验收用的场景：把路面按游戏里的方式烘焙成精灵，再按游戏里的层序拼到一张画布上。
 // mode 为 legacy 时用保留的旧着色器和逐格绘制的旧层序，用来证明检查抓得到用户报告过的错误。
@@ -98,40 +100,19 @@ function legacySprite(entry, palette, deckHeightOf) {
 export function worldOf({ N, draw, heights, water = [], gates = [], linked = false }) {
   const { roads, walk } = traceRoads(N);
   draw(walk);
-  const corners = (x, y) =>
-    heights
-      ? [heights(x, y), heights(x + 1, y), heights(x + 1, y + 1), heights(x, y + 1)]
-      : [0, 0, 0, 0];
-  const levelOf = (x, y) => Math.min(...corners(x, y));
-  const isFlat = (x, y) => new Set(corners(x, y)).size === 1;
   const waterSet = new Set(water);
   const isWater = (x, y) => waterSet.has(y * N + x);
-  const sprites = roadSprites({
-    N,
-    roads,
-    cornersOf: corners,
-    isFlat,
-    levelOf,
-    isWater,
-    gates,
-    linked,
-  });
-  return { N, roads, sprites, cornersOf: corners, levelOf, isFlat, isWater, gates, linked };
+  const corner = heights ?? (() => 0);
+  const { cornersOf, levelOf, isFlat } = terrainOf({ N, roads, corner, isWater });
+  const road = roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates, linked });
+  return { N, roads, ...road, cornersOf, levelOf, isFlat, isWater, gates, linked };
 }
 
 export function worldOfCity(city, linked) {
   const { N, roads, cornersOf, levelOf, isFlat, isWater, plan } = city;
-  const sprites = roadSprites({
-    N,
-    roads,
-    cornersOf,
-    isFlat,
-    levelOf,
-    isWater,
-    gates: plan.gates,
-    linked,
-  });
-  return { N, roads, sprites, cornersOf, levelOf, isFlat, isWater, gates: plan.gates, linked };
+  const { gates } = plan;
+  const road = roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates, linked });
+  return { N, roads, ...road, cornersOf, levelOf, isFlat, isWater, gates, linked };
 }
 
 /** 画布坐标：格子中心 (px, py)、高度 level 对应的画布像素。 */
@@ -158,10 +139,7 @@ export function compose(world, palette, mode, { withGround }) {
     for (let y = 0; y < N; y += 1) {
       for (let x = 0; x < N; x += 1) {
         const level = world.levelOf(x, y);
-        const shape = world
-          .cornersOf(x, y)
-          .map((v) => v - level)
-          .join('');
+        const shape = shapeOf(world.cornersOf(x, y), level);
         const key = world.isWater(x, y)
           ? 'w-0'
           : `g-${String(Math.min(3, level))}-${shape}-${String((x * 7 + y * 13) % 3)}`;
@@ -199,7 +177,6 @@ export function compose(world, palette, mode, { withGround }) {
       for (const { key, x, y, level } of list) stamp(spriteOf(key, palette), x, y, level);
     }
   }
-  for (const { key, x, y, level } of sprites.neighbors) stamp(spriteOf(key, palette), x, y, level);
   for (const { key, x, y } of sprites.bridges) stamp(spriteOf(key, palette), x, y, 0);
   if (withGround)
     for (const { key, x, y, level } of sprites.planned) stamp(spriteOf(key, palette), x, y, level);
