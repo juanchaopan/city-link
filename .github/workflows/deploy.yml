@@ -1,0 +1,41 @@
+name: deploy
+
+# 推送版本标签 v* 后，部署 game 云函数并把小游戏上传为体验版。
+# 提审和发布由维护者在微信后台手动操作。回滚：重新运行上一标签的这个工作流，小游戏在微信后台回退版本。
+# 说明见 docs/adr/0007-deployment-and-environments.md。
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  wechat:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: 写入微信代码上传密钥
+        env:
+          MINIPROGRAM_PRIVATE_KEY: ${{ secrets.MINIPROGRAM_PRIVATE_KEY }}
+        run: |
+          umask 077
+          printf '%s' "$MINIPROGRAM_PRIVATE_KEY" > "$RUNNER_TEMP/private.key"
+      - run: node scripts/release.mjs
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+          MINIPROGRAM_PRIVATE_KEY_PATH: ${{ runner.temp }}/private.key
