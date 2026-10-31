@@ -165,6 +165,7 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
     if (slot) pin(toX, toY, slot.h[vid(fromX, fromY)]);
   }
 
+  // 远山在和海岸相接的群角退到最低层，海岸带占一格宽，所以退坡比距离少一层。
   for (const side of Object.keys(SIDES)) {
     if (!isOuter(side, sx, sy)) continue;
     const type = cluster.edges[side];
@@ -179,8 +180,8 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
         const startSide = side === 'W' || side === 'E' ? 'N' : 'W';
         const endSide = side === 'W' || side === 'E' ? 'S' : 'E';
         let level = maxLevel;
-        if (cluster.edges[startSide] === 'coast') level = Math.min(level, along);
-        if (cluster.edges[endSide] === 'coast') level = Math.min(level, size - along);
+        if (cluster.edges[startSide] === 'coast') level = Math.min(level, Math.max(0, along - 1));
+        if (cluster.edges[endSide] === 'coast') level = Math.min(level, Math.max(0, size - along - 1));
         pin(x, y, level);
       }
     });
@@ -253,24 +254,29 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
     padCorner(N, N, -1, -1);
   }
 
-  for (let i = 0; i < inbound.length; i++) {
-    const t = inbound[i];
+  // 相邻城市的海岸带已经在上面画出，只有真正的河流才算入口。
+  let rivers = inbound.filter((t) => !water[t]);
+  for (const t of rivers) {
     water[t] = 1;
     pinTile(t % N, (t / N) | 0, 0);
   }
 
-  let rivers = inbound.slice();
   const freeSides = Object.keys(SIDES).filter((side) => {
     const s = SIDES[side];
     if (isOuter(side, sx, sy)) return cluster.edges[side] === 'coast';
     return !slotAt(cluster, sx + s.dx, sy + s.dy);
   });
   if (rivers.length === 0 && freeSides.length >= 2 && rng() < opt.riverChance) {
-    const startSide = freeSides[(rng() * freeSides.length) | 0];
-    if (!isOuter(startSide, sx, sy)) {
+    const inner = freeSides.filter((side) => !isOuter(side, sx, sy));
+    if (inner.length > 0) {
+      const startSide = inner[(rng() * inner.length) | 0];
       const a = 6 + ((rng() * (N - 12)) | 0);
       const [x, y] = startSide === 'W' ? [0, a] : startSide === 'E' ? [N - 1, a] : startSide === 'N' ? [a, 0] : [a, N - 1];
-      if (!blocked[tid(x, y)]) rivers = [tid(x, y)];
+      if (!blocked[tid(x, y)]) {
+        water[tid(x, y)] = 1;
+        pinTile(x, y, 0);
+        rivers = [tid(x, y)];
+      }
     }
   }
 
@@ -287,6 +293,18 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
     }
     return false;
   };
+  const growLake = (lx, ly, size) => {
+    for (let y = ly - size; y <= ly + size; y++) {
+      for (let x = lx - size; x <= lx + size; x++) {
+        if (x <= 0 || y <= 0 || x >= N - 1 || y >= N - 1) continue;
+        if (Math.hypot(x - lx, y - ly) > size || blocked[tid(x, y)] || !canBeWater(x, y)) continue;
+        water[tid(x, y)] = 1;
+        pinTile(x, y, 0);
+      }
+    }
+    lower = bounds(pins, V, maxLevel).lower;
+  };
+  const lakeSize = () => Math.max(2, (N * (opt.lakeMin + rng() * opt.lakeSpread)) | 0);
 
   let deadEnds = 0;
   rivers.forEach((source, index) => {
@@ -349,21 +367,19 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
       pinTile(t % N, (t / N) | 0, 0);
     }
     lower = bounds(pins, V, maxLevel).lower;
-    if (lake) {
-      const lx = found % N;
-      const ly = (found / N) | 0;
-      const size = 2 + ((rng() * 3) | 0);
-      for (let y = ly - size; y <= ly + size; y++) {
-        for (let x = lx - size; x <= lx + size; x++) {
-          if (x <= 0 || y <= 0 || x >= N - 1 || y >= N - 1) continue;
-          if (Math.hypot(x - lx, y - ly) > size || blocked[tid(x, y)] || !canBeWater(x, y)) continue;
-          water[tid(x, y)] = 1;
-          pinTile(x, y, 0);
-        }
-      }
-      lower = bounds(pins, V, maxLevel).lower;
-    }
+    if (lake) growLake(found % N, (found / N) | 0, lakeSize());
   });
+
+  if (rng() < opt.lakeChance) {
+    for (let tries = 0; tries < 12; tries++) {
+      const lx = 8 + ((rng() * (N - 16)) | 0);
+      const ly = 8 + ((rng() * (N - 16)) | 0);
+      if (!blocked[tid(lx, ly)] && canBeWater(lx, ly)) {
+        growLake(lx, ly, lakeSize());
+        break;
+      }
+    }
+  }
 
   const range = bounds(pins, V, maxLevel);
   let infeasible = pinConflicts;
@@ -392,12 +408,15 @@ function attemptGenerate(cluster, sx, sy, seed, opt) {
     }
   }
   if (rng() < opt.mineralChance) {
-    const size = 2 + ((rng() * 2) | 0);
-    const mx = 6 + ((rng() * (N - 12)) | 0);
-    const my = 6 + ((rng() * (N - 12)) | 0);
-    for (let y = my - size; y <= my + size; y++) {
-      for (let x = mx - size; x <= mx + size; x++) {
-        if (!water[tid(x, y)] && Math.hypot(x - mx, y - my) <= size) mineral[tid(x, y)] = 1;
+    const patches = 2 + ((rng() * 2) | 0);
+    for (let p = 0; p < patches; p++) {
+      const size = Math.max(2, (N * (0.04 + rng() * 0.03)) | 0);
+      const mx = 6 + ((rng() * (N - 12)) | 0);
+      const my = 6 + ((rng() * (N - 12)) | 0);
+      for (let y = my - size; y <= my + size; y++) {
+        for (let x = mx - size; x <= mx + size; x++) {
+          if (x >= 0 && y >= 0 && x < N && y < N && !water[tid(x, y)] && Math.hypot(x - mx, y - my) <= size) mineral[tid(x, y)] = 1;
+        }
       }
     }
   }
@@ -416,8 +435,7 @@ function tileShape(h, V, x, y) {
   const c = h[(y + 1) * V + x + 1];
   const d = h[(y + 1) * V + x];
   const lowest = Math.min(a, b, c, d);
-  const mask = ((a - lowest) << 3) | ((b - lowest) << 2) | ((c - lowest) << 1) | (d - lowest);
-  return mask;
+  return ((a - lowest) << 3) | ((b - lowest) << 2) | ((c - lowest) << 1) | (d - lowest);
 }
 
 const SHAPE_AXIS = {
@@ -547,8 +565,8 @@ function pathPieces(search, target, N, pieces) {
       const pt = (p / 8) | 0;
       const gap = Math.max(Math.abs(pt % N - t % N), Math.abs(((pt / N) | 0) - ((t / N) | 0)));
       if (gap > 1) {
-        const key2 = `bridge:${AXIS_OF_DIR[d]}`;
-        pieces[key2] = (pieces[key2] || 0) + 1;
+        const bridgeKey = `bridge:${AXIS_OF_DIR[d]}`;
+        pieces[bridgeKey] = (pieces[bridgeKey] || 0) + 1;
       }
     }
   }
@@ -559,7 +577,6 @@ function measure(terrain, cluster, opt) {
   const { N, h, water, forest, mineral } = terrain;
   const V = N + 1;
   let flat = 0;
-  let flatBuildable = 0;
   let forestTiles = 0;
   let waterTiles = 0;
   let hillTiles = 0;
@@ -574,9 +591,7 @@ function measure(terrain, cluster, opt) {
         waterTiles++;
         continue;
       }
-      const isFlat = shape === 0;
-      if (isFlat) flat++;
-      if (isFlat) flatBuildable++;
+      if (shape === 0) flat++;
       if (forest[t]) forestTiles++;
       if (mineral[t]) mineralTiles++;
       if (h[y * V + x] >= 2) hillTiles++;
@@ -595,7 +610,7 @@ function measure(terrain, cluster, opt) {
     if (pathPieces(withBridge, t, N, pieces)) reachBridge++;
   }
   return {
-    buildable: flatBuildable / area,
+    buildable: flat / area,
     water: waterTiles / area,
     forest: forestTiles / area,
     hill: hillTiles / area,

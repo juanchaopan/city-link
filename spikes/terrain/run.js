@@ -12,8 +12,11 @@ const BASE = {
   high: 0.64,
   peak: 0.78,
   forest: 0.68,
-  mineralChance: 0.35,
-  riverChance: 0.6,
+  mineralChance: 0.5,
+  riverChance: 0.8,
+  lakeChance: 0.4,
+  lakeMin: 0.05,
+  lakeSpread: 0.05,
   buildableFloor: 0.45,
   cornerPad: true,
   diagonalRamp: true,
@@ -184,31 +187,60 @@ function storage(cluster) {
   };
 }
 
+function pieceSummary(pieces) {
+  const groups = { 'flat:straight': 0, 'flat:diagonal': 0, ramp: 0, corner: 0, bridge: 0 };
+  const distinct = { ramp: new Set(), corner: new Set(), bridge: new Set() };
+  for (const [key, count] of Object.entries(pieces)) {
+    const [kind, style, shape, axis] = key.split(':');
+    if (kind === 'flat') groups[`flat:${style}`] += count;
+    if (kind === 'ramp') {
+      groups.ramp += count;
+      distinct.ramp.add(shape);
+    }
+    if (kind === 'corner') {
+      groups.corner += count;
+      distinct.corner.add(shape);
+    }
+    if (kind === 'bridge') {
+      groups.bridge += count;
+      distinct.bridge.add(style);
+    }
+  }
+  return {
+    uses: groups,
+    distinctRamps: distinct.ramp.size,
+    distinctCorners: distinct.corner.size,
+    distinctBridgeAxes: distinct.bridge.size,
+  };
+}
+
 function main() {
   const mode = process.argv[2] || 'quick';
-  const clusters = mode === 'full' ? 40 : 3;
+  const main64 = mode === 'full' ? 30 : 3;
+  const sized = mode === 'full' ? 10 : 2;
   fs.mkdirSync(OUT, { recursive: true });
-  const results = { node: process.version, clusters, base: BASE, runs: [] };
+  const results = { node: process.version, base: BASE, runs: [] };
 
-  const record = (name, N, maxLevel, override, draw) => {
+  const record = (name, clusters, N, maxLevel, override, draw) => {
     const { stats, sample } = experiment(name, clusters, N, maxLevel, { ...BASE, ...override });
     stats.storage = storage(sample);
+    stats.pieceSummary = pieceSummary(stats.pieces);
     results.runs.push(stats);
     const { shapes, pieces, ...brief } = stats;
     console.log(JSON.stringify(brief));
     if (draw) drawCluster(path.join(OUT, `cluster-${name}.png`), sample, 2);
   };
 
-  record('L3-pad', 64, 2, {}, true);
-  record('L4-pad', 64, 3, {}, true);
-  record('L3-nopad', 64, 2, { cornerPad: false }, false);
-  record('L4-nopad', 64, 3, { cornerPad: false }, false);
-  record('L3-straight-only', 64, 2, { diagonalRamp: false }, false);
-  record('L4-straight-only', 64, 3, { diagonalRamp: false }, false);
-  record('L3-N48', 48, 2, {}, false);
-  record('L3-N96', 96, 2, {}, false);
-  record('L3-N128', 128, 2, {}, false);
-  record('L4-N128', 128, 3, {}, false);
+  record('L3-pad', main64, 64, 2, {}, true);
+  record('L4-pad', main64, 64, 3, {}, true);
+  record('L3-nopad', main64, 64, 2, { cornerPad: false }, false);
+  record('L4-nopad', main64, 64, 3, { cornerPad: false }, false);
+  record('L3-straight-only', main64, 64, 2, { diagonalRamp: false }, false);
+  record('L4-straight-only', main64, 64, 3, { diagonalRamp: false }, false);
+  record('L3-N48', sized, 48, 2, {}, false);
+  record('L3-N96', sized, 96, 2, {}, false);
+  record('L3-N128', sized, 128, 2, {}, false);
+  record('L4-N128', sized, 128, 3, {}, false);
   fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(results, null, 2));
 }
 

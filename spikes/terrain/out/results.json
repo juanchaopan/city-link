@@ -1,14 +1,16 @@
 {
   "node": "v24.22.1",
-  "clusters": 3,
   "base": {
     "plateau": 0.14,
     "low": 0.3,
     "high": 0.64,
     "peak": 0.78,
     "forest": 0.68,
-    "mineralChance": 0.35,
-    "riverChance": 0.6,
+    "mineralChance": 0.5,
+    "riverChance": 0.8,
+    "lakeChance": 0.4,
+    "lakeMin": 0.05,
+    "lakeSpread": 0.05,
     "buildableFloor": 0.45,
     "cornerPad": true,
     "diagonalRamp": true
@@ -18,14 +20,13 @@
       "name": "L3-pad",
       "N": 64,
       "maxLevel": 2,
-      "clusters": 3,
-      "cities": 192,
-      "hardFailures": 27,
+      "clusters": 30,
+      "cities": 1920,
+      "hardFailures": 2,
       "failureReasons": {
-        "deadEnd": 168,
-        "pin": 48
+        "firstTrade": 17
       },
-      "retried": 0,
+      "retried": 1,
       "seams": {
         "heightSeam": 0,
         "waterSeam": 0,
@@ -34,97 +35,108 @@
         "range": 0
       },
       "buildable": {
-        "mean": 0.859,
-        "p05": 0.783,
-        "min": 0.743
+        "mean": 0.836,
+        "p05": 0.751,
+        "min": 0.664
       },
       "slope": {
-        "mean": 0.13,
-        "p05": 0.089,
+        "mean": 0.141,
+        "p05": 0.097,
         "min": 0.069
       },
       "water": {
-        "mean": 0.011,
+        "mean": 0.022,
         "p05": 0,
         "min": 0
       },
       "hill": {
-        "mean": 0.214,
-        "p05": 0.064,
-        "min": 0.008
+        "mean": 0.209,
+        "p05": 0.063,
+        "min": 0
       },
       "forest": {
-        "mean": 0.201,
-        "p05": 0.11,
-        "min": 0.069
+        "mean": 0.198,
+        "p05": 0.113,
+        "min": 0.052
       },
       "mineral": {
-        "mean": 0.002,
+        "mean": 0.009,
         "p05": 0,
         "min": 0
       },
       "firstTradeFail": 0,
       "connectFail": 0,
       "ms": {
-        "p50": 16.94,
-        "p95": 41.68,
-        "max": 100.33
+        "p50": 19.7,
+        "p95": 26.32,
+        "max": 206.16
       },
       "shapes": {
-        "0": 587677,
-        "1": 5337,
-        "2": 5067,
-        "3": 12134,
-        "4": 4940,
-        "5": 28,
-        "6": 11019,
-        "7": 4970,
-        "8": 4984,
-        "9": 12809,
-        "10": 33,
-        "11": 5259,
-        "12": 11863,
-        "13": 4895,
-        "14": 4825
+        "0": 6746260,
+        "1": 62523,
+        "2": 63145,
+        "3": 151028,
+        "4": 62323,
+        "5": 462,
+        "6": 151660,
+        "7": 61396,
+        "8": 62796,
+        "9": 156892,
+        "10": 412,
+        "11": 60819,
+        "12": 154764,
+        "13": 61029,
+        "14": 60619
       },
       "pieces": {
-        "flat:straight:0:0": 8723,
-        "flat:diagonal:0:3": 968,
-        "flat:straight:0:1": 7802,
-        "flat:diagonal:0:2": 1075,
-        "ramp:straight:12:0": 209,
-        "corner:diagonal:7:3": 60,
-        "ramp:straight:9:1": 165,
-        "ramp:straight:3:0": 202,
-        "corner:diagonal:14:2": 45,
-        "corner:diagonal:2:3": 18,
-        "ramp:straight:6:1": 169,
-        "corner:diagonal:11:2": 53,
-        "corner:diagonal:8:3": 98,
-        "corner:diagonal:4:2": 58,
-        "corner:diagonal:1:2": 73,
-        "bridge:0": 37,
-        "bridge:1": 36,
-        "bridge:3": 13,
-        "bridge:2": 15,
-        "corner:diagonal:13:3": 10
+        "flat:straight:0:0": 92787,
+        "flat:diagonal:0:3": 14227,
+        "flat:straight:0:1": 81484,
+        "flat:diagonal:0:2": 15325,
+        "ramp:straight:12:0": 2273,
+        "corner:diagonal:7:3": 874,
+        "bridge:3": 436,
+        "corner:diagonal:13:3": 357,
+        "corner:diagonal:2:3": 356,
+        "corner:diagonal:14:2": 742,
+        "bridge:2": 472,
+        "corner:diagonal:11:2": 729,
+        "ramp:straight:3:0": 2267,
+        "ramp:straight:9:1": 2108,
+        "ramp:straight:6:1": 2125,
+        "corner:diagonal:8:3": 1213,
+        "corner:diagonal:4:2": 882,
+        "corner:diagonal:1:2": 918,
+        "bridge:0": 515,
+        "bridge:1": 521
       },
       "storage": {
         "rawBytes": 16513,
-        "gzipBytesMean": 526,
-        "gzipBytesMax": 725
+        "gzipBytesMean": 558,
+        "gzipBytesMax": 707
+      },
+      "pieceSummary": {
+        "uses": {
+          "flat:straight": 174271,
+          "flat:diagonal": 29552,
+          "ramp": 8773,
+          "corner": 6071,
+          "bridge": 1944
+        },
+        "distinctRamps": 4,
+        "distinctCorners": 8,
+        "distinctBridgeAxes": 4
       }
     },
     {
       "name": "L4-pad",
       "N": 64,
       "maxLevel": 3,
-      "clusters": 3,
-      "cities": 192,
-      "hardFailures": 27,
+      "clusters": 30,
+      "cities": 1920,
+      "hardFailures": 2,
       "failureReasons": {
-        "deadEnd": 168,
-        "pin": 48
+        "firstTrade": 16
       },
       "retried": 0,
       "seams": {
@@ -135,98 +147,109 @@
         "range": 0
       },
       "buildable": {
-        "mean": 0.831,
-        "p05": 0.745,
-        "min": 0.695
+        "mean": 0.809,
+        "p05": 0.718,
+        "min": 0.631
       },
       "slope": {
-        "mean": 0.158,
-        "p05": 0.105,
-        "min": 0.082
+        "mean": 0.168,
+        "p05": 0.11,
+        "min": 0.069
       },
       "water": {
-        "mean": 0.011,
+        "mean": 0.022,
         "p05": 0,
         "min": 0
       },
       "hill": {
-        "mean": 0.218,
-        "p05": 0.066,
-        "min": 0.008
+        "mean": 0.213,
+        "p05": 0.067,
+        "min": 0
       },
       "forest": {
-        "mean": 0.201,
-        "p05": 0.11,
-        "min": 0.069
+        "mean": 0.198,
+        "p05": 0.113,
+        "min": 0.052
       },
       "mineral": {
-        "mean": 0.002,
+        "mean": 0.009,
         "p05": 0,
         "min": 0
       },
       "firstTradeFail": 0,
       "connectFail": 0,
       "ms": {
-        "p50": 20.92,
-        "p95": 40.55,
-        "max": 89.11
+        "p50": 19.88,
+        "p95": 27.39,
+        "max": 199.51
       },
       "shapes": {
-        "0": 569009,
-        "1": 6605,
-        "2": 6238,
-        "3": 14934,
-        "4": 6172,
-        "5": 39,
-        "6": 12987,
-        "7": 5754,
-        "8": 6329,
-        "9": 15923,
-        "10": 37,
-        "11": 6147,
-        "12": 14154,
-        "13": 5843,
-        "14": 5669
+        "0": 6532710,
+        "1": 77251,
+        "2": 77176,
+        "3": 178960,
+        "4": 76868,
+        "5": 578,
+        "6": 180538,
+        "7": 70646,
+        "8": 78445,
+        "9": 186502,
+        "10": 491,
+        "11": 70802,
+        "12": 182852,
+        "13": 71890,
+        "14": 70419
       },
       "pieces": {
-        "flat:straight:0:0": 8597,
-        "flat:diagonal:0:3": 1046,
-        "flat:straight:0:1": 7611,
-        "flat:diagonal:0:2": 1148,
-        "ramp:straight:12:0": 235,
-        "corner:diagonal:7:3": 81,
-        "ramp:straight:9:1": 188,
-        "ramp:straight:3:0": 227,
-        "corner:diagonal:14:2": 53,
-        "corner:diagonal:2:3": 21,
-        "ramp:straight:6:1": 199,
-        "corner:diagonal:11:2": 64,
-        "corner:diagonal:8:3": 107,
-        "corner:diagonal:4:2": 65,
-        "corner:diagonal:1:2": 81,
-        "bridge:0": 36,
-        "bridge:1": 34,
-        "bridge:3": 12,
-        "bridge:2": 9,
-        "corner:diagonal:13:3": 11
+        "flat:straight:0:0": 91346,
+        "flat:diagonal:0:3": 14936,
+        "flat:straight:0:1": 80015,
+        "flat:diagonal:0:2": 15737,
+        "ramp:straight:12:0": 2539,
+        "corner:diagonal:7:3": 1034,
+        "bridge:3": 431,
+        "corner:diagonal:13:3": 350,
+        "corner:diagonal:2:3": 468,
+        "corner:diagonal:14:2": 897,
+        "bridge:2": 472,
+        "corner:diagonal:11:2": 868,
+        "ramp:straight:3:0": 2523,
+        "ramp:straight:9:1": 2321,
+        "ramp:straight:6:1": 2449,
+        "corner:diagonal:8:3": 1324,
+        "corner:diagonal:4:2": 983,
+        "corner:diagonal:1:2": 1094,
+        "bridge:0": 496,
+        "bridge:1": 506
       },
       "storage": {
         "rawBytes": 16513,
-        "gzipBytesMean": 569,
-        "gzipBytesMax": 839
+        "gzipBytesMean": 605,
+        "gzipBytesMax": 828
+      },
+      "pieceSummary": {
+        "uses": {
+          "flat:straight": 171361,
+          "flat:diagonal": 30673,
+          "ramp": 9832,
+          "corner": 7018,
+          "bridge": 1905
+        },
+        "distinctRamps": 4,
+        "distinctCorners": 8,
+        "distinctBridgeAxes": 4
       }
     },
     {
       "name": "L3-nopad",
       "N": 64,
       "maxLevel": 2,
-      "clusters": 3,
-      "cities": 192,
-      "hardFailures": 28,
+      "clusters": 30,
+      "cities": 1920,
+      "hardFailures": 19,
       "failureReasons": {
-        "deadEnd": 168,
-        "pin": 48,
-        "bound": 8
+        "bound": 136,
+        "firstTrade": 16
       },
       "retried": 0,
       "seams": {
@@ -237,387 +260,111 @@
         "range": 0
       },
       "buildable": {
-        "mean": 0.859,
-        "p05": 0.782,
-        "min": 0.742
+        "mean": 0.837,
+        "p05": 0.754,
+        "min": 0.669
       },
       "slope": {
-        "mean": 0.13,
-        "p05": 0.089,
-        "min": 0.068
+        "mean": 0.141,
+        "p05": 0.096,
+        "min": 0.069
       },
       "water": {
-        "mean": 0.011,
+        "mean": 0.022,
         "p05": 0,
         "min": 0
       },
       "hill": {
-        "mean": 0.212,
-        "p05": 0.064,
-        "min": 0.008
+        "mean": 0.209,
+        "p05": 0.062,
+        "min": 0
       },
       "forest": {
-        "mean": 0.201,
-        "p05": 0.11,
-        "min": 0.069
+        "mean": 0.198,
+        "p05": 0.113,
+        "min": 0.051
       },
       "mineral": {
-        "mean": 0.002,
+        "mean": 0.009,
         "p05": 0,
         "min": 0
       },
       "firstTradeFail": 0,
       "connectFail": 0,
       "ms": {
-        "p50": 18.2,
-        "p95": 26.18,
-        "max": 164.82
+        "p50": 17.84,
+        "p95": 25.25,
+        "max": 188.77
       },
       "shapes": {
-        "0": 584390,
-        "1": 5232,
-        "2": 4980,
-        "3": 12148,
-        "4": 4855,
-        "5": 25,
-        "6": 10901,
-        "7": 4895,
-        "8": 4874,
-        "9": 12807,
-        "10": 36,
-        "11": 5158,
-        "12": 11916,
-        "13": 4788,
-        "14": 4739
+        "0": 6690807,
+        "1": 61155,
+        "2": 61921,
+        "3": 149897,
+        "4": 60988,
+        "5": 451,
+        "6": 150748,
+        "7": 60237,
+        "8": 61443,
+        "9": 156177,
+        "10": 422,
+        "11": 59489,
+        "12": 153716,
+        "13": 59723,
+        "14": 59322
       },
       "pieces": {
-        "flat:straight:0:0": 8648,
-        "flat:diagonal:0:3": 983,
-        "flat:straight:0:1": 7734,
-        "flat:diagonal:0:2": 1062,
-        "ramp:straight:12:0": 208,
-        "corner:diagonal:7:3": 62,
-        "ramp:straight:9:1": 164,
-        "ramp:straight:3:0": 197,
-        "corner:diagonal:14:2": 46,
-        "corner:diagonal:2:3": 18,
-        "ramp:straight:6:1": 167,
-        "corner:diagonal:11:2": 55,
-        "corner:diagonal:8:3": 96,
-        "corner:diagonal:4:2": 62,
-        "corner:diagonal:1:2": 77,
-        "bridge:0": 37,
-        "bridge:1": 32,
-        "bridge:3": 12,
-        "bridge:2": 19,
-        "corner:diagonal:13:3": 10
+        "flat:straight:0:0": 92010,
+        "flat:diagonal:0:3": 14115,
+        "flat:straight:0:1": 80713,
+        "flat:diagonal:0:2": 15141,
+        "ramp:straight:12:0": 2247,
+        "corner:diagonal:7:3": 871,
+        "bridge:3": 422,
+        "corner:diagonal:13:3": 354,
+        "corner:diagonal:2:3": 348,
+        "corner:diagonal:14:2": 733,
+        "bridge:2": 461,
+        "corner:diagonal:11:2": 724,
+        "ramp:straight:3:0": 2230,
+        "ramp:straight:9:1": 2091,
+        "ramp:straight:6:1": 2108,
+        "corner:diagonal:8:3": 1192,
+        "corner:diagonal:4:2": 870,
+        "corner:diagonal:1:2": 906,
+        "bridge:0": 489,
+        "bridge:1": 508
       },
       "storage": {
         "rawBytes": 16513,
-        "gzipBytesMean": 524,
-        "gzipBytesMax": 717
+        "gzipBytesMean": 556,
+        "gzipBytesMax": 705
+      },
+      "pieceSummary": {
+        "uses": {
+          "flat:straight": 172723,
+          "flat:diagonal": 29256,
+          "ramp": 8676,
+          "corner": 5998,
+          "bridge": 1880
+        },
+        "distinctRamps": 4,
+        "distinctCorners": 8,
+        "distinctBridgeAxes": 4
       }
     },
     {
       "name": "L4-nopad",
       "N": 64,
       "maxLevel": 3,
-      "clusters": 3,
-      "cities": 192,
-      "hardFailures": 28,
+      "clusters": 30,
+      "cities": 1920,
+      "hardFailures": 31,
       "failureReasons": {
-        "deadEnd": 168,
-        "pin": 48,
-        "bound": 8
+        "bound": 232,
+        "firstTrade": 18
       },
-      "retried": 0,
-      "seams": {
-        "heightSeam": 0,
-        "waterSeam": 0,
-        "slope": 0,
-        "waterLevel": 0,
-        "range": 0
-      },
-      "buildable": {
-        "mean": 0.833,
-        "p05": 0.755,
-        "min": 0.71
-      },
-      "slope": {
-        "mean": 0.157,
-        "p05": 0.105,
-        "min": 0.08
-      },
-      "water": {
-        "mean": 0.011,
-        "p05": 0,
-        "min": 0
-      },
-      "hill": {
-        "mean": 0.217,
-        "p05": 0.066,
-        "min": 0.008
-      },
-      "forest": {
-        "mean": 0.201,
-        "p05": 0.11,
-        "min": 0.069
-      },
-      "mineral": {
-        "mean": 0.002,
-        "p05": 0,
-        "min": 0
-      },
-      "firstTradeFail": 0,
-      "connectFail": 0,
-      "ms": {
-        "p50": 17.14,
-        "p95": 26.13,
-        "max": 175.98
-      },
-      "shapes": {
-        "0": 566419,
-        "1": 6428,
-        "2": 6109,
-        "3": 14828,
-        "4": 6031,
-        "5": 36,
-        "6": 12819,
-        "7": 5648,
-        "8": 6170,
-        "9": 15918,
-        "10": 40,
-        "11": 5984,
-        "12": 14079,
-        "13": 5697,
-        "14": 5538
-      },
-      "pieces": {
-        "flat:straight:0:0": 8558,
-        "flat:diagonal:0:3": 1034,
-        "flat:straight:0:1": 7568,
-        "flat:diagonal:0:2": 1132,
-        "ramp:straight:12:0": 233,
-        "corner:diagonal:7:3": 78,
-        "ramp:straight:9:1": 182,
-        "ramp:straight:3:0": 224,
-        "corner:diagonal:14:2": 56,
-        "corner:diagonal:2:3": 20,
-        "ramp:straight:6:1": 196,
-        "corner:diagonal:11:2": 66,
-        "corner:diagonal:8:3": 106,
-        "corner:diagonal:4:2": 63,
-        "corner:diagonal:1:2": 80,
-        "bridge:0": 36,
-        "bridge:1": 36,
-        "bridge:3": 11,
-        "bridge:2": 9,
-        "corner:diagonal:13:3": 10
-      },
-      "storage": {
-        "rawBytes": 16513,
-        "gzipBytesMean": 565,
-        "gzipBytesMax": 815
-      }
-    },
-    {
-      "name": "L3-straight-only",
-      "N": 64,
-      "maxLevel": 2,
-      "clusters": 3,
-      "cities": 192,
-      "hardFailures": 27,
-      "failureReasons": {
-        "deadEnd": 168,
-        "pin": 48
-      },
-      "retried": 0,
-      "seams": {
-        "heightSeam": 0,
-        "waterSeam": 0,
-        "slope": 0,
-        "waterLevel": 0,
-        "range": 0
-      },
-      "buildable": {
-        "mean": 0.859,
-        "p05": 0.783,
-        "min": 0.743
-      },
-      "slope": {
-        "mean": 0.13,
-        "p05": 0.089,
-        "min": 0.069
-      },
-      "water": {
-        "mean": 0.011,
-        "p05": 0,
-        "min": 0
-      },
-      "hill": {
-        "mean": 0.214,
-        "p05": 0.064,
-        "min": 0.008
-      },
-      "forest": {
-        "mean": 0.201,
-        "p05": 0.11,
-        "min": 0.069
-      },
-      "mineral": {
-        "mean": 0.002,
-        "p05": 0,
-        "min": 0
-      },
-      "firstTradeFail": 0,
-      "connectFail": 0,
-      "ms": {
-        "p50": 21.07,
-        "p95": 39.65,
-        "max": 86.26
-      },
-      "shapes": {
-        "0": 587677,
-        "1": 5337,
-        "2": 5067,
-        "3": 12134,
-        "4": 4940,
-        "5": 28,
-        "6": 11019,
-        "7": 4970,
-        "8": 4984,
-        "9": 12809,
-        "10": 33,
-        "11": 5259,
-        "12": 11863,
-        "13": 4895,
-        "14": 4825
-      },
-      "pieces": {
-        "flat:straight:0:0": 8811,
-        "flat:diagonal:0:3": 801,
-        "flat:straight:0:1": 8172,
-        "flat:diagonal:0:2": 932,
-        "ramp:straight:12:0": 273,
-        "ramp:straight:3:0": 275,
-        "ramp:straight:9:1": 250,
-        "ramp:straight:6:1": 252,
-        "bridge:0": 39,
-        "bridge:1": 36,
-        "bridge:3": 8,
-        "bridge:2": 9
-      },
-      "storage": {
-        "rawBytes": 16513,
-        "gzipBytesMean": 526,
-        "gzipBytesMax": 725
-      }
-    },
-    {
-      "name": "L4-straight-only",
-      "N": 64,
-      "maxLevel": 3,
-      "clusters": 3,
-      "cities": 192,
-      "hardFailures": 27,
-      "failureReasons": {
-        "deadEnd": 168,
-        "pin": 48
-      },
-      "retried": 0,
-      "seams": {
-        "heightSeam": 0,
-        "waterSeam": 0,
-        "slope": 0,
-        "waterLevel": 0,
-        "range": 0
-      },
-      "buildable": {
-        "mean": 0.831,
-        "p05": 0.745,
-        "min": 0.695
-      },
-      "slope": {
-        "mean": 0.158,
-        "p05": 0.105,
-        "min": 0.082
-      },
-      "water": {
-        "mean": 0.011,
-        "p05": 0,
-        "min": 0
-      },
-      "hill": {
-        "mean": 0.218,
-        "p05": 0.066,
-        "min": 0.008
-      },
-      "forest": {
-        "mean": 0.201,
-        "p05": 0.11,
-        "min": 0.069
-      },
-      "mineral": {
-        "mean": 0.002,
-        "p05": 0,
-        "min": 0
-      },
-      "firstTradeFail": 0,
-      "connectFail": 0,
-      "ms": {
-        "p50": 13.77,
-        "p95": 25.92,
-        "max": 45.23
-      },
-      "shapes": {
-        "0": 569009,
-        "1": 6605,
-        "2": 6238,
-        "3": 14934,
-        "4": 6172,
-        "5": 39,
-        "6": 12987,
-        "7": 5754,
-        "8": 6329,
-        "9": 15923,
-        "10": 37,
-        "11": 6147,
-        "12": 14154,
-        "13": 5843,
-        "14": 5669
-      },
-      "pieces": {
-        "flat:straight:0:0": 8629,
-        "flat:diagonal:0:3": 940,
-        "flat:straight:0:1": 7907,
-        "flat:diagonal:0:2": 1072,
-        "ramp:straight:12:0": 317,
-        "ramp:straight:3:0": 319,
-        "ramp:straight:9:1": 295,
-        "ramp:straight:6:1": 295,
-        "bridge:0": 41,
-        "bridge:1": 34,
-        "bridge:2": 5,
-        "bridge:3": 7
-      },
-      "storage": {
-        "rawBytes": 16513,
-        "gzipBytesMean": 569,
-        "gzipBytesMax": 839
-      }
-    },
-    {
-      "name": "L3-N48",
-      "N": 48,
-      "maxLevel": 2,
-      "clusters": 3,
-      "cities": 192,
-      "hardFailures": 27,
-      "failureReasons": {
-        "deadEnd": 168,
-        "pin": 48
-      },
-      "retried": 0,
+      "retried": 1,
       "seams": {
         "heightSeam": 0,
         "waterSeam": 0,
@@ -628,95 +375,428 @@
       "buildable": {
         "mean": 0.811,
         "p05": 0.72,
-        "min": 0.624
+        "min": 0.636
       },
       "slope": {
-        "mean": 0.175,
-        "p05": 0.125,
-        "min": 0.102
+        "mean": 0.167,
+        "p05": 0.11,
+        "min": 0.069
       },
       "water": {
-        "mean": 0.014,
+        "mean": 0.022,
         "p05": 0,
         "min": 0
       },
       "hill": {
-        "mean": 0.207,
-        "p05": 0.06,
-        "min": 0.011
+        "mean": 0.213,
+        "p05": 0.068,
+        "min": 0
       },
       "forest": {
-        "mean": 0.195,
+        "mean": 0.198,
         "p05": 0.113,
-        "min": 0.075
+        "min": 0.051
       },
       "mineral": {
-        "mean": 0.003,
+        "mean": 0.009,
         "p05": 0,
         "min": 0
       },
       "firstTradeFail": 0,
       "connectFail": 0,
       "ms": {
-        "p50": 7.32,
-        "p95": 14.9,
-        "max": 28.12
+        "p50": 17.69,
+        "p95": 25.58,
+        "max": 162.96
       },
       "shapes": {
-        "0": 313530,
-        "1": 4136,
-        "2": 4025,
-        "3": 8788,
-        "4": 3819,
-        "5": 50,
-        "6": 8123,
-        "7": 3934,
-        "8": 3957,
-        "9": 9474,
-        "10": 42,
-        "11": 4084,
-        "12": 8588,
-        "13": 3884,
-        "14": 3726
+        "0": 6442114,
+        "1": 74884,
+        "2": 74894,
+        "3": 176400,
+        "4": 74579,
+        "5": 545,
+        "6": 177989,
+        "7": 68590,
+        "8": 76140,
+        "9": 183688,
+        "10": 482,
+        "11": 68625,
+        "12": 180340,
+        "13": 69767,
+        "14": 68307
       },
       "pieces": {
-        "flat:straight:0:0": 6658,
-        "flat:diagonal:0:3": 684,
-        "flat:straight:0:1": 5675,
-        "flat:diagonal:0:2": 781,
-        "ramp:straight:12:0": 221,
-        "ramp:straight:3:0": 222,
-        "ramp:straight:9:1": 199,
-        "corner:diagonal:4:2": 50,
-        "corner:diagonal:1:2": 65,
-        "ramp:straight:6:1": 204,
-        "corner:diagonal:7:3": 34,
-        "corner:diagonal:11:2": 33,
-        "corner:diagonal:8:3": 84,
-        "corner:diagonal:13:3": 8,
-        "corner:diagonal:14:2": 35,
-        "corner:diagonal:2:3": 19,
-        "bridge:0": 29,
-        "bridge:1": 33,
-        "bridge:2": 6,
-        "bridge:3": 5
+        "flat:straight:0:0": 89870,
+        "flat:diagonal:0:3": 14686,
+        "flat:straight:0:1": 78872,
+        "flat:diagonal:0:2": 15504,
+        "ramp:straight:12:0": 2489,
+        "corner:diagonal:7:3": 1025,
+        "bridge:3": 412,
+        "corner:diagonal:13:3": 343,
+        "corner:diagonal:2:3": 456,
+        "corner:diagonal:14:2": 883,
+        "bridge:2": 460,
+        "corner:diagonal:11:2": 859,
+        "ramp:straight:3:0": 2470,
+        "ramp:straight:9:1": 2280,
+        "ramp:straight:6:1": 2399,
+        "corner:diagonal:8:3": 1311,
+        "corner:diagonal:4:2": 963,
+        "corner:diagonal:1:2": 1062,
+        "bridge:0": 469,
+        "bridge:1": 481
+      },
+      "storage": {
+        "rawBytes": 16513,
+        "gzipBytesMean": 600,
+        "gzipBytesMax": 764
+      },
+      "pieceSummary": {
+        "uses": {
+          "flat:straight": 168742,
+          "flat:diagonal": 30190,
+          "ramp": 9638,
+          "corner": 6902,
+          "bridge": 1822
+        },
+        "distinctRamps": 4,
+        "distinctCorners": 8,
+        "distinctBridgeAxes": 4
+      }
+    },
+    {
+      "name": "L3-straight-only",
+      "N": 64,
+      "maxLevel": 2,
+      "clusters": 30,
+      "cities": 1920,
+      "hardFailures": 2,
+      "failureReasons": {
+        "firstTrade": 17,
+        "connect": 1
+      },
+      "retried": 2,
+      "seams": {
+        "heightSeam": 0,
+        "waterSeam": 0,
+        "slope": 0,
+        "waterLevel": 0,
+        "range": 0
+      },
+      "buildable": {
+        "mean": 0.836,
+        "p05": 0.751,
+        "min": 0.664
+      },
+      "slope": {
+        "mean": 0.141,
+        "p05": 0.097,
+        "min": 0.069
+      },
+      "water": {
+        "mean": 0.022,
+        "p05": 0,
+        "min": 0
+      },
+      "hill": {
+        "mean": 0.209,
+        "p05": 0.063,
+        "min": 0
+      },
+      "forest": {
+        "mean": 0.198,
+        "p05": 0.113,
+        "min": 0.052
+      },
+      "mineral": {
+        "mean": 0.009,
+        "p05": 0,
+        "min": 0
+      },
+      "firstTradeFail": 0,
+      "connectFail": 0,
+      "ms": {
+        "p50": 19.81,
+        "p95": 28.21,
+        "max": 181.17
+      },
+      "shapes": {
+        "0": 6746327,
+        "1": 62503,
+        "2": 63134,
+        "3": 151076,
+        "4": 62335,
+        "5": 460,
+        "6": 151610,
+        "7": 61386,
+        "8": 62792,
+        "9": 156867,
+        "10": 413,
+        "11": 60797,
+        "12": 154773,
+        "13": 61026,
+        "14": 60629
+      },
+      "pieces": {
+        "flat:straight:0:0": 96956,
+        "flat:diagonal:0:3": 10538,
+        "flat:straight:0:1": 88814,
+        "flat:diagonal:0:2": 12103,
+        "ramp:straight:12:0": 3078,
+        "ramp:straight:3:0": 3084,
+        "ramp:straight:9:1": 3213,
+        "ramp:straight:6:1": 3201,
+        "bridge:1": 586,
+        "bridge:0": 585,
+        "bridge:3": 94,
+        "bridge:2": 107
+      },
+      "storage": {
+        "rawBytes": 16513,
+        "gzipBytesMean": 558,
+        "gzipBytesMax": 707
+      },
+      "pieceSummary": {
+        "uses": {
+          "flat:straight": 185770,
+          "flat:diagonal": 22641,
+          "ramp": 12576,
+          "corner": 0,
+          "bridge": 1372
+        },
+        "distinctRamps": 4,
+        "distinctCorners": 0,
+        "distinctBridgeAxes": 4
+      }
+    },
+    {
+      "name": "L4-straight-only",
+      "N": 64,
+      "maxLevel": 3,
+      "clusters": 30,
+      "cities": 1920,
+      "hardFailures": 2,
+      "failureReasons": {
+        "connect": 3,
+        "firstTrade": 17
+      },
+      "retried": 3,
+      "seams": {
+        "heightSeam": 0,
+        "waterSeam": 0,
+        "slope": 0,
+        "waterLevel": 0,
+        "range": 0
+      },
+      "buildable": {
+        "mean": 0.809,
+        "p05": 0.719,
+        "min": 0.631
+      },
+      "slope": {
+        "mean": 0.168,
+        "p05": 0.11,
+        "min": 0.069
+      },
+      "water": {
+        "mean": 0.022,
+        "p05": 0,
+        "min": 0
+      },
+      "hill": {
+        "mean": 0.213,
+        "p05": 0.066,
+        "min": 0
+      },
+      "forest": {
+        "mean": 0.198,
+        "p05": 0.113,
+        "min": 0.052
+      },
+      "mineral": {
+        "mean": 0.009,
+        "p05": 0,
+        "min": 0
+      },
+      "firstTradeFail": 0,
+      "connectFail": 0,
+      "ms": {
+        "p50": 18.96,
+        "p95": 26.25,
+        "max": 187.97
+      },
+      "shapes": {
+        "0": 6533699,
+        "1": 77169,
+        "2": 77129,
+        "3": 178860,
+        "4": 76818,
+        "5": 574,
+        "6": 180335,
+        "7": 70619,
+        "8": 78385,
+        "9": 186344,
+        "10": 490,
+        "11": 70737,
+        "12": 182733,
+        "13": 71850,
+        "14": 70386
+      },
+      "pieces": {
+        "flat:straight:0:0": 95265,
+        "flat:diagonal:0:3": 11759,
+        "flat:straight:0:1": 86671,
+        "flat:diagonal:0:2": 13281,
+        "ramp:straight:12:0": 3486,
+        "ramp:straight:3:0": 3507,
+        "ramp:straight:9:1": 3664,
+        "ramp:straight:6:1": 3671,
+        "bridge:1": 577,
+        "bridge:0": 585,
+        "bridge:3": 92,
+        "bridge:2": 104
+      },
+      "storage": {
+        "rawBytes": 16513,
+        "gzipBytesMean": 605,
+        "gzipBytesMax": 828
+      },
+      "pieceSummary": {
+        "uses": {
+          "flat:straight": 181936,
+          "flat:diagonal": 25040,
+          "ramp": 14328,
+          "corner": 0,
+          "bridge": 1358
+        },
+        "distinctRamps": 4,
+        "distinctCorners": 0,
+        "distinctBridgeAxes": 4
+      }
+    },
+    {
+      "name": "L3-N48",
+      "N": 48,
+      "maxLevel": 2,
+      "clusters": 10,
+      "cities": 640,
+      "hardFailures": 0,
+      "failureReasons": {
+        "firstTrade": 5
+      },
+      "retried": 2,
+      "seams": {
+        "heightSeam": 0,
+        "waterSeam": 0,
+        "slope": 0,
+        "waterLevel": 0,
+        "range": 0
+      },
+      "buildable": {
+        "mean": 0.784,
+        "p05": 0.678,
+        "min": 0.59
+      },
+      "slope": {
+        "mean": 0.19,
+        "p05": 0.137,
+        "min": 0.098
+      },
+      "water": {
+        "mean": 0.026,
+        "p05": 0,
+        "min": 0
+      },
+      "hill": {
+        "mean": 0.196,
+        "p05": 0.066,
+        "min": 0.003
+      },
+      "forest": {
+        "mean": 0.191,
+        "p05": 0.118,
+        "min": 0.062
+      },
+      "mineral": {
+        "mean": 0.008,
+        "p05": 0,
+        "min": 0
+      },
+      "firstTradeFail": 0,
+      "connectFail": 0,
+      "ms": {
+        "p50": 11.09,
+        "p95": 14.8,
+        "max": 62.45
+      },
+      "shapes": {
+        "0": 1194440,
+        "1": 16588,
+        "2": 16874,
+        "3": 38090,
+        "4": 16238,
+        "5": 208,
+        "6": 36196,
+        "7": 16374,
+        "8": 16500,
+        "9": 38512,
+        "10": 218,
+        "11": 16076,
+        "12": 36516,
+        "13": 15998,
+        "14": 15732
+      },
+      "pieces": {
+        "flat:straight:0:0": 23018,
+        "flat:diagonal:0:3": 3626,
+        "flat:straight:0:1": 19418,
+        "flat:diagonal:0:2": 4078,
+        "ramp:straight:12:0": 839,
+        "ramp:straight:3:0": 832,
+        "ramp:straight:9:1": 852,
+        "corner:diagonal:11:2": 200,
+        "bridge:2": 113,
+        "corner:diagonal:14:2": 221,
+        "corner:diagonal:4:2": 221,
+        "corner:diagonal:1:2": 224,
+        "ramp:straight:6:1": 845,
+        "corner:diagonal:7:3": 241,
+        "bridge:3": 108,
+        "corner:diagonal:13:3": 115,
+        "bridge:0": 196,
+        "corner:diagonal:8:3": 310,
+        "bridge:1": 209,
+        "corner:diagonal:2:3": 86
       },
       "storage": {
         "rawBytes": 9313,
-        "gzipBytesMean": 401,
-        "gzipBytesMax": 551
+        "gzipBytesMean": 426,
+        "gzipBytesMax": 581
+      },
+      "pieceSummary": {
+        "uses": {
+          "flat:straight": 42436,
+          "flat:diagonal": 7704,
+          "ramp": 3368,
+          "corner": 1618,
+          "bridge": 626
+        },
+        "distinctRamps": 4,
+        "distinctCorners": 8,
+        "distinctBridgeAxes": 4
       }
     },
     {
       "name": "L3-N96",
       "N": 96,
       "maxLevel": 2,
-      "clusters": 3,
-      "cities": 192,
-      "hardFailures": 27,
+      "clusters": 10,
+      "cities": 640,
+      "hardFailures": 1,
       "failureReasons": {
-        "deadEnd": 168,
-        "pin": 48
+        "firstTrade": 8
       },
       "retried": 0,
       "seams": {
@@ -727,99 +807,111 @@
         "range": 0
       },
       "buildable": {
-        "mean": 0.904,
-        "p05": 0.854,
-        "min": 0.805
+        "mean": 0.885,
+        "p05": 0.82,
+        "min": 0.756
       },
       "slope": {
-        "mean": 0.089,
-        "p05": 0.06,
+        "mean": 0.097,
+        "p05": 0.066,
         "min": 0.045
       },
       "water": {
-        "mean": 0.007,
+        "mean": 0.018,
         "p05": 0,
         "min": 0
       },
       "hill": {
-        "mean": 0.215,
-        "p05": 0.063,
-        "min": 0.006
+        "mean": 0.208,
+        "p05": 0.067,
+        "min": 0.002
       },
       "forest": {
-        "mean": 0.211,
-        "p05": 0.121,
-        "min": 0.096
+        "mean": 0.204,
+        "p05": 0.118,
+        "min": 0.045
       },
       "mineral": {
-        "mean": 0.001,
+        "mean": 0.01,
         "p05": 0,
         "min": 0
       },
       "firstTradeFail": 0,
       "connectFail": 0,
       "ms": {
-        "p50": 33.91,
-        "p95": 66.88,
-        "max": 125.12
+        "p50": 46.29,
+        "p95": 67.74,
+        "max": 575.1
       },
       "shapes": {
-        "0": 1385633,
-        "1": 7914,
-        "2": 7416,
-        "3": 19170,
-        "4": 7399,
-        "5": 26,
-        "6": 17311,
-        "7": 7344,
-        "8": 7297,
-        "9": 20094,
-        "10": 30,
-        "11": 7848,
-        "12": 18639,
-        "13": 7214,
-        "14": 7305
+        "0": 5316566,
+        "1": 31631,
+        "2": 31744,
+        "3": 82717,
+        "4": 31195,
+        "5": 148,
+        "6": 78065,
+        "7": 31194,
+        "8": 31214,
+        "9": 82847,
+        "10": 153,
+        "11": 31067,
+        "12": 79195,
+        "13": 30650,
+        "14": 30638
       },
       "pieces": {
-        "flat:straight:0:0": 13375,
-        "flat:diagonal:0:3": 1007,
-        "flat:straight:0:1": 12567,
-        "flat:diagonal:0:2": 1105,
-        "corner:diagonal:1:2": 71,
-        "ramp:straight:6:1": 175,
-        "ramp:straight:12:0": 228,
-        "corner:diagonal:7:3": 66,
-        "ramp:straight:9:1": 178,
-        "ramp:straight:3:0": 211,
-        "corner:diagonal:14:2": 44,
-        "corner:diagonal:11:2": 55,
-        "corner:diagonal:4:2": 54,
-        "corner:diagonal:8:3": 101,
-        "bridge:0": 39,
-        "bridge:1": 31,
-        "corner:diagonal:13:3": 9,
-        "bridge:3": 18,
-        "bridge:2": 18,
-        "corner:diagonal:2:3": 12
+        "flat:straight:0:0": 48120,
+        "flat:diagonal:0:3": 5588,
+        "flat:straight:0:1": 44246,
+        "flat:diagonal:0:2": 5854,
+        "corner:diagonal:1:2": 321,
+        "ramp:straight:6:1": 749,
+        "ramp:straight:12:0": 855,
+        "corner:diagonal:7:3": 270,
+        "ramp:straight:9:1": 763,
+        "ramp:straight:3:0": 813,
+        "corner:diagonal:14:2": 208,
+        "corner:diagonal:11:2": 200,
+        "corner:diagonal:4:2": 284,
+        "corner:diagonal:8:3": 390,
+        "bridge:2": 161,
+        "bridge:3": 136,
+        "bridge:0": 185,
+        "bridge:1": 175,
+        "corner:diagonal:13:3": 67,
+        "corner:diagonal:2:3": 92
       },
       "storage": {
         "rawBytes": 37057,
-        "gzipBytesMean": 839,
-        "gzipBytesMax": 1237
+        "gzipBytesMean": 893,
+        "gzipBytesMax": 1274
+      },
+      "pieceSummary": {
+        "uses": {
+          "flat:straight": 92366,
+          "flat:diagonal": 11442,
+          "ramp": 3180,
+          "corner": 1832,
+          "bridge": 657
+        },
+        "distinctRamps": 4,
+        "distinctCorners": 8,
+        "distinctBridgeAxes": 4
       }
     },
     {
       "name": "L3-N128",
       "N": 128,
       "maxLevel": 2,
-      "clusters": 3,
-      "cities": 192,
-      "hardFailures": 27,
+      "clusters": 10,
+      "cities": 640,
+      "hardFailures": 1,
       "failureReasons": {
-        "deadEnd": 168,
-        "pin": 48
+        "connect": 1,
+        "firstTrade": 9
       },
-      "retried": 0,
+      "retried": 2,
       "seams": {
         "heightSeam": 0,
         "waterSeam": 0,
@@ -828,99 +920,111 @@
         "range": 0
       },
       "buildable": {
-        "mean": 0.928,
-        "p05": 0.889,
-        "min": 0.849
+        "mean": 0.911,
+        "p05": 0.856,
+        "min": 0.816
       },
       "slope": {
-        "mean": 0.067,
-        "p05": 0.045,
-        "min": 0.035
+        "mean": 0.073,
+        "p05": 0.048,
+        "min": 0.034
       },
       "water": {
-        "mean": 0.005,
+        "mean": 0.016,
         "p05": 0,
         "min": 0
       },
       "hill": {
-        "mean": 0.217,
-        "p05": 0.065,
-        "min": 0.005
+        "mean": 0.212,
+        "p05": 0.069,
+        "min": 0.002
       },
       "forest": {
-        "mean": 0.223,
-        "p05": 0.14,
-        "min": 0.102
+        "mean": 0.208,
+        "p05": 0.121,
+        "min": 0.064
       },
       "mineral": {
-        "mean": 0,
+        "mean": 0.01,
         "p05": 0,
         "min": 0
       },
       "firstTradeFail": 0,
       "connectFail": 0,
       "ms": {
-        "p50": 56.14,
-        "p95": 123.58,
-        "max": 395.48
+        "p50": 86.2,
+        "p95": 141.36,
+        "max": 1062.15
       },
       "shapes": {
-        "0": 2523186,
-        "1": 10442,
-        "2": 9852,
-        "3": 25714,
-        "4": 9634,
-        "5": 13,
-        "6": 23449,
-        "7": 9740,
-        "8": 9641,
-        "9": 27124,
-        "10": 16,
-        "11": 10349,
-        "12": 25161,
-        "13": 9534,
-        "14": 9505
+        "0": 9704491,
+        "1": 41850,
+        "2": 41865,
+        "3": 111329,
+        "4": 40913,
+        "5": 106,
+        "6": 105480,
+        "7": 41315,
+        "8": 40972,
+        "9": 111702,
+        "10": 110,
+        "11": 41287,
+        "12": 107191,
+        "13": 40408,
+        "14": 40357
       },
       "pieces": {
-        "flat:straight:0:0": 17815,
-        "flat:diagonal:0:3": 1449,
-        "flat:straight:0:1": 16705,
-        "ramp:straight:9:1": 166,
-        "ramp:straight:6:1": 164,
-        "flat:diagonal:0:2": 1584,
-        "ramp:straight:12:0": 223,
-        "corner:diagonal:7:3": 80,
-        "ramp:straight:3:0": 198,
-        "corner:diagonal:14:2": 48,
-        "corner:diagonal:11:2": 62,
-        "corner:diagonal:2:3": 15,
-        "corner:diagonal:8:3": 100,
-        "corner:diagonal:4:2": 63,
-        "corner:diagonal:1:2": 82,
-        "corner:diagonal:13:3": 11,
-        "bridge:0": 37,
-        "bridge:1": 35,
-        "bridge:3": 42,
-        "bridge:2": 25
+        "flat:straight:0:0": 65212,
+        "flat:diagonal:0:3": 6239,
+        "flat:straight:0:1": 61793,
+        "ramp:straight:9:1": 751,
+        "ramp:straight:6:1": 727,
+        "flat:diagonal:0:2": 6665,
+        "ramp:straight:12:0": 863,
+        "corner:diagonal:7:3": 296,
+        "ramp:straight:3:0": 817,
+        "corner:diagonal:14:2": 188,
+        "corner:diagonal:11:2": 190,
+        "corner:diagonal:2:3": 65,
+        "corner:diagonal:8:3": 371,
+        "corner:diagonal:4:2": 263,
+        "corner:diagonal:1:2": 296,
+        "corner:diagonal:13:3": 47,
+        "bridge:0": 192,
+        "bridge:3": 155,
+        "bridge:1": 183,
+        "bridge:2": 127
       },
       "storage": {
         "rawBytes": 65793,
-        "gzipBytesMean": 1176,
-        "gzipBytesMax": 1845
+        "gzipBytesMean": 1281,
+        "gzipBytesMax": 1854
+      },
+      "pieceSummary": {
+        "uses": {
+          "flat:straight": 127005,
+          "flat:diagonal": 12904,
+          "ramp": 3158,
+          "corner": 1716,
+          "bridge": 657
+        },
+        "distinctRamps": 4,
+        "distinctCorners": 8,
+        "distinctBridgeAxes": 4
       }
     },
     {
       "name": "L4-N128",
       "N": 128,
       "maxLevel": 3,
-      "clusters": 3,
-      "cities": 192,
-      "hardFailures": 27,
+      "clusters": 10,
+      "cities": 640,
+      "hardFailures": 1,
       "failureReasons": {
-        "deadEnd": 168,
-        "pin": 48
+        "connect": 3,
+        "firstTrade": 10
       },
-      "retried": 0,
+      "retried": 4,
       "seams": {
         "heightSeam": 0,
         "waterSeam": 0,
@@ -929,85 +1033,97 @@
         "range": 0
       },
       "buildable": {
-        "mean": 0.913,
-        "p05": 0.866,
-        "min": 0.843
+        "mean": 0.896,
+        "p05": 0.84,
+        "min": 0.8
       },
       "slope": {
-        "mean": 0.081,
-        "p05": 0.053,
-        "min": 0.04
+        "mean": 0.088,
+        "p05": 0.057,
+        "min": 0.034
       },
       "water": {
-        "mean": 0.005,
+        "mean": 0.016,
         "p05": 0,
         "min": 0
       },
       "hill": {
-        "mean": 0.219,
-        "p05": 0.067,
-        "min": 0.005
+        "mean": 0.213,
+        "p05": 0.069,
+        "min": 0.002
       },
       "forest": {
-        "mean": 0.223,
-        "p05": 0.14,
-        "min": 0.102
+        "mean": 0.208,
+        "p05": 0.121,
+        "min": 0.064
       },
       "mineral": {
-        "mean": 0,
+        "mean": 0.01,
         "p05": 0,
         "min": 0
       },
       "firstTradeFail": 0,
       "connectFail": 0,
       "ms": {
-        "p50": 67.92,
-        "p95": 162.28,
-        "max": 370.48
+        "p50": 86.5,
+        "p95": 147.45,
+        "max": 1046.95
       },
       "shapes": {
-        "0": 2483877,
-        "1": 12733,
-        "2": 12027,
-        "3": 31878,
-        "4": 11860,
-        "5": 20,
-        "6": 27856,
-        "7": 11524,
-        "8": 12314,
-        "9": 33696,
-        "10": 17,
-        "11": 12255,
-        "12": 30159,
-        "13": 11806,
-        "14": 11338
+        "0": 9549562,
+        "1": 51064,
+        "2": 50213,
+        "3": 135907,
+        "4": 50123,
+        "5": 139,
+        "6": 126601,
+        "7": 47968,
+        "8": 50721,
+        "9": 134478,
+        "10": 142,
+        "11": 48806,
+        "12": 127318,
+        "13": 48460,
+        "14": 47874
       },
       "pieces": {
-        "flat:straight:0:0": 17638,
-        "flat:diagonal:0:3": 1496,
-        "flat:straight:0:1": 16629,
-        "ramp:straight:9:1": 189,
-        "ramp:straight:6:1": 203,
-        "flat:diagonal:0:2": 1591,
-        "ramp:straight:12:0": 262,
-        "corner:diagonal:7:3": 91,
-        "ramp:straight:3:0": 239,
-        "corner:diagonal:14:2": 54,
-        "corner:diagonal:11:2": 72,
-        "corner:diagonal:2:3": 21,
-        "corner:diagonal:8:3": 119,
-        "corner:diagonal:4:2": 75,
-        "corner:diagonal:1:2": 86,
-        "corner:diagonal:13:3": 7,
-        "bridge:0": 44,
-        "bridge:1": 32,
-        "bridge:3": 31,
-        "bridge:2": 25
+        "flat:straight:0:0": 64746,
+        "flat:diagonal:0:3": 6262,
+        "flat:straight:0:1": 61533,
+        "ramp:straight:9:1": 827,
+        "ramp:straight:6:1": 856,
+        "flat:diagonal:0:2": 6690,
+        "ramp:straight:12:0": 972,
+        "corner:diagonal:7:3": 363,
+        "ramp:straight:3:0": 944,
+        "corner:diagonal:14:2": 230,
+        "corner:diagonal:11:2": 258,
+        "corner:diagonal:2:3": 77,
+        "corner:diagonal:8:3": 414,
+        "corner:diagonal:4:2": 317,
+        "corner:diagonal:1:2": 344,
+        "corner:diagonal:13:3": 52,
+        "bridge:0": 189,
+        "bridge:3": 153,
+        "bridge:1": 167,
+        "bridge:2": 122
       },
       "storage": {
         "rawBytes": 65793,
-        "gzipBytesMean": 1271,
-        "gzipBytesMax": 1909
+        "gzipBytesMean": 1377,
+        "gzipBytesMax": 1919
+      },
+      "pieceSummary": {
+        "uses": {
+          "flat:straight": 126279,
+          "flat:diagonal": 12952,
+          "ramp": 3599,
+          "corner": 2055,
+          "bridge": 631
+        },
+        "distinctRamps": 4,
+        "distinctCorners": 8,
+        "distinctBridgeAxes": 4
       }
     }
   ]
