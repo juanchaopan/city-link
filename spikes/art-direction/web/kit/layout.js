@@ -161,10 +161,11 @@ export function makeLayout(N, seed = 11) {
   walk('road', [[center, south], [center, N - 3]]);
   walk('road', [[left, center], [ringColumn, center]]);
 
+  // 两条上坡路：一条顺坡直上，一条 45° 斜穿直坡，后者就是 ADR-0001 的切坡路基。
+  walk('road', [[right, center - 6], [Math.min(N - 2, right + 6), center - 6]]);
   const climbStart = [right, center - 2];
-  const climb = Math.round(5 * s);
+  const climb = Math.round(3 * s);
   walk('road', [climbStart, [climbStart[0] + climb, climbStart[1] + climb]]);
-  walk('road', [[right, center + 2], [Math.min(N - 2, right + 6), center + 2]]);
 
   const ground = [];
   const overlays = [];
@@ -211,8 +212,7 @@ export function makeLayout(N, seed = 11) {
         } else {
           const shape = cornersOf(x, y).map((v) => v - level).join('');
           const surface = ['grass0', 'grass1', 'grass2', 'rock'][Math.min(3, level)];
-          const variant = shape === '0000' ? (x * 7 + y * 13) % 3 : 0;
-          ground.push({ key: `g-${surface}-${shape}-${variant}`, x, y, level });
+          ground.push({ key: `g-${surface}-${shape}-${(x * 7 + y * 13) % 3}`, x, y, level });
         }
       }
       if (x === N - 1) ground.push({ key: `sk-x-${isWater(x, y) ? 1 : 0}`, x, y, level: 0 });
@@ -266,7 +266,7 @@ export function makeLayout(N, seed = 11) {
         addObject(districtBuilding(x, y), x, y, 0);
       } else if (flat && level === 0 && y > riverAt(x) + 3 && wooded < 0.55) {
         addObject(seedPick('farm', 4, x, y), x, y, 0);
-      } else if (wooded > 0.5 || (level > 0 && wooded > 0.3)) {
+      } else if (wooded > 0.5 || (level > 0 && wooded > 0.3 && !nearRoad(x, y))) {
         const density = 3 + Math.floor(wooded * 6);
         const lift = flat ? level : cornersOf(x, y).reduce((a, b) => a + b, 0) / 4;
         addObject(`forest-${(x + y) % 4}-${density}`, x, y, lift);

@@ -76,12 +76,12 @@ function faceNormal(a, b, c) {
   return [(nx / length) * sign, (ny / length) * sign, (nz / length) * sign];
 }
 
-/** 坡面朝向太阳时提亮，背光时压暗。缓坡的光照差很小，不加强就看不出高度。 */
+/** 坡面朝向太阳时提亮，背光时压暗。缓坡的光照差很小，不加强就看不出高度；亮面减半，免得发荧光。 */
 function relief(P, a, b, c) {
   const [nx, , nz] = faceNormal(a, b, c);
   const [sx, , sz] = P.sun.direction;
-  const length = Math.hypot(sx, sz);
-  return 1 + ((nx * sx + nz * sz) / length) * P.ground.relief;
+  const facing = (nx * sx + nz * sz) / Math.hypot(sx, sz);
+  return 1 + facing * P.ground.relief * (facing > 0 ? 0.5 : 1);
 }
 
 /** 边界顶点不抖动，保证相邻格的边完全重合；内部顶点抖动出低多边形的碎面。 */
@@ -95,12 +95,12 @@ export function buildGround(corners, surface, P, seed) {
     let z = j / n - 0.5;
     const y = heightAt(corners, x, z);
     if (border) return [outward(x, true), y, outward(z, true)];
-    x += (b.random() - 0.5) * 0.09;
-    z += (b.random() - 0.5) * 0.09;
-    return [x, y + (b.random() - 0.5) * 0.02, z];
+    x += (b.random() - 0.5) * 0.14;
+    z += (b.random() - 0.5) * 0.14;
+    return [x, y + (b.random() - 0.5) * 0.024, z];
   });
   mesh(b, rows, (p, q, r) => {
-    const tone = 0.97 + b.random() * 0.06;
+    const tone = sloped ? 0.985 + b.random() * 0.03 : 0.97 + b.random() * 0.06;
     return shade(base, sloped ? tone * relief(P, p, q, r) : tone);
   });
   return b;
@@ -188,14 +188,10 @@ export function buildBank(sides, cornersMask, P, seed) {
     }
     return Math.max(0, d);
   };
-  const n = 9;
+  const n = 14;
   const rows = grid(n, (i, j, border) => {
-    let x = i / n - 0.5;
-    let z = j / n - 0.5;
-    if (!border) {
-      x += (b.random() - 0.5) * 0.02;
-      z += (b.random() - 0.5) * 0.02;
-    }
+    const x = i / n - 0.5;
+    const z = j / n - 0.5;
     const t = Math.min(1, distance(x, z) / reach);
     const y = BED_Y + (0 - BED_Y) * Math.sin((t * Math.PI) / 2) ** 0.8;
     return [outward(x, border), y, outward(z, border)];
@@ -443,19 +439,15 @@ export function buildSlopeRoad(type, corners, spokes, P) {
   const fill = linear(P.road.fill);
   const path = roadPaths(spokes, terrain)[0];
   const width = spec.walk / 2 + 0.015;
-  const left = offsetPath(path, width);
-  const right = offsetPath(path, -width);
 
-  for (const side of [left, right]) {
-    const hint = side === left ? 1 : -1;
+  for (const side of [offsetPath(path, width), offsetPath(path, -width)]) {
     for (let i = 0; i < side.length - 1; i += 1) {
       const p0 = side[i];
       const p1 = side[i + 1];
       const g0 = terrain(p0[0], p0[2]);
       const g1 = terrain(p1[0], p1[2]);
-      const m = path[i];
-      const nx = p0[0] - m[0];
-      const nz = p0[2] - m[2];
+      const nx = p0[0] - path[i][0];
+      const nz = p0[2] - path[i][2];
       const delta = (g0 + g1) / 2 - (p0[1] + p1[1]) / 2;
       if (Math.abs(delta) < 0.004) continue;
       const out = 1 / Math.hypot(nx, nz);
@@ -485,7 +477,6 @@ export function buildSlopeRoad(type, corners, spokes, P) {
         );
       }
     }
-    void hint;
   }
   layRoad(b, type, spokes, P, terrain);
   return b;
