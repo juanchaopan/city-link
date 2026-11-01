@@ -1,186 +1,173 @@
 {
   "stats": {
-    "enumerated": 61877,
-    "noFrontage": 14746,
-    "noSpec": 54346,
-    "blocks": 69,
-    "wholeBlocks": 16,
+    "enumerated": 571370,
+    "noFrontage": 135821,
+    "noSpec": 494206,
+    "blocks": 371,
+    "wholeBlocks": 28,
     "cachedBlocks": 0,
-    "solvedBlocks": 69,
-    "worstBlockMs": 269.7777,
+    "solvedBlocks": 371,
+    "worstBlockMs": 1182.3629,
     "batches": 1,
-    "millis": 4045.182599999999
+    "millis": 70979.91589999999
   },
-  "blockAtoms": 2228,
-  "residualAtoms": 40,
+  "blockAtoms": 16098,
+  "residualAtoms": 60,
   "check": {
-    "blocksChecked": 9,
+    "blocksChecked": 15,
     "failures": 0,
     "maxPieces": 4,
     "shapes": [
+      "rect+rect+rect+rect",
+      "rect+rect+rect+rect",
       "rect+rect",
-      "rect+rect+rect",
-      "rect+rect+triangle",
-      "rect+rect+triangle",
+      "rect",
       "rect+rect",
+      "rect+rect",
+      "rect+triangle+triangle",
+      "rect+rect+triangle",
       "rect+rect+triangle",
       "rect+triangle+triangle",
-      "rect+rect",
-      "rect+rect+triangle"
+      "rect+rect+rect+triangle",
+      "rect+triangle",
+      "rect+triangle+triangle",
+      "rect+triangle",
+      "rect+triangle"
     ]
   },
   "shapeCounts": {
-    "rect 2x2": 19,
-    "rect 1x1": 12,
-    "rect 2x1": 15,
-    "rect 3x1": 3,
-    "rect 1x3": 16,
-    "rect 1x2": 15,
-    "bigTriangle 2x2": 12,
-    "rect 3x2": 17,
-    "bigTriangle 3x3": 5,
-    "rect 2x3": 17,
-    "rect 3x3": 8,
-    "triangle 1x1": 7,
-    "bigTriangle 4x4": 2,
-    "farmhouse 1x1": 3,
+    "rect 3x1": 31,
+    "rect 2x1": 25,
+    "rect 2x2": 174,
+    "rect 1x3": 37,
+    "rect 1x2": 41,
+    "rect 1x1": 26,
+    "rect 2x3": 143,
+    "rect 3x3": 69,
+    "rect 3x2": 155,
+    "bigTriangle 4x4": 58,
+    "triangle 1x1": 24,
+    "bigTriangle 2x2": 13,
+    "bigTriangle 3x3": 9,
+    "farmhouse 1x1": 9,
     "field 0x0": 3,
+    "service 3x3": 14,
+    "service 2x3": 5,
+    "service 2x2": 7,
     "service 3x2": 2,
-    "service 3x3": 2,
-    "service 2x3": 4,
-    "service 2x2": 5,
-    "service 1x2": 3,
-    "service 2x1": 1,
-    "public 2x3": 3,
-    "public 3x3": 2,
-    "public 1x2": 4,
-    "public 1x1": 7,
-    "public 2x1": 7,
-    "public 2x2": 1,
-    "green 1x1": 15
+    "service 2x1": 8,
+    "service 1x2": 5,
+    "public 1x1": 95,
+    "public 1x2": 86,
+    "public 3x3": 54,
+    "public 2x3": 23,
+    "public 3x2": 18,
+    "public 2x1": 71,
+    "public 2x2": 12,
+    "green 1x1": 71
   },
   "detail": {
-    "blockAtoms": 66,
-    "box": [
-      53,
-      27,
-      63,
-      34
-    ],
+    "blockAtoms": 50,
+    "box": [34, 28, 43, 37],
     "pieces": [
       {
+        "shape": "bigTriangle",
+        "use": "",
+        "area": 4.5
+      },
+      {
         "shape": "rect",
         "use": "",
         "area": 6
       },
       {
-        "shape": "rect",
+        "shape": "bigTriangle",
         "use": "",
-        "area": 6
-      },
-      {
-        "shape": "green",
-        "use": "lawn",
-        "area": 1
-      },
-      {
-        "shape": "green",
-        "use": "lawn",
-        "area": 1
-      },
-      {
-        "shape": "green",
-        "use": "lawn",
-        "area": 1
-      },
-      {
-        "shape": "green",
-        "use": "lawn",
-        "area": 1
-      },
-      {
-        "shape": "green",
-        "use": "lawn",
-        "area": 1
-      },
-      {
-        "shape": "green",
-        "use": "lawn",
-        "area": 1
+        "area": 2
       }
     ],
     "candidates": [
       {
         "rank": 1,
-        "cuts": 3,
-        "residual": 18,
+        "cuts": 2,
+        "residual": 0,
         "score": {
-          "total": 0.6427149028553497,
-          "size": 0.6666666666666666,
-          "regular": 0.5938156952201644,
-          "cuts": 0.25,
-          "even": 1,
+          "total": 0.5622733175031738,
+          "size": 0.462962962962963,
+          "regular": 0.8079183588453084,
+          "cuts": 0.3333333333333333,
+          "even": 0.6666666694098947,
           "diagonal": 1
         },
         "pieces": [
           {
-            "shape": "rect",
-            "area": 6,
-            "front": 3
+            "shape": "triangle",
+            "area": 4.5,
+            "front": 7.2
           },
           {
             "shape": "rect",
             "area": 6,
-            "front": 3
+            "front": 5
+          },
+          {
+            "shape": "triangle",
+            "area": 2,
+            "front": 4.8
           }
         ]
       },
       {
         "rank": 2,
-        "cuts": 5,
-        "residual": 18,
+        "cuts": 2,
+        "residual": 0,
         "score": {
-          "total": 0.5282828282828282,
-          "size": 0.4444444444444444,
-          "regular": 0.7272727272727273,
-          "cuts": 0.16666666666666666,
-          "even": 1,
+          "total": 0.5622733175031738,
+          "size": 0.462962962962963,
+          "regular": 0.8079183588453085,
+          "cuts": 0.3333333333333333,
+          "even": 0.6666666694098947,
           "diagonal": 1
         },
         "pieces": [
           {
-            "shape": "rect",
-            "area": 4,
-            "front": 2
+            "shape": "triangle",
+            "area": 2,
+            "front": 4.8
           },
           {
             "shape": "rect",
-            "area": 4,
-            "front": 2
+            "area": 6,
+            "front": 5
           },
           {
-            "shape": "rect",
-            "area": 4,
-            "front": 2
+            "shape": "triangle",
+            "area": 4.5,
+            "front": 7.2
           }
         ]
       },
       {
         "rank": 3,
         "cuts": 3,
-        "residual": 18,
+        "residual": 0,
         "score": {
-          "total": 0.501393089179431,
-          "size": 0.4444444444444444,
-          "regular": 0.6250420029054212,
+          "total": 0.4723319383806581,
+          "size": 0.3472222222222222,
+          "regular": 0.8491370849898475,
           "cuts": 0.25,
-          "even": 0.3333333333333333,
+          "even": 0.27614237541124453,
           "diagonal": 1
         },
         "pieces": [
           {
+            "shape": "triangle",
+            "area": 4.5,
+            "front": 7.2
+          },
+          {
             "shape": "rect",
-            "area": 6,
+            "area": 2,
             "front": 3
           },
           {
@@ -189,25 +176,30 @@
             "front": 2
           },
           {
-            "shape": "rect",
+            "shape": "triangle",
             "area": 2,
-            "front": 1
+            "front": 4.8
           }
         ]
       },
       {
         "rank": 4,
-        "cuts": 5,
-        "residual": 18,
+        "cuts": 3,
+        "residual": 0,
         "score": {
-          "total": 0.4847264225127643,
-          "size": 0.4444444444444444,
-          "regular": 0.6250420029054212,
-          "cuts": 0.16666666666666666,
-          "even": 0.3333333333333333,
+          "total": 0.4723319383806581,
+          "size": 0.3472222222222222,
+          "regular": 0.8491370849898476,
+          "cuts": 0.25,
+          "even": 0.27614237541124453,
           "diagonal": 1
         },
         "pieces": [
+          {
+            "shape": "triangle",
+            "area": 2,
+            "front": 4.8
+          },
           {
             "shape": "rect",
             "area": 4,
@@ -215,33 +207,38 @@
           },
           {
             "shape": "rect",
-            "area": 6,
+            "area": 2,
             "front": 3
           },
           {
-            "shape": "rect",
-            "area": 2,
-            "front": 1
+            "shape": "triangle",
+            "area": 4.5,
+            "front": 7.2
           }
         ]
       },
       {
         "rank": 5,
-        "cuts": 5,
-        "residual": 18,
+        "cuts": 3,
+        "residual": 0,
         "score": {
-          "total": 0.4847264225127643,
-          "size": 0.4444444444444444,
-          "regular": 0.6250420029054213,
-          "cuts": 0.16666666666666666,
-          "even": 0.3333333333333333,
+          "total": 0.4654283789953769,
+          "size": 0.3472222222222222,
+          "regular": 0.8491370849898476,
+          "cuts": 0.25,
+          "even": 0.13807118770562227,
           "diagonal": 1
         },
         "pieces": [
           {
+            "shape": "triangle",
+            "area": 4.5,
+            "front": 7.2
+          },
+          {
             "shape": "rect",
             "area": 4,
-            "front": 2
+            "front": 4
           },
           {
             "shape": "rect",
@@ -249,9 +246,9 @@
             "front": 1
           },
           {
-            "shape": "rect",
-            "area": 6,
-            "front": 3
+            "shape": "triangle",
+            "area": 2,
+            "front": 4.8
           }
         ]
       }

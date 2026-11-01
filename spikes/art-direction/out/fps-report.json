@@ -1,254 +1,147 @@
 {
-  "全图，白天，无车": {
+  "128，鸟瞰全图，不画车": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 8817,
-    "atlas": [4096, 5390],
+    "sprites": 39293,
+    "atlas": [4096, 7112],
     "arrows": 0,
-    "icons": 17,
-    "frames": 3721,
-    "p50fps": 833.3333002196431,
-    "p95fps": 476.1904978157451,
-    "worstFps": 59.52380969275693,
-    "cars": null
+    "icons": 41,
+    "frames": 753,
+    "p50fps": 156.2499976716936,
+    "p95fps": 114.9425281056452,
+    "worstFps": 74.07407407407408,
+    "cars": {
+      "cars": 0,
+      "wanted": 0,
+      "stopped": 0,
+      "signals": 1370,
+      "sortMs": 0,
+      "staticsInView": 4294
+    }
   },
-  "游戏视角，白天，无车": {
+  "128，半图缩小，不画车": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 8817,
-    "atlas": [4096, 5390],
+    "sprites": 39293,
+    "atlas": [4096, 7112],
     "arrows": 0,
-    "icons": 17,
-    "frames": 1478,
-    "p50fps": 333.3333333333333,
-    "p95fps": 169.4915226840727,
-    "worstFps": 51.02040841151456,
-    "cars": null
+    "icons": 41,
+    "frames": 741,
+    "p50fps": 153.84615384615384,
+    "p95fps": 111.11111111111111,
+    "worstFps": 71.42857142857143,
+    "cars": {
+      "cars": 0,
+      "wanted": 0,
+      "stopped": 0,
+      "signals": 1370,
+      "sortMs": 0,
+      "staticsInView": 3195
+    }
   },
-  "游戏视角，满额 300 辆": {
+  "128，游戏视角，上限 300 辆": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 8817,
-    "atlas": [4096, 5390],
+    "sprites": 39293,
+    "atlas": [4096, 7112],
     "arrows": 0,
-    "icons": 17,
-    "frames": 512,
-    "p50fps": 108.69565161054211,
-    "p95fps": 78.1249988358468,
-    "worstFps": 67.11409353016786,
+    "icons": 41,
+    "frames": 312,
+    "p50fps": 64.1025644944421,
+    "p95fps": 54.054054054054056,
+    "worstFps": 26.52519890544244,
     "cars": {
       "cars": 300,
       "wanted": 300,
-      "stopped": 158,
-      "signals": 191,
-      "sortMs": 4.200000047683716
+      "stopped": 178,
+      "signals": 1370,
+      "sortMs": 7.3999998569488525,
+      "staticsInView": 544
     }
   },
-  "游戏视角，满额 600 辆": {
+  "128，游戏视角，上限 150 辆": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 8817,
-    "atlas": [4096, 5390],
+    "sprites": 39293,
+    "atlas": [4096, 7112],
     "arrows": 0,
-    "icons": 17,
-    "frames": 270,
-    "p50fps": 56.81818212605705,
-    "p95fps": 41.841004017143554,
-    "worstFps": 35.842293784294355,
-    "cars": {
-      "cars": 600,
-      "wanted": 600,
-      "stopped": 392,
-      "signals": 191,
-      "sortMs": 11.400000095367432
-    }
-  },
-  "夜间车灯，满额 300 辆": {
-    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 8817,
-    "atlas": [4096, 5390],
-    "arrows": 0,
-    "icons": 17,
-    "frames": 495,
-    "p50fps": 105.26315789473684,
-    "p95fps": 73.529412280317,
-    "worstFps": 51.813471630604084,
-    "cars": {
-      "cars": 300,
-      "wanted": 300,
-      "stopped": 191,
-      "signals": 191,
-      "sortMs": 5.700000047683716
-    }
-  },
-  "夜间车灯，满额 600 辆": {
-    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 8817,
-    "atlas": [4096, 5390],
-    "arrows": 0,
-    "icons": 17,
-    "frames": 280,
-    "p50fps": 57.80346836741527,
-    "p95fps": 42.735042996294744,
-    "worstFps": 36.49635055550529,
-    "cars": {
-      "cars": 600,
-      "wanted": 600,
-      "stopped": 411,
-      "signals": 191,
-      "sortMs": 14
-    }
-  },
-  "全图缩小，满额 600 辆": {
-    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 8817,
-    "atlas": [4096, 5390],
-    "arrows": 0,
-    "icons": 17,
-    "frames": 309,
-    "p50fps": 64.51612903225806,
-    "p95fps": 50,
-    "worstFps": 41.841004017143554,
-    "cars": {
-      "cars": 600,
-      "wanted": 600,
-      "stopped": 308,
-      "signals": 191,
-      "sortMs": 7.299999952316284
-    }
-  },
-  "满城模块拼装（每物业 3 张），全图": {
-    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 9529,
-    "atlas": [4096, 5390],
-    "arrows": 0,
-    "icons": 17,
-    "frames": 3380,
-    "p50fps": 769.2307974459867,
-    "p95fps": 384.61539872299335,
-    "worstFps": 68.96551724137932,
-    "cars": null
-  },
-  "满城模块拼装（每物业 3 张），游戏视角满额 300 辆": {
-    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 9529,
-    "atlas": [4096, 5390],
-    "arrows": 0,
-    "icons": 17,
-    "frames": 518,
-    "p50fps": 111.11111111111111,
-    "p95fps": 76.92307692307692,
-    "worstFps": 63.29113847646667,
-    "cars": {
-      "cars": 300,
-      "wanted": 300,
-      "stopped": 201,
-      "signals": 191,
-      "sortMs": 4.799999952316284
-    }
-  },
-  "满城模块拼装（每物业 3 张），游戏视角满额 600 辆，夜间": {
-    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 9529,
-    "atlas": [4096, 5390],
-    "arrows": 0,
-    "icons": 17,
-    "frames": 279,
-    "p50fps": 58.13953472254017,
-    "p95fps": 45.248868485389025,
-    "worstFps": 38.46153846153846,
-    "cars": {
-      "cars": 600,
-      "wanted": 600,
-      "stopped": 389,
-      "signals": 191,
-      "sortMs": 10.799999952316284
-    }
-  },
-  "立交场景，满额 300 辆": {
-    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 4129,
-    "atlas": [4096, 5390],
-    "arrows": 0,
-    "icons": 0,
-    "frames": 670,
-    "p50fps": 140.8450675847819,
-    "p95fps": 102.04081434053666,
-    "worstFps": 78.1249988358468,
-    "cars": {
-      "cars": 300,
-      "wanted": 300,
-      "stopped": 116,
-      "signals": 36,
-      "sortMs": 4.200000047683716
-    }
-  },
-  "普通城市的丁字立交，满额 300 辆": {
-    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 8817,
-    "atlas": [4096, 5390],
-    "arrows": 0,
-    "icons": 17,
-    "frames": 553,
-    "p50fps": 116.27907105688794,
-    "p95fps": 84.74576305432143,
-    "worstFps": 60.60606060606061,
-    "cars": {
-      "cars": 300,
-      "wanted": 300,
-      "stopped": 148,
-      "signals": 191,
-      "sortMs": 4.6000001430511475
-    }
-  },
-  "单图集加亮窗层，连续变换时间": {
-    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 8817,
-    "atlas": [4096, 5390],
-    "arrows": 0,
-    "icons": 17,
-    "frames": 490,
+    "icons": 41,
+    "frames": 498,
     "p50fps": 102.04081682302912,
-    "p95fps": 74.07407407407408,
-    "worstFps": 60.97560940151907,
+    "p95fps": 82.64462875054595,
+    "worstFps": 71.94244678355753,
+    "cars": {
+      "cars": 150,
+      "wanted": 150,
+      "stopped": 90,
+      "signals": 1370,
+      "sortMs": 5,
+      "staticsInView": 545
+    }
+  },
+  "128，游戏视角，上限 100 辆": {
+    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "sprites": 39293,
+    "atlas": [4096, 7112],
+    "arrows": 0,
+    "icons": 41,
+    "frames": 669,
+    "p50fps": 136.9863022646597,
+    "p95fps": 111.11111111111111,
+    "worstFps": 94.33962136835933,
+    "cars": {
+      "cars": 100,
+      "wanted": 100,
+      "stopped": 52,
+      "signals": 1370,
+      "sortMs": 4,
+      "staticsInView": 548
+    }
+  },
+  "128，夜间车灯，上限 300 辆": {
+    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "sprites": 39293,
+    "atlas": [4096, 7112],
+    "arrows": 0,
+    "icons": 41,
+    "frames": 311,
+    "p50fps": 64.51612903225806,
+    "p95fps": 53.19148949661531,
+    "worstFps": 32.67973840931784,
     "cars": {
       "cars": 300,
       "wanted": 300,
-      "stopped": 193,
-      "signals": 191,
-      "sortMs": 4.700000047683716
+      "stopped": 181,
+      "signals": 1370,
+      "sortMs": 8.400000095367432,
+      "staticsInView": 556
     }
   },
-  "交通视图，全城箭头": {
+  "128，交通视图，游戏视角": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 8817,
-    "atlas": [4096, 5390],
-    "arrows": 1513,
+    "sprites": 39293,
+    "atlas": [4096, 7112],
+    "arrows": 8155,
     "icons": 0,
-    "frames": 2799,
-    "p50fps": 625.0000372529053,
-    "p95fps": 312.50001862645263,
-    "worstFps": 84.74576134203635,
+    "frames": 744,
+    "p50fps": 161.2903213401739,
+    "p95fps": 103.09278553230807,
+    "worstFps": 74.07407407407408,
     "cars": null
   },
-  "公共服务图标，默认缩放": {
+  "64，游戏视角，上限 300 辆（对比）": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
     "sprites": 8817,
-    "atlas": [4096, 5390],
+    "atlas": [4096, 7112],
     "arrows": 0,
     "icons": 17,
-    "frames": 3425,
-    "p50fps": 769.2307974459867,
-    "p95fps": 416.6666915019368,
-    "worstFps": 76.33587702901261,
-    "cars": null
-  },
-  "不画公共服务图标，默认缩放": {
-    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "sprites": 8817,
-    "atlas": [4096, 5390],
-    "arrows": 0,
-    "icons": 0,
-    "frames": 3691,
-    "p50fps": 833.3333002196431,
-    "p95fps": 434.78261770958727,
-    "worstFps": 51.813470990537034,
-    "cars": null
+    "frames": 336,
+    "p50fps": 68.49315113232986,
+    "p95fps": 58.8235294117647,
+    "worstFps": 50.25125604058627,
+    "cars": {
+      "cars": 300,
+      "wanted": 300,
+      "stopped": 192,
+      "signals": 191,
+      "sortMs": 7.900000095367432,
+      "staticsInView": 488
+    }
   }
 }

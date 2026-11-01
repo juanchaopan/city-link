@@ -61,12 +61,12 @@
       "pass": true
     },
     {
-      "name": "主线·vs24",
+      "name": "主线·vs21",
       "percent": 19.8,
       "pass": true
     },
     {
-      "name": "主线·vn24",
+      "name": "主线·vn21",
       "percent": 19.8,
       "pass": true
     }
@@ -76,8 +76,8 @@
       "parking": 2,
       "parkingCells": 8,
       "shopCells": 22,
-      "parcels": 6,
-      "capacity": 52,
+      "parcels": 7,
+      "capacity": 54,
       "parkingBadAccess": 0,
       "parcelsBadAccess": 0,
       "lotsOnLanes": 0,
