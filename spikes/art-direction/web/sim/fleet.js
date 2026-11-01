@@ -12,6 +12,9 @@ import { signalPoles } from './sceneitems.js';
 // 车身方向：heading 是车身在屏幕上的角度，跟着路面走向平滑变化，平滑量按走过的距离算，所以快慢车都一样；
 // 精灵选最接近 heading 的那张，差的角度由运行时旋转补上，上坡车头抬起，弯道也跟着路，换精灵时车身不跳。
 //
+// 一格里的车道中线：进来的一头按进来那条路的车道偏移，出去的一头按出去那条路的车道偏移。
+// 两车道转进四车道时进来的一头还在两车道的车道上，不会因为出口宽就挪到进口路的路缘上。
+//
 // 过路口：车按车身长度停在停车线后面。放行要同时满足绿灯和出口放得下自己，否则绿灯也不进，所以不会堵在路口里。
 // 过了停车线的车一路开走，全红时间按最长的通过路线算好，够它们清空。
 //
@@ -67,17 +70,21 @@ function screenAt(px, py, level) {
   return { sx: (px - py) * TILE_HALF_W, sy: (px + py - 1) * TILE_HALF_H - level * LEVEL_PIXELS };
 }
 
-/** 一格里从 from 方向进来、往 to 方向出去的车道中线。靠右行驶，所以进出都偏向各自行进方向的右侧。 */
-function cellLane(x, y, from, to, kind) {
+/**
+ * 一格里从 from 方向进来、往 to 方向出去的车道中线。靠右行驶，所以进出都偏向各自行进方向的右侧，
+ * 偏移量各按进来那条路和出去那条路算。
+ */
+function cellLane(x, y, from, to, fromKind, toKind) {
   const [fx, fy] = unitDirection(from);
   const [tx, ty] = unitDirection(to);
-  const offset = LANE_OFFSET[kind];
+  const offsetFrom = LANE_OFFSET[fromKind];
+  const offsetTo = LANE_OFFSET[toKind];
   const cx = x + 0.5;
   const cy = y + 0.5;
   const reachFrom = Math.hypot(...DIRECTIONS[from]) / 2;
   const reachTo = Math.hypot(...DIRECTIONS[to]) / 2;
-  const start = [cx + fx * reachFrom + fy * offset, cy + fy * reachFrom - fx * offset];
-  const end = [cx + tx * reachTo - ty * offset, cy + ty * reachTo + tx * offset];
+  const start = [cx + fx * reachFrom + fy * offsetFrom, cy + fy * reachFrom - fx * offsetFrom];
+  const end = [cx + tx * reachTo - ty * offsetTo, cy + ty * reachTo + tx * offsetTo];
   const points = [];
   if (Math.abs(fx * tx + fy * ty + 1) < 1e-6) {
     for (let i = 0; i <= LANE_STEPS; i += 1) {
@@ -86,7 +93,7 @@ function cellLane(x, y, from, to, kind) {
     }
     return points;
   }
-  const control = [cx + (fy - ty) * offset, cy + (tx - fx) * offset];
+  const control = [cx + fy * offsetFrom - ty * offsetTo, cy - fx * offsetFrom + tx * offsetTo];
   for (let i = 0; i <= TURNS; i += 1) {
     const t = i / TURNS;
     const a = (1 - t) * (1 - t);
@@ -366,7 +373,11 @@ export function createFleet(
     car.to = to;
     car.kind = kind;
     car.path = measured(
-      cellLane(x, y, from, to, kind).map(([px, py]) => [px, py, surface(px, py)]),
+      cellLane(x, y, from, to, kindOf(entry, from), kind).map(([px, py]) => [
+        px,
+        py,
+        surface(px, py),
+      ]),
     );
     car.s = 0;
     car.key = `${String(cell)}:${String(from)}`;
