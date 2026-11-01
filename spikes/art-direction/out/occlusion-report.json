@@ -1,120 +1,104 @@
 {
-  "cars": 600,
-  "size": 64,
-  "statics": 1463,
+  "cars": 300,
+  "size": 128,
+  "statics": 5289,
   "cycles": 0,
   "samples": 20,
-  "sortMsPerFrame": 9.08,
-  "sortMsWorst": 22.64,
+  "sortMsPerFrame": 11.32,
+  "sortMsWorst": 31.07,
   "current": {
     "建筑-车": {
-      "pairs": 2394,
+      "pairs": 556,
+      "wrong": 0
+    },
+    "灯杆-车": {
+      "pairs": 1148,
       "wrong": 0
     },
     "桥面-灯杆": {
       "pairs": 280,
       "wrong": 0
     },
-    "灯杆-车": {
-      "pairs": 1027,
+    "桥墩-车": {
+      "pairs": 54,
       "wrong": 0
     },
     "桥面-车": {
-      "pairs": 1405,
-      "wrong": 0
-    },
-    "桥墩-车": {
-      "pairs": 190,
+      "pairs": 495,
       "wrong": 0
     },
     "车-车": {
-      "pairs": 3540,
+      "pairs": 907,
       "wrong": 0
     },
     "公交-建筑": {
-      "pairs": 179,
+      "pairs": 66,
       "wrong": 0
     },
     "其他-车": {
-      "pairs": 97,
-      "wrong": 0
-    },
-    "公交-车": {
-      "pairs": 304,
+      "pairs": 10,
       "wrong": 0
     },
     "公交-灯杆": {
-      "pairs": 60,
+      "pairs": 70,
+      "wrong": 0
+    },
+    "公交-车": {
+      "pairs": 25,
       "wrong": 0
     },
     "公交-其他": {
-      "pairs": 4,
-      "wrong": 0
-    },
-    "公交-桥面": {
-      "pairs": 41,
-      "wrong": 0
-    },
-    "公交-公交": {
-      "pairs": 6,
+      "pairs": 1,
       "wrong": 0
     }
   },
   "legacy": {
-    "灯杆-车": {
-      "pairs": 1027,
-      "wrong": 425
+    "公交-建筑": {
+      "pairs": 66,
+      "wrong": 8
     },
     "建筑-车": {
-      "pairs": 2394,
-      "wrong": 237
+      "pairs": 556,
+      "wrong": 52
     },
-    "公交-建筑": {
-      "pairs": 179,
-      "wrong": 32
+    "灯杆-车": {
+      "pairs": 1148,
+      "wrong": 532
     },
-    "桥面-车": {
-      "pairs": 1405,
-      "wrong": 403
+    "其他-车": {
+      "pairs": 10,
+      "wrong": 5
     },
     "桥面-灯杆": {
       "pairs": 280,
       "wrong": 0
     },
     "桥墩-车": {
-      "pairs": 190,
+      "pairs": 54,
       "wrong": 0
+    },
+    "桥面-车": {
+      "pairs": 495,
+      "wrong": 122
     },
     "车-车": {
-      "pairs": 3540,
-      "wrong": 1689
-    },
-    "其他-车": {
-      "pairs": 97,
-      "wrong": 38
+      "pairs": 907,
+      "wrong": 473
     },
     "公交-灯杆": {
-      "pairs": 60,
-      "wrong": 22
+      "pairs": 70,
+      "wrong": 15
     },
     "公交-车": {
-      "pairs": 304,
-      "wrong": 157
+      "pairs": 25,
+      "wrong": 0
     },
     "公交-其他": {
-      "pairs": 4,
+      "pairs": 1,
       "wrong": 1
-    },
-    "公交-桥面": {
-      "pairs": 41,
-      "wrong": 7
-    },
-    "公交-公交": {
-      "pairs": 6,
-      "wrong": 0
     }
   },
   "wrong": 0,
-  "legacyWrong": 3011,
+  "legacyWrong": 1208,
   "examples": []
 }
