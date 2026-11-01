@@ -12,12 +12,15 @@ import { pngData } from './townrender.js';
 // 车要走的每条 lane，中线和车道两侧都必须落在车道像素上；高架下面的地面路也要连续，说明下方可以通路。
 // 被更高的路面盖住的地方读出来还是车道，被桥墩挡住的地方是灰色，这两种都不算断。
 // 匝道并入主线的一段路肩会压在匝道上，两端各留两格不查路肩；地面路被高架的路肩盖住也属于遮挡。
+// 贴地的车道从桥下穿过时，屏幕上那一点读到的是桥的路肩，所以贴地的点读到路肩时再看不画结构的遮罩：
+// 那里是车道，说明路肩是上面的桥，车道本身没有断。
 // 样张放着三种快速路立交，苜蓿叶和喇叭形第一版不交付，它们的行只记录，不算通过与否；
 // 快速路主线穿过这两座未交付立交的一段也不查，它们的旧线形压在主线的路肩上，不是主线的问题。
 // 丁字形立交在普通城市里，查的是真实城市路网上的那一个。
 
 const END_ZONE = 2;
 const EDGE_MARGIN = 0.07;
+const GROUND_HEIGHT = 0.05;
 const TOWN_SIZE = 128;
 const TOWN_MARGIN = 10;
 const UNDELIVERED = new Set(['cloverleaf', 'trumpet']);
@@ -36,7 +39,8 @@ function worldOf(city) {
 
 function maskOf(city, region) {
   const objects = city.objects.filter(({ key }) => STRUCTURES.test(key));
-  return maskScenes({ ...worldOf(city), objects }, region).full;
+  const { full, ground } = maskScenes({ ...worldOf(city), objects }, region);
+  return { ...full, readGround: ground.read };
 }
 
 const nearUndelivered = (x, y) =>
@@ -44,7 +48,7 @@ const nearUndelivered = (x, y) =>
     ([cx, cy]) => Math.abs(x - cx) < UNDELIVERED_REACH && Math.abs(y - cy) < UNDELIVERED_REACH,
   );
 
-function inspectLane(lane, { read, place }, offsets, sideCounts, skip) {
+function inspectLane(lane, { read, readGround, place }, offsets, sideCounts, skip) {
   const result = { samples: 0, holes: 0, side: 0, examples: [] };
   const { points } = lane;
   let total = 0;
@@ -77,12 +81,15 @@ function inspectLane(lane, { read, place }, offsets, sideCounts, skip) {
         const px = x - ((by - ay) / length) * offset;
         const py = y + ((bx - ax) / length) * offset;
         const [sx, sy] = place.at(px, py, h);
-        const found = read(Math.round(sx), Math.round(sy));
+        const pixelX = Math.round(sx);
+        const pixelY = Math.round(sy);
+        const found = read(pixelX, pixelY);
         result.samples += 1;
         if (found === CLASS.empty) {
           result.holes += 1;
           note(px, py, h, found);
         } else if ((found === CLASS.walk || found === CLASS.curb) && sideCounts && !inEndZone) {
+          if (h < GROUND_HEIGHT && readGround(pixelX, pixelY) === CLASS.deck) continue;
           result.side += 1;
           note(px, py, h, found);
         }
