@@ -15,7 +15,7 @@ import { roadWorld, terrainOf } from './sim/terrainworld.js';
 // region 只拼地图的一块，查局部时不用付整张地图的内存；块外 REGION_MARGIN 格以内的精灵也画，块边上的像素才完整。
 // 128×128 整张拼不下：画布超过浏览器的上限，像素也有六百兆。regionsOf 把地图切成 64 格见方的块，检查一块一块读。
 // world.low 是贴地的匝道路面，和路面同一层，画在车道上面。world.covered 是立交、环岛这些结构占的格子，
-// 路在这些格子里由结构接着画，不是断头。
+// 加上高架落地接上来的那一小段路的两头，路在这些格子里由结构接着画，不是断头。
 // 拼图的大画布全程只有一张：改尺寸时旧的像素立刻释放，不等垃圾回收。上一次 compose 的结果读完再拼下一张。
 // 精灵的画布都留在内存里，不上显卡：它们只被画到大画布上，放显卡只会多占一份，还要来回传。
 
@@ -141,9 +141,11 @@ export function worldOf({ N, draw, heights, water = [], gates = [] }) {
 
 export function worldOfCity(city) {
   const { N, roads, cornersOf, levelOf, isFlat, isWater, plan, reserved } = city;
-  const { gates } = plan;
+  const { gates, viaduct } = plan;
   const road = roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates });
-  return { N, roads, ...road, cornersOf, levelOf, isFlat, isWater, gates, covered: reserved };
+  const stubEnds = (viaduct?.stubs ?? []).flat().map(([x, y]) => y * N + x);
+  const covered = new Set([...reserved, ...stubEnds]);
+  return { N, roads, ...road, cornersOf, levelOf, isFlat, isWater, gates, covered };
 }
 
 /** 画布坐标：格子中心 (px, py)、高度 level 对应的画布像素。region 是 [x0, y0, x1, y1]，默认整张地图。 */

@@ -33,11 +33,14 @@ function mound(x, y, [x0, y0, x1, y1], peak) {
   return Math.max(0, Math.min(peak, margin + 1));
 }
 
+const terracePeak = (s) => Math.min(3, 1 + s);
+const terraceSouth = (s) => 20 * s;
+
 export function terrain(N, s, riverAt, protect) {
   const corner = (x, y) => y * (N + 1) + x;
   const h = new Int8Array((N + 1) * (N + 1));
   const mounds = [
-    { rect: [26 * s, 6 * s, 36 * s, 20 * s], peak: Math.min(3, 1 + s) },
+    { rect: [26 * s, 6 * s, 36 * s, terraceSouth(s)], peak: terracePeak(s) },
     { rect: [-3 * s, -3 * s, 5 * s, 4 * s], peak: 3 },
     { rect: [17 * s, -3 * s, 33 * s, 2 * s], peak: 2 },
   ];
@@ -217,18 +220,21 @@ export function buildRoads(N, s, center, riverAt) {
   ]);
 
   // 上台地的路：沿 (+1, -1) 方向斜穿朝南的直坡。这个方向在屏幕上接近水平，地形顺着路面抬起，路贴在地上。
-  // 斜路最多爬到直通路下面一行，再用一小段直路接上去：爬过头三条路会在坡上夹出小三角，
-  // 正好爬到那一行又和直通路成一个回头的锐角。
+  // 坡上只放得下直路，转弯和路口都要落在平地上，所以斜路一直爬到台地顶上才停。
+  // 直通路在斜路的路头北面时往北接上去；城区大到盖过台地脚下时，直通路在斜路身后，接回去就是坡上的小三角，
+  // 这时路在台地顶上收尾。
   const directRow = usableRows[Math.max(0, usableRows.length - 3)];
   const climbFrom = [27 * s, south];
-  const rise = Math.min(3 * s, south - directRow - 1);
+  const rise = Math.max(3 * s, south - terraceSouth(s) + terracePeak(s));
   const climbTo = [climbFrom[0] + rise, south - rise];
   walk('road', [[right, south], climbFrom, climbTo]);
-  walk('road', [
-    [right, directRow],
-    [climbTo[0], directRow],
-  ]);
-  walk('road', [climbTo, [climbTo[0], directRow]]);
+  if (climbTo[1] > directRow) {
+    walk('road', [
+      [right, directRow],
+      [climbTo[0], directRow],
+    ]);
+    walk('road', [climbTo, [climbTo[0], directRow]]);
+  }
   const gates = [
     { x: N - 1, y: ringRow, kind: 'highway', inward: 4, axis: 'x' },
     { x: ringColumn, y: N - 1, kind: 'highway', inward: 6, axis: 'z' },
