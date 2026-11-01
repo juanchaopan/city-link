@@ -25,7 +25,7 @@ const PARKING_SIDES = [
   [-1, 0],
   [0, -1],
 ];
-const DRIVEWAY = { reach: 0.22, width: 0.26 };
+const DRIVEWAY = { reach: 0.2, width: 0.26 };
 
 function pick(list, random) {
   return list[Math.floor(random() * list.length) % list.length];
@@ -1176,7 +1176,7 @@ function publicLand(b, use, sx, sz, P) {
   }
 }
 
-/** 立交圈内的停车场：车道对着路，一条车道穿过地块，出口有一段引道接到人行道上，旁边是收费亭。 */
+/** 立交圈内的停车场：车道对着路，一条车道穿过地块，出口有一段引道接到人行道边上，旁边是收费亭。 */
 function parkingLot(b, sx, sz, P, side) {
   const [dx, dz] = PARKING_SIDES[side];
   const edge = dx !== 0 ? sx / 2 : sz / 2;

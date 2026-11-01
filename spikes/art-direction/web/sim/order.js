@@ -3,7 +3,7 @@
 // 平面上重叠的只有上下两层：高架和它下面的路、车和它脚下的桥面，这时低的先画。
 // 相邻的两块桥面在接缝处互相盖住一点，它们不是上下两层，高度差也只是同一段坡上的高差，这种按前后排；
 // 否则下坡朝着观众的桥面会要求低的先画，和前后关系相反，排序就成了环。
-// 主线和它旁边的平行车道同高，匝道在哪一侧都排在主线后面，路面才盖得住主线的路肩。
+// 主线和旁边的匝道不是上下两层时，匝道在哪一侧都排在主线后面，路面才盖得住主线的路肩。
 // 车和桥面比别的物体多两条规则。平面上靠后的物体投影整个在靠前物体的上方时，两者在屏幕上碰不到，这一对不排：
 // 桥上的车和它前面的桥墩、桥下的车和它后面的桥面、桥下的公交站和桥面都是这样，硬排只会和别的物体抢位置。
 // 车压在两块桥面的接缝上时算在桥面上：桥面的高度取这一块的最低点，坡上的车可能比邻块的最低点略低。
@@ -17,7 +17,6 @@
 
 const EPS = 1e-6;
 const CELL = 256;
-const SAME_HEIGHT = 0.02;
 const STACKED = 0.6;
 const ON_DECK = 0.3;
 const OVERHEAD = 1;
@@ -50,6 +49,8 @@ function spanAt(points, v) {
 
 const baseOf = (item) => item.base ?? 0;
 const onDeck = (deck, other) => deck.deck && other.car && baseOf(other) > baseOf(deck) - ON_DECK;
+const sameLevelDecks = (a, b) =>
+  a.deck && b.deck && Math.abs(baseOf(a) - baseOf(b)) < STACKED;
 
 /** 平面上靠后的 behind，最低的像素也在 front 最高的像素上方。没有高度数据的物体不算。 */
 function clearOf(behind, spanBehind, front, spanFront) {
@@ -62,7 +63,7 @@ function stackedOrder(a, b, spanA, spanB) {
   if (onDeck(a, b)) return -1;
   if (onDeck(b, a)) return 1;
   const gap = Math.abs(baseOf(a) - baseOf(b));
-  if (gap > EPS && !(a.deck && b.deck && gap < STACKED)) return baseOf(a) < baseOf(b) ? -1 : 1;
+  if (gap > EPS && !sameLevelDecks(a, b)) return baseOf(a) < baseOf(b) ? -1 : 1;
   return (spanA[0] + spanA[1]) / 2 < (spanB[0] + spanB[1]) / 2 ? -1 : 1;
 }
 
@@ -83,22 +84,17 @@ function acrossLevels(a, b, middle, quarter, aFirst) {
 
 /** 这一对用得上「投影碰不到」：一边是桥面或车，两辆车、两块桥面都要不在同一层。 */
 function mayMissEachOther(a, b) {
-  const gap = Math.abs(baseOf(a) - baseOf(b));
-  if (a.car && b.car) return gap > ON_DECK;
-  if (a.deck && b.deck) return gap >= STACKED;
+  if (a.car && b.car) return Math.abs(baseOf(a) - baseOf(b)) > ON_DECK;
+  if (a.deck && b.deck) return !sameLevelDecks(a, b);
   return Boolean(a.car || b.car || a.deck || b.deck);
 }
-
-/** 主线和同高的匝道。 */
-const mainAndRamp = (a, b) =>
-  a.deck && b.deck && a.main !== b.main && Math.abs(baseOf(a) - baseOf(b)) <= SAME_HEIGHT;
 
 /** A 必须先画就返回 -1，B 必须先画就返回 1，两者在屏幕上不重叠或无法比较时返回 0。 */
 export function compareDepth(a, b) {
   const lowV = Math.max(a.minV, b.minV);
   const highV = Math.min(a.maxV, b.maxV);
   if (lowV >= highV - EPS) return 0;
-  if (mainAndRamp(a, b)) return a.main ? -1 : 1;
+  if (sameLevelDecks(a, b) && a.main !== b.main) return a.main ? -1 : 1;
   const middle = (lowV + highV) / 2;
   const spanA = spanAt(a.view, middle);
   const spanB = spanAt(b.view, middle);
