@@ -8,9 +8,13 @@ import { ELEVATED, template } from './sim/interchange.js';
 // 立交验收的入口。模板在一块平地上单独查；默认城市只拼高架和丁字立交所在的那一块，整张遮罩内存不够。
 // 默认城市里丁字立交、高架的头和中段的匝道走同一组检查，主线另外逐格查：
 // 桥墩底部不在路面上，路格里不立桥墩，跨街时净空够，主线下面没有物业。
+// 遮罩里只画路面、桥面和桥墩：绿地里的树是深绿色，读出来会和人行道混在一起。
 
 const MIN_CLEARANCE = 1;
 const CITY_MARGIN = 7;
+const STRUCTURES = /^(ixp|ev|pr)-/;
+
+const structuresOf = (objects) => objects.filter(({ key }) => STRUCTURES.test(key));
 
 function checkViaductCells(city, scene) {
   const { N, viaduct, parcels } = city;
@@ -45,7 +49,7 @@ function cityEntries() {
   const city = generateCity(64);
   const town = {
     ...worldOfCity(city, false),
-    objects: city.objects.filter(({ key }) => /^(ixp|ev|pr)-/.test(key)),
+    objects: structuresOf(city.objects),
     low: city.lowDecks,
     traffic: city.traffic,
     lanes: city.lanes,
@@ -93,7 +97,9 @@ function cityEntries() {
 window.runIxChecks = () => {
   const rows = Object.keys(IX_SCENES).map((name) => {
     const entry = ixTown(name);
-    return { name, ...inspectEntry(entry, template(name).ramps(), maskScenes(entry.town)) };
+    const town = { ...entry.town, objects: structuresOf(entry.town.objects) };
+    const row = inspectEntry({ ...entry, town }, template(name).ramps(), maskScenes(town));
+    return { name, ...row };
   });
   return { rows, cells: null, failures: FAILURES };
 };

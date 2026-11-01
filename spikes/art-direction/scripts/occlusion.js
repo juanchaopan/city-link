@@ -1,8 +1,11 @@
 // 遮挡顺序验收：同屏的车、公交、灯杆、建筑、桥墩和桥面，算出谁应该在前，再和绘制顺序比对。
 // 纯计算，不开浏览器，要先有 out/atlas-sunny.json 提供精灵尺寸。node scripts/occlusion.js [车数]
 // 判断前后的函数写在这里，和排序用的 compareDepth 分开：平面上沿视线方向取几条线，看谁离相机近；
-// 平面上重叠时高度低的在后面。
+// 平面上重叠时高度低的在后面。靠后物体最低的像素在靠前物体最高的像素上方时，投影碰不到，这条视线不投票，
+// 只叠着两个像素也算碰不到。
+// 车和桥面在平面上重叠、车比桥面的最低点只低一点时，车压在接缝上，这一对两种画法都对，不计入。
 // 同一批车再按第 7 轮的分层规则排一遍（地面的车、灯杆、物体、匝道上的车各画一层，层内不排序），证明检查抓得到错序。
+// 车流用固定的随机数种子，同一份代码每次的结果一样。
 // 输出 out/occlusion-report.json，按物体种类分别统计重叠对和错序数。
 import { readFileSync, writeFileSync } from 'node:fs';
 import { generateCity } from '../web/sim/city.js';
@@ -18,11 +21,23 @@ const DT = 0.05;
 const RAYS = 7;
 const EPS = 1e-6;
 const CELL = 256;
+const SEAM_GAP = 0.3;
+const TWO_PIXELS = 0.06;
+const SEED = 7;
+const MODULUS = 2147483647;
 
 const frames = JSON.parse(readFileSync('out/atlas-sunny.json', 'utf8'));
 const city = generateCity(64);
 const { sorted, cycles } = sceneItems(city, (key) => frames[key]);
 const screen = (px, py, level) => ({ sx: (px - py) * 64, sy: (px + py - 1) * 32 - level * 32 });
+
+function seeded() {
+  let state = SEED;
+  return () => {
+    state = (state * 16807) % MODULUS;
+    return state / MODULUS;
+  };
+}
 
 function kindOf(item) {
   if (item.car) return item.car.bus ? '公交' : '车';
@@ -51,6 +66,18 @@ function rangeOn(polygon, v) {
   return [low, high];
 }
 
+const floorOf = (item) => item.base ?? 0;
+
+/** 这一对是车压在桥面接缝上。 */
+function onSeam(a, b) {
+  const [car, deck] = a.car ? [a, b] : [b, a];
+  return Boolean(car.car && deck.deck) && Math.abs(floorOf(deck) - floorOf(car)) < SEAM_GAP;
+}
+
+/** 这条视线上，靠后的物体最低的像素在靠前物体最高的像素上方。 */
+const apart = (behind, behindEnd, front, frontStart) =>
+  behindEnd - floorOf(behind) <= frontStart - (front.peak ?? Infinity) + TWO_PIXELS;
+
 /** 谁应该先画：a 先返回 -1，b 先返回 1，平面上没有重叠的视线时返回 0。 */
 function truth(a, b) {
   const va = a.footprint.map(([x, y]) => x - y);
@@ -59,14 +86,19 @@ function truth(a, b) {
   const high = Math.min(Math.max(...va), Math.max(...vb));
   if (high - low < 1e-3) return 0;
   let vote = 0;
+  let stacked = false;
   for (let i = 1; i <= RAYS; i += 1) {
     const v = low + ((high - low) * i) / (RAYS + 1);
     const [a0, a1] = rangeOn(a.footprint, v);
     const [b0, b1] = rangeOn(b.footprint, v);
-    if (a1 <= b0 + EPS) vote -= 1;
-    else if (b1 <= a0 + EPS) vote += 1;
-    else if (Math.abs((a.base ?? 0) - (b.base ?? 0)) > EPS) vote += (a.base ?? 0) < (b.base ?? 0) ? -1 : 1;
+    if (a1 <= b0 + EPS) vote -= apart(a, a1, b, b0) ? 0 : 1;
+    else if (b1 <= a0 + EPS) vote += apart(b, b1, a, a0) ? 0 : 1;
+    else if (Math.abs(floorOf(a) - floorOf(b)) > EPS) {
+      stacked = true;
+      vote += floorOf(a) < floorOf(b) ? -1 : 1;
+    }
   }
+  if (stacked && onSeam(a, b)) return 0;
   return Math.sign(vote);
 }
 
@@ -84,8 +116,17 @@ function binsOf(sequence) {
   return bins;
 }
 
+function short(value) {
+  return typeof value === 'number' ? Math.round(value * 100) / 100 : value;
+}
+
+function describe(item) {
+  if (item.car) return ['车', item.car.x, item.car.y, item.car.h].map(short);
+  return [item.key, item.px, item.py, item.base ?? 0, item.peak ?? 0].map(short);
+}
+
 /** 重叠对里错序的数量，按种类统计。两个都是静态物体的对只算灯杆和桥面。 */
-function audit(sequence, tally) {
+function audit(sequence, tally, examples) {
   const seen = new Set();
   for (const list of binsOf(sequence).values()) {
     for (let i = 0; i < list.length; i += 1) {
@@ -104,7 +145,10 @@ function audit(sequence, tally) {
         if (order === 0) continue;
         const entry = (tally[kinds] ??= { pairs: 0, wrong: 0 });
         entry.pairs += 1;
-        if (order > 0) entry.wrong += 1;
+        if (order > 0) {
+          entry.wrong += 1;
+          if (examples && examples.length < 12) examples.push([describe(a), describe(b)]);
+        }
       }
     }
   }
@@ -119,10 +163,16 @@ function legacySequence(items) {
   return [...ground, ...poles, ...objects, ...high];
 }
 
-const fleet = createFleet(city, { cap: cars, full: true, highCap: Math.min(120, cars) });
+const fleet = createFleet(city, {
+  cap: cars,
+  full: true,
+  highCap: Math.min(120, cars),
+  random: seeded(),
+});
 const list = createDrawList(sorted);
 const current = {};
 const legacy = {};
+const examples = [];
 let samples = 0;
 let spent = 0;
 let worst = 0;
@@ -140,7 +190,7 @@ for (let step = 0; step < STEPS; step += 1) {
   if (step % SAMPLE_EVERY !== SAMPLE_EVERY - 1) continue;
   samples += 1;
   const sequence = mergedSequence(sorted, placed);
-  audit(sequence, current);
+  audit(sequence, current, examples);
   audit(legacySequence(items), legacy);
   conflicts += placed.filter((item, index) => index > 0 && placed[index - 1].slot > item.slot).length;
 }
@@ -158,6 +208,7 @@ const report = {
   wrong: totals(current),
   legacyWrong: totals(legacy),
   conflicts,
+  examples,
 };
 writeFileSync('out/occlusion-report.json', JSON.stringify(report, null, 2));
 console.log(JSON.stringify(report, null, 1));

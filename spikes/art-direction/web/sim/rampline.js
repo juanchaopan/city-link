@@ -170,7 +170,7 @@ function bandAt(a, c, first, last) {
 /** 这一端车道中线相对路面中心线向左偏多少。 */
 function laneShift(end, d) {
   if (end?.main) {
-    const reach = end.main.taper + end.main.parallel;
+    const reach = end.main.drift ?? end.main.taper + end.main.parallel;
     return (SIDE_LANE - MAIN_LANE) * (1 - smooth(d / reach));
   }
   if (end?.foot?.lane) return end.foot.lane * (1 - smooth(d / end.foot.blend));
@@ -223,7 +223,7 @@ function mainLength(end) {
 
 /**
  * 一条匝道。way、radii 是平面线形，grade 是高度，first、last 描述两端怎么接：
- * main 表示接主线（taper 是渐变段长，parallel 是平行车道长）；
+ * main 表示接主线（taper 是渐变段长，parallel 是平行车道长，drift 是车横移的长度，默认和开口一样长）；
  * foot 表示接地面路：l、r、sl、sr 是端头的宽度，blend 是过渡长度，hold、holdRight 是两侧路肩留到多远才恢复，
  * lane 是车道相对中心线向左的偏移，extend 是车从哪一点开始走，这一点在路面之外的地面路上。
  * 限速按路面中心线算，车在合流段横移不算弯。

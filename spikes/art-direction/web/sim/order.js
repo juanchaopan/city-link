@@ -1,10 +1,27 @@
 // 遮挡顺序。多格建筑和斜向建筑不能简单按中心点排序：一栋长楼的中心可能比它身后的小楼更靠前。
 // 物体都是竖直立在地面上的凸棱柱，沿视线方向 (1, 1) 看，平面上分得开的两个物体，靠近观众的后画。
 // 平面上重叠的只有上下两层：高架和它下面的路、车和它脚下的桥面，这时低的先画。
+// 相邻的两块桥面在接缝处互相盖住一点，它们不是上下两层，高度差也只是同一段坡上的高差，这种按前后排；
+// 否则下坡朝着观众的桥面会要求低的先画，和前后关系相反，排序就成了环。
+// 主线和它旁边的平行车道同高，匝道在哪一侧都排在主线后面，路面才盖得住主线的路肩。
+// 车和桥面比别的物体多两条规则。平面上靠后的物体投影整个在靠前物体的上方时，两者在屏幕上碰不到，这一对不排：
+// 桥上的车和它前面的桥墩、桥下的车和它后面的桥面、桥下的公交站和桥面都是这样，硬排只会和别的物体抢位置。
+// 车压在两块桥面的接缝上时算在桥面上：桥面的高度取这一块的最低点，坡上的车可能比邻块的最低点略低。
+// 车很短，一条视线判断不出它是不是钻到桥下，也判断不出投影碰不碰得到，所以这种比较看三条视线。
+// 车插进静态序列时只有下限：排在它身后的物体之后。要让这个位置也在它前面的物体之前，静态序列就得这样排：
+// 同时可以画的物体，先画最靠后的边更靠后的，一栋长楼只要后边在车后面就排在车前面的小物体之前；
+// 车能从下面穿过的桥面能多晚就多晚，只有必须盖在桥面上的物体才排到它后面，桥下的车才有位置。
+// base 是物体的底，peak 是物体的顶，单位都是层；视线坐标 u 一格 32 像素，和一层一样高，所以两者能直接相减。
+// left、right、top、bottom 是屏幕范围。
 // 这些关系没有环，所以两两比较后做一次拓扑排序就是正确的绘制顺序。
 
 const EPS = 1e-6;
 const CELL = 256;
+const SAME_HEIGHT = 0.02;
+const STACKED = 0.6;
+const ON_DECK = 0.3;
+const OVERHEAD = 1;
+const DECK_DELAY = 1000;
 
 function viewCoordinates(polygon) {
   return polygon.map(([x, y]) => [x + y, x - y]);
@@ -31,34 +48,79 @@ function spanAt(points, v) {
   return [low, high];
 }
 
+const baseOf = (item) => item.base ?? 0;
+const onDeck = (deck, other) => deck.deck && other.car && baseOf(other) > baseOf(deck) - ON_DECK;
+
+/** 平面上靠后的 behind，最低的像素也在 front 最高的像素上方。没有高度数据的物体不算。 */
+function clearOf(behind, spanBehind, front, spanFront) {
+  const bottom = spanBehind[1] - baseOf(behind);
+  return bottom <= spanFront[0] - (front.peak ?? Infinity);
+}
+
+/** 平面上重叠的两个物体谁先画。 */
+function stackedOrder(a, b, spanA, spanB) {
+  if (onDeck(a, b)) return -1;
+  if (onDeck(b, a)) return 1;
+  const gap = Math.abs(baseOf(a) - baseOf(b));
+  if (gap > EPS && !(a.deck && b.deck && gap < STACKED)) return baseOf(a) < baseOf(b) ? -1 : 1;
+  return (spanA[0] + spanA[1]) / 2 < (spanB[0] + spanB[1]) / 2 ? -1 : 1;
+}
+
+const overlapping = (spanA, spanB) => spanA[1] > spanB[0] + EPS && spanB[1] > spanA[0] + EPS;
+
+/** 三条视线都分得开、投影都碰不到才不排。 */
+function acrossLevels(a, b, middle, quarter, aFirst) {
+  let clear = true;
+  for (const v of [middle - quarter, middle, middle + quarter]) {
+    const spanA = spanAt(a.view, v);
+    const spanB = spanAt(b.view, v);
+    if (overlapping(spanA, spanB)) return stackedOrder(a, b, spanA, spanB);
+    clear &&= aFirst ? clearOf(a, spanA, b, spanB) : clearOf(b, spanB, a, spanA);
+  }
+  if (clear) return 0;
+  return aFirst ? -1 : 1;
+}
+
+/** 这一对用得上「投影碰不到」：一边是桥面或车，两辆车、两块桥面都要不在同一层。 */
+function mayMissEachOther(a, b) {
+  const gap = Math.abs(baseOf(a) - baseOf(b));
+  if (a.car && b.car) return gap > ON_DECK;
+  if (a.deck && b.deck) return gap >= STACKED;
+  return Boolean(a.car || b.car || a.deck || b.deck);
+}
+
+/** 主线和同高的匝道。 */
+const mainAndRamp = (a, b) =>
+  a.deck && b.deck && a.main !== b.main && Math.abs(baseOf(a) - baseOf(b)) <= SAME_HEIGHT;
+
 /** A 必须先画就返回 -1，B 必须先画就返回 1，两者在屏幕上不重叠或无法比较时返回 0。 */
 export function compareDepth(a, b) {
   const lowV = Math.max(a.minV, b.minV);
   const highV = Math.min(a.maxV, b.maxV);
   if (lowV >= highV - EPS) return 0;
+  if (mainAndRamp(a, b)) return a.main ? -1 : 1;
   const middle = (lowV + highV) / 2;
   const spanA = spanAt(a.view, middle);
   const spanB = spanAt(b.view, middle);
-  if (spanA[1] <= spanB[0] + EPS) return -1;
-  if (spanB[1] <= spanA[0] + EPS) return 1;
-  const baseA = a.base ?? 0;
-  const baseB = b.base ?? 0;
-  if (Math.abs(baseA - baseB) > EPS) return baseA < baseB ? -1 : 1;
-  return (spanA[0] + spanA[1]) / 2 < (spanB[0] + spanB[1]) / 2 ? -1 : 1;
+  if (overlapping(spanA, spanB)) return stackedOrder(a, b, spanA, spanB);
+  const aFirst = spanA[1] <= spanB[0] + EPS;
+  if (mayMissEachOther(a, b)) return acrossLevels(a, b, middle, (highV - lowV) / 4, aFirst);
+  return aFirst ? -1 : 1;
 }
 
-/** 给物体算好比较要用的视线坐标。footprint 是平面上的凸多边形。 */
+/** 给物体算好比较要用的视线坐标。footprint 是平面上的凸多边形，depth 是拓扑排序里并列时的先后。 */
 export function prepareItem(item) {
   const view = viewCoordinates(item.footprint);
-  let sum = 0;
+  let back = Infinity;
   let minV = Infinity;
   let maxV = -Infinity;
   for (const [u, v] of view) {
-    sum += u;
+    back = Math.min(back, u);
     minV = Math.min(minV, v);
     maxV = Math.max(maxV, v);
   }
-  return { ...item, view, depth: sum / view.length, minV, maxV };
+  const depth = back + (item.deck && baseOf(item) >= OVERHEAD ? DECK_DELAY : 0);
+  return { ...item, view, depth, minV, maxV };
 }
 
 export function overlapBoxes(a, b) {

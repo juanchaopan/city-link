@@ -6,7 +6,7 @@ import { ELEVATED } from './rampline.js';
 // 贴地的路面按格子合成一块，画在路面层，所有物体都在它上面。
 // 离地的路面按「一条线在一格里的一段」切，每段是一个物体，有自己的占地和高度。
 // 相邻两块在接缝处多画一小段，互相盖住，不留透明的缝。
-// 平行车道的路面盖在主线的路肩上，所以同高时匝道排在主线后面画。
+// 平行车道的路面盖在主线的路肩上，所以同高时匝道排在主线后面画，main 标出主线的块。
 
 const LOW = 0.2;
 const RAMP_ABOVE = 0.01;
@@ -125,8 +125,9 @@ export function piecesOf(name) {
       }
     }
     piece.outline = convexHull(outline);
-    const above = lines[piece.spans[0].line].kind === 'ramp' ? RAMP_ABOVE : 0;
-    piece.base = base + above;
+    const { kind } = lines[piece.spans[0].line];
+    piece.main = kind === 'main';
+    piece.base = base + (kind === 'ramp' ? RAMP_ABOVE : 0);
   }
   pieceCache.set(name, pieces);
   return pieces;

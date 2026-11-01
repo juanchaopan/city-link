@@ -5,7 +5,8 @@ import { compareDepth, eachBin, overlapBoxes, prepareItem, topological } from '.
 // 车和车按车身占地两两比，长车不会因为中心点靠前就盖住前面的短车；这个先后关系再把排位往后推。
 // 所有物体都走同一条比较规则，匝道上的车高度连续变化，比较结果自然跟着变，不用切换图层。
 
-const BODY_HALF_WIDTH = 0.1;
+const BODY_HALF_WIDTH = 0.06;
+const BODY_HEIGHT = 0.3;
 const CAR_TOP = 44;
 const CAR_BOTTOM = 18;
 const CAR_SIDE = 44;
@@ -28,6 +29,7 @@ export function carItem(car, halfLength, screen) {
       [x - ax + nx, y - ay + ny],
     ],
     base: h + LANE_LIFT,
+    peak: h + BODY_HEIGHT,
     left: sx - CAR_SIDE,
     right: sx + CAR_SIDE,
     top: sy - CAR_TOP,

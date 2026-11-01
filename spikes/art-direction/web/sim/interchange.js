@@ -186,7 +186,7 @@ function pierKey(h, nx, nz) {
   return `pr-${String(Math.round(h * 10))}-${String(index)}`;
 }
 
-/** 一根桥墩是一个单独的物体，x、z 相对格子中心 (cx, cy)。 */
+/** 一根桥墩是一个单独的物体，x、z 相对格子中心 (cx, cy)。顶就是桥面的底。 */
 export function pierObject({ x, z, h, nx, nz }, cx, cy, wide = 0.8) {
   const px = x + cx + 0.5;
   const py = z + cy + 0.5;
@@ -197,6 +197,7 @@ export function pierObject({ x, z, h, nx, nz }, cx, cy, wide = 0.8) {
     py,
     level: 0,
     base: 0,
+    peak: h,
     footprint: [
       [px - PIER_HALF, py - PIER_HALF],
       [px + PIER_HALF, py - PIER_HALF],
@@ -253,6 +254,7 @@ export function templateParts(name, cx, cy) {
         py: y + 0.5,
         level: 0,
         base: piece.base,
+        main: piece.main,
         footprint: piece.outline.map(([a, b]) => [a + cx + 0.5, b + cy + 0.5]),
       });
   });

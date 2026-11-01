@@ -19,6 +19,9 @@ import { signalPoles } from './sceneitems.js';
 //
 // 匝道：每条 lane 带一组限速系数，弯急坡陡的地方车慢下来。上下匝道的概率跟着分配到这条匝道的流量走。
 //
+// 排队：车在每一段的尽头都看下一段的队尾，格子接格子、匝道接地面路、匝道并主线、环岛接出口都一样。
+// 下一段排满时车在这一段的头上等，不会叠在下一段的起点上。入口匝道的头上排满时，路过的车不上匝道，接着往前开。
+//
 // 公交：经过站台的车停在格子中央，车门对着人行道上的站台，停够时间再走。后面的车在它后面等。
 
 const SPEED = { road: 1.1, arterial: 1.5, highway: 2.2, express: 2.2, ramp: 1.4 };
@@ -46,6 +49,7 @@ const SPAWN_GAP = 0.5;
 const BUS_SHARE = 0.06;
 const BUS_DWELL = 2.5;
 const BAY_MARGIN = 0.03;
+const ARRIVAL_CHORD = 0.05;
 
 function unitDirection(dir) {
   const [dx, dy] = DIRECTIONS[dir];
@@ -171,6 +175,13 @@ function backwardDirection(hx, hy) {
   return from;
 }
 
+/** 车走完这条 lane 时是从哪一边进的下一格。 */
+function arrivalOf(path) {
+  const end = pointAt(path, path.length);
+  const before = pointAt(path, path.length - ARRIVAL_CHORD);
+  return backwardDirection(end.x - before.x, end.y - before.y);
+}
+
 /** 一条环岛通过路线：进口直行，切入环路，逆时针绕到出口，再切出去。车逆时针，所以角度一路减小。 */
 function ringRoute(ring, entry, exit, surface) {
   const { cx, cy } = ring;
@@ -215,7 +226,10 @@ export function createFleet(
     load.set(`${String(edge.to)}:${String(edge.from)}`, edge.ratio);
   }
   const laneById = new Map(
-    lanes.map((lane) => [lane.id, { ...lane, path: measured(lane.points) }]),
+    lanes.map((lane) => {
+      const path = measured(lane.points);
+      return [lane.id, { ...lane, path, arrival: arrivalOf(path) }];
+    }),
   );
   const lanesFrom = new Map();
   for (const lane of laneById.values()) {
@@ -286,6 +300,14 @@ export function createFleet(
     car.passed = null;
   };
 
+  /** 匝道的头上放得下这辆车。 */
+  const laneOpen = (car, lane) => {
+    const queue = groups.get(lane.id);
+    if (!queue || queue.length === 0) return true;
+    const last = queue[queue.length - 1];
+    return last.s - (lengthOf(car) + lengthOf(last)) / 2 >= CLEARANCE;
+  };
+
   const enterCell = (car, cell, from) => {
     const ring = ringOfCell.get(cell);
     if (ring) {
@@ -303,8 +325,9 @@ export function createFleet(
       const length = Math.hypot(bx - ax, by - ay);
       return ((bx - ax) * heading[0] + (by - ay) * heading[1]) / length > 0.2;
     });
-    if (ramps?.length > 0) {
-      const lane = weighted(ramps, (item) => Math.max(0.02, rampChance(item)));
+    const open = ramps?.filter((lane) => laneOpen(car, lane));
+    if (open?.length > 0) {
+      const lane = weighted(open, (item) => Math.max(0.02, rampChance(item)));
       if (spokes.length === 0 || random() < rampChance(lane)) {
         boardLane(car, lane);
         return true;
@@ -420,15 +443,7 @@ export function createFleet(
         boardLane(car, main, main.path.along[lane.merge.at]);
         return true;
       }
-      if (lane.toCell !== undefined) {
-        const end = pointAt(lane.path, lane.path.length);
-        const before = pointAt(lane.path, lane.path.length - 0.05);
-        return enterCell(
-          car,
-          lane.toCell,
-          backwardDirection(end.x - before.x, end.y - before.y),
-        );
-      }
+      if (lane.toCell !== undefined) return enterCell(car, lane.toCell, lane.arrival);
       return false;
     }
     const [dx, dy] = DIRECTIONS[car.to];
@@ -535,15 +550,50 @@ export function createFleet(
     return room;
   };
 
-  /** 下一格排尾的车，跨格子时也不能撞上去。 */
-  const roomToNextCell = (car) => {
-    if (car.mode !== 'cell') return Infinity;
-    const [dx, dy] = DIRECTIONS[car.to];
-    const next = (Math.floor(car.cell / N) + dy) * N + (car.cell % N) + dx;
-    const tail = groups.get(`${String(next)}:${String((car.to + 4) % 8)}`);
-    if (!tail || tail.length === 0) return Infinity;
-    const last = tail[tail.length - 1];
-    return car.path.length - car.s + last.s - (lengthOf(car) + lengthOf(last)) / 2 - CLEARANCE;
+  /** 离环的车走同一段出口路，从不同进口来的车在这里排成一队，按离出口端的距离比。 */
+  const roomOnExit = (car) => {
+    if (car.mode !== 'ring' || car.s < car.trip.leave - RING_WATCH) return Infinity;
+    const remaining = car.path.length - car.s;
+    let room = Infinity;
+    for (const other of cars) {
+      if (other === car || other.mode !== 'ring' || other.ring !== car.ring) continue;
+      if (other.exit !== car.exit || other.s < other.trip.leave) continue;
+      const gap = remaining - (other.path.length - other.s);
+      if (gap <= 0) continue;
+      room = Math.min(room, gap - (lengthOf(car) + lengthOf(other)) / 2 - CLEARANCE);
+    }
+    return room;
+  };
+
+  /** 走完这一段接的是哪一队：key 是队的名字，start 是接上这一队的里程。 */
+  const nextQueue = (car) => {
+    if (car.mode === 'ring') {
+      const { outside, dir } = car.exit;
+      return { key: `${String(outside)}:${String(dir)}`, start: 0 };
+    }
+    if (car.mode === 'cell') {
+      const [dx, dy] = DIRECTIONS[car.to];
+      const next = (Math.floor(car.cell / N) + dy) * N + (car.cell % N) + dx;
+      return { key: `${String(next)}:${String((car.to + 4) % 8)}`, start: 0 };
+    }
+    const { merge, toCell, arrival } = car.lane;
+    if (merge) {
+      const main = laneById.get(merge.lane);
+      return { key: main.id, start: main.path.along[merge.at] };
+    }
+    return toCell === undefined ? null : { key: `${String(toCell)}:${String(arrival)}`, start: 0 };
+  };
+
+  /** 下一段排尾的车，跨段时也不能撞上去。队伍按里程从大到小排，起点之后的最后一辆就是队尾。 */
+  const roomToNextQueue = (car) => {
+    const next = nextQueue(car);
+    const queue = next && groups.get(next.key);
+    if (!queue) return Infinity;
+    let last = null;
+    for (const other of queue) if (other.s >= next.start) last = other;
+    if (!last) return Infinity;
+    const ahead = car.path.length - car.s + last.s - next.start;
+    return ahead - (lengthOf(car) + lengthOf(last)) / 2 - CLEARANCE;
   };
 
   const speedLimit = (car) => {
@@ -564,7 +614,7 @@ export function createFleet(
         continue;
       (car.passed ??= new Set()).add(exit.lane);
       const ramp = laneById.get(exit.lane);
-      if (random() < rampChance(ramp)) {
+      if (random() < rampChance(ramp) && laneOpen(car, ramp)) {
         boardLane(car, ramp);
         return;
       }
@@ -612,7 +662,7 @@ export function createFleet(
     for (const group of groups.values()) group.sort((a, b) => b.s - a.s);
     for (const group of groups.values()) {
       group.forEach((car, index) => {
-        let room = roomToNextCell(car);
+        let room = roomToNextQueue(car);
         if (index > 0) {
           const leader = group[index - 1];
           room = Math.min(
@@ -620,7 +670,13 @@ export function createFleet(
             leader.s - car.s - (lengthOf(leader) + lengthOf(car)) / 2 - CLEARANCE,
           );
         }
-        room = Math.min(room, roomToStop(car), roomOnRing(car), roomToBay(car, dt));
+        room = Math.min(
+          room,
+          roomToStop(car),
+          roomOnRing(car),
+          roomOnExit(car),
+          roomToBay(car, dt),
+        );
         follow(car, room);
         car.s += car.speed * dt;
         car.idle = car.speed < 0.02 ? car.idle + dt : 0;
