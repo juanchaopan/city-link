@@ -23,10 +23,14 @@ const ADD_FRAGMENT = `
   uniform sampler2D source;
   uniform float weight;
   varying vec2 vUv;
-  void main() { gl_FragColor = texture2D(source, vUv) * weight; }
+  void main() {
+    vec4 pass = texture2D(source, vUv);
+    gl_FragColor = vec4(pass.rgb * weight, pass.a);
+  }
 `;
 
-// 累加结果是预乘透明度的线性颜色，两组光各自权重为 1，所以 alpha 的总和是 2。
+// 累加结果是预乘透明度的线性颜色，两组光各自权重为 1。alpha 不累加，留最后一次的覆盖率：每次的几何都一样，
+// 半浮点把几十份小权重加到 2 会舍掉将近 1%，实心像素就成了半透明，下层的颜色会透上来。
 const FINAL_FRAGMENT = `
   uniform sampler2D source;
   uniform float saturation;
@@ -37,7 +41,7 @@ const FINAL_FRAGMENT = `
   }
   void main() {
     vec4 sum = texture2D(source, vUv);
-    float alpha = sum.a * 0.5;
+    float alpha = sum.a;
     if (alpha < 0.002) { gl_FragColor = vec4(0.0); return; }
     vec3 color = sum.rgb / alpha;
     float grey = dot(color, vec3(0.2126, 0.7152, 0.0722));
@@ -105,7 +109,7 @@ export class Baker {
       blendDst: THREE.OneFactor,
       blendEquation: THREE.AddEquation,
       blendSrcAlpha: THREE.OneFactor,
-      blendDstAlpha: THREE.OneFactor,
+      blendDstAlpha: THREE.ZeroFactor,
       transparent: true,
       depthTest: false,
       depthWrite: false,
