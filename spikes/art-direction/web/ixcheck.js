@@ -12,6 +12,7 @@ import { ELEVATED, template } from './sim/interchange.js';
 
 const MIN_CLEARANCE = 1;
 const CITY_MARGIN = 7;
+const CITY_SIZE = 64;
 const STRUCTURES = /^(ixp|ev|pr)-/;
 
 const structuresOf = (objects) => objects.filter(({ key }) => STRUCTURES.test(key));
@@ -46,9 +47,9 @@ function checkViaductCells(city, scene) {
 }
 
 function cityEntries() {
-  const city = generateCity(64);
+  const city = generateCity(CITY_SIZE);
   const town = {
-    ...worldOfCity(city, false),
+    ...worldOfCity(city),
     objects: structuresOf(city.objects),
     low: city.lowDecks,
     traffic: city.traffic,

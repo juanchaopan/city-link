@@ -34,20 +34,10 @@ export function terrainOf({ N, roads, corner, isWater }) {
   };
 }
 
-/** 路面精灵、路面高度和路口规划。gates 是地图边界的连接点，linked 表示已经打通。 */
-export function roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates, linked }) {
+/** 路面精灵、路面高度和路口规划。gates 是地图边界上规划中的连接点，地图外没有数据，所以路在这里收尾。 */
+export function roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates }) {
   const { rings, blocked } = planRoundabouts({ N, roads, isFlat, isWater });
-  const sprites = roadSprites({
-    N,
-    roads,
-    cornersOf,
-    isFlat,
-    levelOf,
-    isWater,
-    gates,
-    linked,
-    rings,
-  });
+  const sprites = roadSprites({ N, roads, cornersOf, isFlat, levelOf, isWater, gates, rings });
   const surface = surfaceOf({
     N,
     roads,

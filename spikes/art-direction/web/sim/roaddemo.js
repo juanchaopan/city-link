@@ -133,7 +133,7 @@ export function generateRoadDemo(seed = 11) {
     isFlat: () => true,
     isWater: () => false,
   };
-  const road = roadWorld({ N, roads, ...flat, gates: [], linked: false });
+  const road = roadWorld({ N, roads, ...flat, gates: [] });
   const { sprites, rings } = road;
 
   const placed = [

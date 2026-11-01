@@ -1,4 +1,5 @@
 // 路面验收的场景。每类一组变体，覆盖这一类的各个方向；focus 是样张裁剪的中心格。
+// 地图边界上的连接点只画收尾精灵，地图外没有真实数据，所以边界只有"规划中"一种样子。
 
 const c = 6;
 const row = (y, from = 1, to = 11) => [
@@ -527,38 +528,6 @@ export const CASES = [
     variants: [
       {
         N: 12,
-        draw: (w) =>
-          w('highway', [
-            [3, 8],
-            [11, 8],
-          ]),
-        gates: [{ x: 11, y: 8, kind: 'highway', inward: 4, axis: 'x' }],
-      },
-    ],
-  },
-  {
-    name: '边界已打通·普通路',
-    focus: [8, 12],
-    variants: [
-      {
-        N: 12,
-        linked: true,
-        draw: (w) =>
-          w('road', [
-            [8, 3],
-            [8, 11],
-          ]),
-        gates: [{ x: 8, y: 11, kind: 'road', inward: 6, axis: 'z' }],
-      },
-    ],
-  },
-  {
-    name: '边界已打通·高速',
-    focus: [12, 8],
-    variants: [
-      {
-        N: 12,
-        linked: true,
         draw: (w) =>
           w('highway', [
             [3, 8],

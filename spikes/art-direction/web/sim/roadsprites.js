@@ -86,7 +86,8 @@ export function roadTag({ road, highway, arterial = 0 }) {
 }
 
 /**
- * 输入路网，输出三层路面、桥和地形信息之外的一切路面精灵。gates 是地图边界上的连接点。
+ * 输入路网，输出三层路面、桥和地形信息之外的一切路面精灵。
+ * gates 是地图边界上规划中的连接点，每个画一张收尾精灵；地图外没有真实数据，路不画出去。
  * rings 是环岛，返回的 cells 不含它们占的格子，路面检查只看普通路面。
  */
 export function roadSprites({
@@ -97,25 +98,15 @@ export function roadSprites({
   levelOf,
   isWater,
   gates = [],
-  linked = false,
   rings = [],
 }) {
   const cells = new Map([...roads.entries()].map(([id, entry]) => [id, { ...entry }]));
-  const planned = [];
-  for (const gate of gates) {
-    const id = gate.y * N + gate.x;
-    if (linked) {
-      const entry = cells.get(id);
-      entry[gate.kind === 'highway' ? 'highway' : 'road'] |= 1 << ((gate.inward + 4) % 8);
-    } else {
-      planned.push({
-        key: `gate-${gate.kind}-${String(gate.inward)}`,
-        x: gate.x,
-        y: gate.y,
-        level: 0,
-      });
-    }
-  }
+  const planned = gates.map((gate) => ({
+    key: `gate-${gate.kind}-${String(gate.inward)}`,
+    x: gate.x,
+    y: gate.y,
+    level: 0,
+  }));
   const grades = gradeRuns({ N, cells, cornersOf, isFlat, levelOf });
   for (const ring of rings) for (const id of ring.cells) cells.delete(id);
   const walks = [];

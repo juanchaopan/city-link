@@ -1,12 +1,11 @@
 // 街区划分的对比图和检查，纯 node，不开浏览器。
-// out/r6-partition-before-after.png：上排是同一块地修复前、修复后，下排是候选切法，从左到右按名次排，得分在 out/partition-report.json。
-// out/r6-partition-map.png：全图俯视，左修复前，右修复后。
+// out/r6-partition-before-after.png：上排是一块被斜路切过的街区的最终划分，下排是候选切法，从左到右按名次排，得分在 out/partition-report.json。
+// out/r6-partition-map.png：全图俯视。
 // 颜色：蓝是直角地块，橙是大三角，绿是斜向条带，粉是小三角，紫是公共服务，浅绿是绿地和公园，黄是农田，红是兜底。
 // 被斜路切过的方正街区，第一名不能含斜向条带，块数不超过 MAX_PIECES，否则退出码是 1。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { generateCity } from '../web/sim/city.js';
 import { atomPolygon } from '../web/sim/parcels.js';
-import { generateParcels as legacyParcels } from '../web/sim/parcels.legacy.js';
 import { atomTable, specOf } from '../web/sim/partition.js';
 import { createCanvas } from './raster.js';
 
@@ -33,16 +32,6 @@ const COLORS = {
 };
 
 const city = generateCity(N, 11);
-const input = {
-  N,
-  roads: city.roads,
-  water: city.water,
-  slopes: city.slopes,
-  zones: city.zones,
-  density: city.density,
-  seed: 11,
-};
-const before = legacyParcels(input);
 const { partition, parcels, atomOwner } = city.parcels;
 const table = atomTable(N);
 
@@ -95,27 +84,29 @@ const detail = [...cutBlocks].sort(
 const [cx0, cy0, cx1, cy1] = boundsOf(detail.atoms);
 const box = [cx0 - 2, cy0 - 2, cx1 + 3, cy1 + 3];
 
-const parcelsOfBlock = (owner, list) => {
-  const ids = new Set(detail.atoms.map((atom) => owner[atom]).filter((id) => id >= 0));
+const parcelsOfBlock = () => {
+  const ids = new Set(detail.atoms.map((atom) => atomOwner[atom]).filter((id) => id >= 0));
   return [...ids]
     .sort((a, b) => a - b)
     .map((id) => {
       const atoms = [];
-      owner.forEach((value, atom) => {
+      atomOwner.forEach((value, atom) => {
         if (value === id) atoms.push(atomPolygon(atom, N));
       });
-      return { shape: list[id].shape, use: list[id].use ?? '', area: list[id].area, atoms };
+      return {
+        shape: parcels[id].shape,
+        use: parcels[id].use ?? '',
+        area: parcels[id].area,
+        atoms,
+      };
     });
 };
-const oldBlock = parcelsOfBlock(before.atomOwner, before.parcels);
-const newBlock = parcelsOfBlock(atomOwner, parcels);
-const brief = ({ shape, use, area }) => ({ shape, use, area });
+const block = parcelsOfBlock();
 
 const reportDetail = {
   blockAtoms: detail.atoms.length,
   box,
-  before: oldBlock.map(brief),
-  after: newBlock.map(brief),
+  pieces: block.map(({ shape, use, area }) => ({ shape, use, area })),
   candidates: detail.candidates.map((candidate, rank) => ({
     rank: rank + 1,
     cuts: candidate.cuts,
@@ -212,8 +203,7 @@ const [bx0, by0, bx1, by1] = box;
 const big = Math.floor(420 / Math.max(bx1 - bx0, by1 - by0));
 const small = Math.floor(232 / Math.max(bx1 - bx0, by1 - by0));
 const sheet = createCanvas(1280, 60 + (by1 - by0) * (big + small), WHITE);
-panel(sheet, oldBlock, 20, 20, big, box);
-panel(sheet, newBlock, 40 + (bx1 - bx0) * big, 20, big, box);
+panel(sheet, block, 20, 20, big, box);
 detail.candidates.forEach((candidate, index) => {
   const px = 20 + index * ((bx1 - bx0) * small + 12);
   const py = 40 + (by1 - by0) * big;
@@ -234,10 +224,8 @@ detail.candidates.forEach((candidate, index) => {
 writeFileSync('out/r6-partition-before-after.png', sheet.png());
 
 const scale = 18;
-const whole = [0, 0, N, N];
-const map = createCanvas(N * scale * 2 + 60, N * scale + 40, WHITE);
-panel(map, groupsOf(before.atomOwner, before.parcels), 20, 20, scale, whole);
-panel(map, groupsOf(atomOwner, parcels), 40 + N * scale, 20, scale, whole);
+const map = createCanvas(N * scale + 40, N * scale + 40, WHITE);
+panel(map, groupsOf(atomOwner, parcels), 20, 20, scale, [0, 0, N, N]);
 writeFileSync('out/r6-partition-map.png', map.png());
 
 console.log(
@@ -247,11 +235,7 @@ console.log(
 );
 console.log('被斜路切过的方正街区', cutBlocks.length, '不合格', failures.length);
 console.log(check.shapes.join(' | '));
-console.log(
-  '修复前',
-  JSON.stringify(reportDetail.before.map((p) => `${p.shape}${String(p.area)}`)),
-);
-console.log('修复后', JSON.stringify(reportDetail.after.map((p) => `${p.shape}${String(p.area)}`)));
+console.log('划分', JSON.stringify(reportDetail.pieces.map((p) => `${p.shape}${String(p.area)}`)));
 console.log(
   '候选',
   reportDetail.candidates

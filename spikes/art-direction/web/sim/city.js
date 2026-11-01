@@ -23,6 +23,7 @@ import { viaductWorld } from './viaduct.js';
 
 // 示例城市的生成流程：布局来自 citymap.js，地块和建筑规格全部由地块生成器长出来。
 // 这里只输出规格，不知道风格。规格到素材的映射在风格包里。
+// 地图边界上的连接点只画收尾精灵：地图外没有真实数据，不画邻城。
 
 export { traceRoads };
 
@@ -136,7 +137,7 @@ function serviceIcons(parcels) {
     .map(({ use, px, py }) => ({ key: `si-${use}`, use, px, py, level: ICON_LIFT }));
 }
 
-export function generateCity(N, seed = 11, publicLayout = 'spread', linked = false) {
+export function generateCity(N, seed = 11, publicLayout = 'spread') {
   const s = N / 32;
   const center = Math.round(N / 2);
   const riverAt = (x) => Math.round(center + 9 * s + 2 * s * Math.sin((x / N) * Math.PI * 2 + 0.7));
@@ -163,7 +164,7 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   for (let y = 0; y < N; y += 1) {
     for (let x = 0; x < N; x += 1) if (!isFlat(x, y)) slopes.add(y * N + x);
   }
-  const road = roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates, linked });
+  const road = roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates });
   const { sprites, surface, rings, blockedRings, junctions, marks } = road;
   const viaduct = plan.viaduct ? viaductWorld(plan.viaduct, roads, N) : null;
   const placed = [...(interchange ? [interchange] : []), ...(viaduct?.placed ?? [])];

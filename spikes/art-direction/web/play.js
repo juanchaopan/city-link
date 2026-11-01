@@ -17,7 +17,7 @@ import {
 } from './world.js';
 import { palettes } from './kit/palettes.js';
 
-// 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图、已打通的开关，
+// 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图，
 // 以及四级道路的立交场景。车流和红绿灯是纯视觉层，不改变任何结算结果。
 
 const params = new URLSearchParams(location.search);
@@ -25,7 +25,6 @@ const sceneName = params.get('scene') ?? 'city';
 const mode = params.get('mode') ?? 'layer';
 const seam = params.get('seam') === '1';
 const seamBackground = params.get('backdrop');
-const linked = params.get('linked') === '1';
 const view = params.get('view') ?? 'city';
 const publicLayout = params.get('public') ?? 'spread';
 const hudOn = params.get('ui') === '1';
@@ -58,7 +57,7 @@ await app.init({
 const city =
   sceneName === 'interchange'
     ? generateRoadDemo()
-    : generateCity(Number(params.get('n') ?? 64), 11, publicLayout, linked);
+    : generateCity(Number(params.get('n') ?? 64), 11, publicLayout);
 const { N } = city;
 const atlas = await loadAtlas(style.atlas);
 const layers = seam ? ['ground'] : ['ground', 'overlays', 'objects'];
@@ -333,13 +332,6 @@ if (panel && controlsOn) {
     url.searchParams.delete('x');
     url.searchParams.delete('y');
     url.searchParams.delete('zoom');
-    location.href = url.toString();
-  });
-  const linkedBox = document.getElementById('linked');
-  linkedBox.checked = linked;
-  linkedBox.addEventListener('change', () => {
-    const url = new URL(location.href);
-    url.searchParams.set('linked', linkedBox.checked ? '1' : '0');
     location.href = url.toString();
   });
 }

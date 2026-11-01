@@ -25,8 +25,6 @@ const views = [
   { name: 'r6-cut', query: `${base}&zoom=0.62&x=57&y=38` },
   { name: 'r6-junction', query: `${base}&zoom=0.62&x=24&y=38` },
   { name: 'r6-gate-planned', query: `${base}&zoom=0.5&x=62&y=7` },
-  { name: 'r6-gate-linked', query: `${base}&zoom=0.5&x=63&y=8&linked=1` },
-  { name: 'r6-gate-road-linked', query: `${base}&zoom=0.5&x=34&y=63&linked=1` },
   { name: 'r6-ui', query: `${base}&zoom=0.42&x=31&y=33&ui=1` },
   { name: 'r6-traffic', query: `${base}&view=traffic&zoom=0.095&x=31&y=30` },
   { name: 'r6-coverage', query: `${base}&view=coverage&zoom=0.095&x=31&y=30` },

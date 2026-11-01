@@ -23,6 +23,7 @@ import { pngData, randomFrom, renderTown } from './townrender.js';
 // oldFacingOff 按那个朝向算一遍，证明这项检查抓得到。
 
 const CASE_SIZE = 16;
+const CITY_SIZE = 64;
 const RUN_STEPS = 900;
 const SAMPLE_EVERY = 30;
 const DT = 0.05;
@@ -72,7 +73,7 @@ function townOf(entry) {
 }
 
 function townOfCity(city) {
-  return { ...worldOfCity(city, false), objects: city.objects, traffic: city.traffic, lanes: [] };
+  return { ...worldOfCity(city), objects: city.objects, traffic: city.traffic, lanes: [] };
 }
 
 /** 灯杆底部要落在人行道或路缘上。落在车道上是最坏的情况，落到路外说明高度或位置错了。 */
@@ -376,7 +377,12 @@ const FAILURES = [
 
 window.runJunctionChecks = (withCity = true) => {
   const rows = JUNCTION_CASES.map((entry) => ({ name: entry.name, ...inspect(townOf(entry)) }));
-  if (withCity) rows.push({ name: '全图 64×64', ...inspect(townOfCity(generateCity(64))) });
+  if (withCity) {
+    rows.push({
+      name: `全图 ${String(CITY_SIZE)}×${String(CITY_SIZE)}`,
+      ...inspect(townOfCity(generateCity(CITY_SIZE))),
+    });
+  }
   for (const row of rows) row.pass = FAILURES.every((key) => row[key] === 0);
   return { rows, failures: FAILURES };
 };

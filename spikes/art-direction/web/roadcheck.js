@@ -15,6 +15,7 @@ const CLASS = { empty: 0, deck: 1, walk: 2, curb: 3, other: 4 };
 const MARGIN = 0.03;
 const SLOPE_MARGIN = 0.1;
 const FILLET_ZONE = 1.5;
+const CITY_SIZE = 64;
 
 /** 标线是红加绿，混在车道上还是车道；只有蓝色分量明显或者绿色压过红色才算别的层。 */
 function classify(r, g, b, a) {
@@ -102,23 +103,6 @@ function linesOf(world, mode) {
         bridge,
         flat,
         ...widthsOf(path),
-      });
-    }
-  }
-  if (world.linked) {
-    for (const gate of world.gates) {
-      const [dx, dy] = DIRECTIONS[(gate.inward + 4) % 8];
-      const a = [gate.x + 0.5 + dx * 0.5, gate.y + 0.5 + dy * 0.5];
-      const c = [a[0] + dx * 1.2, a[1] + dy * 1.2];
-      lines.push({
-        cell: -1,
-        kind: gate.kind,
-        points: [a, c],
-        heightOf: () => 0,
-        free: false,
-        bridge: false,
-        flat: true,
-        ...widthsOf({ kind: gate.kind }),
       });
     }
   }
@@ -400,15 +384,12 @@ window.runChecks = (mode) => {
     for (const variant of entry.variants) add(total, inspect(worldOf(variant), mode));
     rows.push({ name: entry.name, ...total, pass: errorCount(total) === 0 });
   }
-  for (const linked of [false, true]) {
-    const city = generateCity(64, 11, 'spread', linked);
-    const total = add({}, inspect(worldOfCity(city, linked), mode));
-    rows.push({
-      name: linked ? '全图 64×64·已打通' : '全图 64×64·未打通',
-      ...total,
-      pass: errorCount(total) === 0,
-    });
-  }
+  const total = add({}, inspect(worldOfCity(generateCity(CITY_SIZE)), mode));
+  rows.push({
+    name: `全图 ${String(CITY_SIZE)}×${String(CITY_SIZE)}`,
+    ...total,
+    pass: errorCount(total) === 0,
+  });
   return rows;
 };
 

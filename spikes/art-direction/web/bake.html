@@ -70,12 +70,7 @@
           for (const key of keysOf(city)) keys.add(key);
         };
         for (const N of sizes) {
-          for (const [layout, linked] of [
-            ['spread', false],
-            ['spread', true],
-            ['concentrated', false],
-          ])
-            collect(generateCity(N, 11, layout, linked));
+          for (const layout of ['spread', 'concentrated']) collect(generateCity(N, 11, layout));
         }
         collect(generateRoadDemo());
         return [...keys].sort();

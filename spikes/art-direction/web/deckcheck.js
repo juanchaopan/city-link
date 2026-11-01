@@ -21,6 +21,7 @@ const EDGE = 0.6;
 const STEP = 0.0075;
 const REACH = 2;
 const CASE_SIZE = 16;
+const CITY_SIZE = 64;
 const CUT = 4;
 const CUT_SIZE = CUT * 2 + 1;
 
@@ -160,7 +161,7 @@ function worldOfCut(roads) {
     isFlat: () => true,
     isWater: () => false,
   };
-  const road = roadWorld({ N: CUT_SIZE, roads, ...flat, gates: [], linked: false });
+  const road = roadWorld({ N: CUT_SIZE, roads, ...flat, gates: [] });
   return { N: CUT_SIZE, roads, ...road, ...flat };
 }
 
@@ -169,7 +170,7 @@ window.runDeckChecks = (withCity = true) => {
     inspectWorld(entry.name, worldOf({ N: CASE_SIZE, ...entry })),
   );
   if (withCity) {
-    for (const { roads, x, y } of cityCases(generateCity(64))) {
+    for (const { roads, x, y } of cityCases(generateCity(CITY_SIZE))) {
       rows.push(inspectWorld(`城市路口 ${String(x)},${String(y)}`, worldOfCut(roads)));
     }
   }

@@ -111,22 +111,22 @@ function legacySprite(entry, palette, deckHeightOf) {
   return cache.get(id);
 }
 
-export function worldOf({ N, draw, heights, water = [], gates = [], linked = false }) {
+export function worldOf({ N, draw, heights, water = [], gates = [] }) {
   const { roads, walk } = traceRoads(N);
   draw(walk);
   const waterSet = new Set(water);
   const isWater = (x, y) => waterSet.has(y * N + x);
   const corner = heights ?? (() => 0);
   const { cornersOf, levelOf, isFlat } = terrainOf({ N, roads, corner, isWater });
-  const road = roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates, linked });
-  return { N, roads, ...road, cornersOf, levelOf, isFlat, isWater, gates, linked };
+  const road = roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates });
+  return { N, roads, ...road, cornersOf, levelOf, isFlat, isWater, gates };
 }
 
-export function worldOfCity(city, linked) {
+export function worldOfCity(city) {
   const { N, roads, cornersOf, levelOf, isFlat, isWater, plan } = city;
   const { gates } = plan;
-  const road = roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates, linked });
-  return { N, roads, ...road, cornersOf, levelOf, isFlat, isWater, gates, linked };
+  const road = roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates });
+  return { N, roads, ...road, cornersOf, levelOf, isFlat, isWater, gates };
 }
 
 /** 画布坐标：格子中心 (px, py)、高度 level 对应的画布像素。region 是 [x0, y0, x1, y1]，默认整张地图。 */
