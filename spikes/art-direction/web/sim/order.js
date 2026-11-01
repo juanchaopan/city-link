@@ -4,6 +4,7 @@
 // 相邻的两块桥面在接缝处互相盖住一点，它们不是上下两层，高度差也只是同一段坡上的高差，这种按前后排；
 // 否则下坡朝着观众的桥面会要求低的先画，和前后关系相反，排序就成了环。
 // 主线和旁边的匝道不是上下两层时，匝道在哪一侧都排在主线后面，路面才盖得住主线的路肩。
+// 桥墩的顶在桥面下面，屏幕上碰得到的同一层桥面都排在桥墩后面。桥墩的占地只算墩身，横梁比占地宽，所以这条规则不看占地。
 // 车和桥面比别的物体多两条规则。平面上靠后的物体投影整个在靠前物体的上方时，两者在屏幕上碰不到，这一对不排：
 // 桥上的车和它前面的桥墩、桥下的车和它后面的桥面、桥下的公交站和桥面都是这样，硬排只会和别的物体抢位置。
 // 车压在两块桥面的接缝上时算在桥面上：桥面的高度取这一块的最低点，坡上的车可能比邻块的最低点略低。
@@ -13,7 +14,8 @@
 // 车能从下面穿过的桥面能多晚就多晚，只有必须盖在桥面上的物体才排到它后面，桥下的车才有位置。
 // base 是物体的底，peak 是物体的顶，单位都是层；视线坐标 u 一格 32 像素，和一层一样高，所以两者能直接相减。
 // left、right、top、bottom 是屏幕范围。
-// 这些关系没有环，所以两两比较后做一次拓扑排序就是正确的绘制顺序。
+// 这些关系基本没有环，两两比较后做一次拓扑排序就是绘制顺序。立交里挤在一起的几块桥面和桥墩偶尔成环，
+// 这时放行最靠后的一个再接着排，不会有一整串物体乱序；环的个数照常报告。
 
 const EPS = 1e-6;
 const CELL = 256;
@@ -49,6 +51,7 @@ function spanAt(points, v) {
 
 const baseOf = (item) => item.base ?? 0;
 const onDeck = (deck, other) => deck.deck && other.car && baseOf(other) > baseOf(deck) - ON_DECK;
+const pierUnder = (pier, deck) => pier.pier && deck.deck && baseOf(deck) > pier.peak - ON_DECK;
 const sameLevelDecks = (a, b) =>
   a.deck && b.deck && Math.abs(baseOf(a) - baseOf(b)) < STACKED;
 
@@ -89,8 +92,10 @@ function mayMissEachOther(a, b) {
   return Boolean(a.car || b.car || a.deck || b.deck);
 }
 
-/** A 必须先画就返回 -1，B 必须先画就返回 1，两者在屏幕上不重叠或无法比较时返回 0。 */
+/** A 必须先画就返回 -1，B 必须先画就返回 1，两者在屏幕上不重叠或无法比较时返回 0。调用前已经确认屏幕范围相交。 */
 export function compareDepth(a, b) {
+  if (pierUnder(a, b)) return -1;
+  if (pierUnder(b, a)) return 1;
   const lowV = Math.max(a.minV, b.minV);
   const highV = Math.min(a.maxV, b.maxV);
   if (lowV >= highV - EPS) return 0;
@@ -157,10 +162,14 @@ function candidatePairs(items) {
   return pairs;
 }
 
-/** 拓扑排序。after[i] 是必须画在 i 后面的物体，blockers[i] 是 i 前面还没画的物体数；同时可以画的先画靠后的。 */
+/**
+ * 拓扑排序。after[i] 是必须画在 i 后面的物体，blockers[i] 是 i 前面还没画的物体数；同时可以画的先画靠后的。
+ * 没有物体可画而还有物体没画时就是环，放行最靠后的一个，cycles 数放行了几次。
+ */
 export function topological(items, after, blockers) {
   const size = items.length;
   const ready = [];
+  const placed = new Uint8Array(size);
   const insert = (index) => {
     let low = 0;
     let high = ready.length;
@@ -175,22 +184,30 @@ export function topological(items, after, blockers) {
     }
     ready.splice(low, 0, index);
   };
+  const stuck = () => {
+    let best = -1;
+    for (let i = 0; i < size; i += 1) {
+      if (!placed[i] && (best < 0 || items[i].depth < items[best].depth)) best = i;
+    }
+    return best;
+  };
   blockers.forEach((count, index) => {
     if (count === 0) insert(index);
   });
   const order = [];
-  while (ready.length > 0) {
+  let cycles = 0;
+  while (order.length < size) {
+    if (ready.length === 0) {
+      cycles += 1;
+      insert(stuck());
+    }
     const index = ready.shift();
+    placed[index] = 1;
     order.push(index);
     for (const next of after[index]) {
       blockers[next] -= 1;
-      if (blockers[next] === 0) insert(next);
+      if (blockers[next] === 0 && !placed[next]) insert(next);
     }
-  }
-  const cycles = size - order.length;
-  if (cycles > 0) {
-    const placed = new Set(order);
-    for (let i = 0; i < size; i += 1) if (!placed.has(i)) order.push(i);
   }
   return { order, cycles };
 }

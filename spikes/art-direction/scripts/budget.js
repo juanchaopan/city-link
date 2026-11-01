@@ -1,5 +1,6 @@
 // 按实测的每类精灵面积和 PNG 压缩率，推算全部素材的数量、图集和纹理内存。
-// 比较两种做法：每种外观整张烘焙，和底座、楼身、屋顶分开的模块拼装。外观数按每规格每分区 7 种计算。
+// 比较两种做法：每种外观整张烘焙，和底座、楼身、屋顶分开的模块拼装。外观数是规格的倍数，所以推算不依赖具体风格。
+// 示例城市里没有斜向物业时，这一类的面积按直角物业算。
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const gen = JSON.parse(readFileSync('out/gen-report.json', 'utf8'));
@@ -11,7 +12,10 @@ const FOOTPRINTS = { axis: 9, diagonal: 8, triangle: 12 };
 const PROPERTIES_AT_64 = 200;
 
 const groups = gen.sunny.groups;
-const average = (name) => groups[name].pixels / groups[name].count;
+const average = (name, fallback = name) => {
+  const group = groups[name] ?? groups[fallback];
+  return group.pixels / group.count;
+};
 const pngPerPixel =
   gen.dayOnly.pngBytes /
   Object.values(gen.dayOnly.groups).reduce((sum, group) => sum + group.pixels, 0);
@@ -43,7 +47,11 @@ function totals(label, rows) {
 const whole = totals(`整张烘焙：每规格每分区 ${String(LOOKS)} 种外观`, [
   ...shared,
   { name: '直角物业', count: FOOTPRINTS.axis * ZONES * LOOKS, area: average('直角物业') },
-  { name: '斜向物业', count: FOOTPRINTS.diagonal * ZONES * LOOKS, area: average('斜向物业') },
+  {
+    name: '斜向物业',
+    count: FOOTPRINTS.diagonal * ZONES * LOOKS,
+    area: average('斜向物业', '直角物业'),
+  },
   { name: '大三角物业', count: FOOTPRINTS.triangle * ZONES * LOOKS, area: average('大三角物业') },
 ]);
 

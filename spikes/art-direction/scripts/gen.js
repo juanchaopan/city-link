@@ -1,5 +1,5 @@
 // 在有显卡的无头 Chrome 里烘焙图集，写到 out/，并生成风格包清单。
-// node scripts/gen.js sunny 只烘一套调色，内存紧张时一次一套。
+// node scripts/gen.js sunny 只烘一套调色，内存紧张时一次一套。BIG=1 时图集里多放 128×128 用到的精灵，只给 128 试验用。
 import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { COMBOS } from '../web/sim/combos.js';
@@ -8,6 +8,7 @@ import { startServer } from './serve.js';
 const PORT = 4194;
 const argv = process.argv.slice(2);
 const palettes = argv.length > 0 ? argv : ['sunny', 'dusk', 'dayOnly'];
+const sizes = process.env.BIG ? [32, 64, 128] : [32, 64];
 
 mkdirSync('out', { recursive: true });
 const server = await startServer(PORT);
@@ -24,7 +25,7 @@ page.on('console', (message) => {
 await page.goto(`http://localhost:${String(PORT)}/web/bake.html`);
 await page.waitForFunction(() => window.bakerReady === true);
 
-const keys = await page.evaluate(() => window.keysFor([32, 64]));
+const keys = await page.evaluate((list) => window.keysFor(list), sizes);
 const report = {};
 const write = (file, data) => {
   writeFileSync(file, Buffer.from(data.split(',')[1], 'base64'));

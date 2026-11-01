@@ -1,15 +1,17 @@
 // 生成样张截图、拼缝检查和帧率测量。
 // 用法：node scripts/shots.js [截图名前缀...]；SEAM=1 时只跑拼缝和露底检查，FPS=1 时只测帧率，SOFT=1 时用软件渲染。
-// BIG=1 时只测 128×128 的地图，这个尺寸不是现有规格，只是量一量。
+// BIG=1 时只测 128×128 的地图，这个尺寸不是现有规格，只是量一量，图集要先用 BIG=1 node scripts/gen.js sunny 烘过。
 // 截图脚本用自己的端口，不影响 4180 上正在运行的页面。
 // 每个场景开一个新页面并关掉上一个，图集纹理才会释放，连续跑几十个场景内存不会累积。
 // 显卡测帧率时关掉垂直同步和帧率上限，否则所有用例都只读得出屏幕刷新率。软件渲染不关，它不关上限也到不了刷新率，
 // 关了以后帧会成批提交，中位数失真。带 full=1 的用例屏幕里一直保持满额的车。
+// 页面在载入时生成城市，128×128 要半分钟以上，所以载入的等待时间放宽到三分钟。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { startServer } from './serve.js';
 
 const PORT = process.env.SOFT ? 4184 : 4183;
+const LOAD_TIMEOUT = 180000;
 const filter = process.argv.slice(2);
 const base = 'n=64&controls=0&warm=200';
 const demo = 'scene=interchange&controls=0&warm=200';
@@ -76,8 +78,13 @@ async function open(query) {
     if (message.type() === 'error' && !message.text().includes('404'))
       console.error(message.text());
   });
-  await page.goto(`http://localhost:${String(PORT)}/web/play.html?${query}`);
-  await page.waitForSelector('html[data-ready="true"]', { state: 'attached', timeout: 180000 });
+  await page.goto(`http://localhost:${String(PORT)}/web/play.html?${query}`, {
+    timeout: LOAD_TIMEOUT,
+  });
+  await page.waitForSelector('html[data-ready="true"]', {
+    state: 'attached',
+    timeout: LOAD_TIMEOUT,
+  });
   await page.waitForTimeout(700);
 }
 

@@ -5,6 +5,7 @@ import { sortByDepth } from './order.js';
 const POLE_HALF = 0.02;
 const DECK = /^(ixp|ev)-/;
 const MAIN_DECK = /^ev-/;
+const PIER = /^pr-/;
 const LEVEL_PIXELS = 32;
 
 function screenOf(px, py, level) {
@@ -58,13 +59,14 @@ function peakOf(object, frameOf) {
   return object.level + Math.max(0, rise) / LEVEL_PIXELS;
 }
 
-/** 排好的静态物体。deck 标出桥面，main 标出桥面里的主线，比较规则和别的物体不同；没写底的物体立在它所在的地面上。 */
+/** 排好的静态物体。deck、main、pier 标出桥面、主线和桥墩，比较规则和别的物体不同；没写底的物体立在它所在的地面上。 */
 export function sceneItems(city, frameOf) {
   const poles = signalPoles(city.junctions?.clusters ?? []);
   const items = [...city.objects, ...poles].map((object) => ({
     ...object,
     deck: DECK.test(object.key),
     main: object.main ?? MAIN_DECK.test(object.key),
+    pier: PIER.test(object.key),
     base: object.base ?? object.level,
     peak: object.peak ?? peakOf(object, frameOf),
     ...boxOf(object, frameOf),

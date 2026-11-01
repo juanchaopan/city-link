@@ -1,6 +1,6 @@
 // 128×128 试验，只测量，不改任何规格。node --max-old-space-size=900 scripts/big.js
 // 量生成时间、街区划分时间、物体和精灵数、堆内存、存档大小的估算，写到 out/big-report.json。
-// 帧率在浏览器里量：BIG=1 FPS=1 node scripts/shots.js。
+// 帧率在浏览器里量：先用 BIG=1 node scripts/gen.js sunny 烘进 128 用到的精灵，再 BIG=1 FPS=1 node scripts/shots.js。
 import { writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { generateCity, keysOf } from '../web/sim/city.js';
@@ -57,10 +57,11 @@ for (const N of SIZES) {
   const started = performance.now();
   const city = generateCity(N);
   const ms = performance.now() - started;
-  const { partition } = city.parcels;
+  const { stats } = city.parcels.partition;
   report[N] = {
     generateMs: Math.round(ms),
-    partitionMs: partition.stats?.ms ?? null,
+    partitionMs: Math.round(stats.millis),
+    enumerated: stats.enumerated,
     heapMb: Math.round((process.memoryUsage().heapUsed - before) / 1048576),
     parcels: city.parcels.parcels.length,
     roads: city.roads.size,
