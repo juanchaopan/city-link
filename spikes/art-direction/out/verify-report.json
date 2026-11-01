@@ -1,6 +1,6 @@
 {
   "64": {
-    "generateMs": 7051,
+    "generateMs": 6464,
     "parcels": 210,
     "hash": "e1221ef8dfa4661a",
     "sameOnSecondRun": true,
@@ -975,9 +975,9 @@
       "wholeBlocks": 16,
       "cachedBlocks": 0,
       "solvedBlocks": 69,
-      "worstBlockMs": 366.04119999997783,
+      "worstBlockMs": 354.50500000000466,
       "batches": 1,
-      "millis": 6563.145199999737,
+      "millis": 5994.275299999979,
       "blockAtoms": 2228,
       "residualAtoms": 40,
       "fallbackShare": 0.017953321364452424,
@@ -1145,7 +1145,7 @@
     }
   },
   "128": {
-    "generateMs": 68124,
+    "generateMs": 58975,
     "parcels": 1288,
     "hash": "061d4fcdbfec2070",
     "sameOnSecondRun": true,
@@ -2538,9 +2538,9 @@
       "wholeBlocks": 28,
       "cachedBlocks": 0,
       "solvedBlocks": 371,
-      "worstBlockMs": 417.6945999999998,
+      "worstBlockMs": 368.5967000000019,
       "batches": 1,
-      "millis": 61489.11749999997,
+      "millis": 53227.74240000007,
       "blockAtoms": 16098,
       "residualAtoms": 60,
       "fallbackShare": 0.003727171077152441,
@@ -2636,7 +2636,7 @@
       "polylineRadiusIsZero": false
     },
     "busStops": {
-      "stops": 880,
+      "stops": 878,
       "notOnRoad": 0,
       "inJunction": 0,
       "atomsTaken": 0,
@@ -2701,7 +2701,7 @@
       "deterministic": true
     },
     "order": {
-      "items": 3913,
+      "items": 3911,
       "cycles": 0,
       "violations": 0,
       "violationsIfSortedByCenter": 59

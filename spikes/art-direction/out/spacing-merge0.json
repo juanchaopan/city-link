@@ -1,0 +1,506 @@
+[
+  {
+    "name": "十字接十字·隔 1 格",
+    "shape": "十字接十字",
+    "gap": 1,
+    "N": 24,
+    "clusters": 2,
+    "rings": 0,
+    "phases": 4,
+    "cycle": 25.2,
+    "room": {
+      "room": 0.69,
+      "buses": 1,
+      "merged": false
+    },
+    "errors": {
+      "buses": 56,
+      "mixed": 46
+    },
+    "examples": [
+      ["停车", 10.902873771733336, 12.609888093249124, true],
+      ["停车", 10.902873771733336, 12.609888093249124, true],
+      ["停车", 11.179999888108433, 12.615, true],
+      ["停车", 10.902873771733336, 12.609888093249124, true],
+      ["停车", 11.05999953723747, 12.615, true],
+      ["停车", 11.059999999916023, 12.615, true]
+    ],
+    "stoppedInJunction": {
+      "buses": 56,
+      "mixed": 46
+    },
+    "runBuses": {
+      "samples": 4792,
+      "blocked": 45,
+      "stopped": 2940,
+      "speed": 0.36,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4794,
+      "blocked": 98,
+      "stopped": 2235,
+      "speed": 0.51,
+      "inLink": 0
+    }
+  },
+  {
+    "name": "十字接十字·隔 2 格",
+    "shape": "十字接十字",
+    "gap": 2,
+    "N": 24,
+    "clusters": 2,
+    "rings": 0,
+    "phases": 4,
+    "cycle": 25.2,
+    "room": {
+      "room": 1.69,
+      "buses": 4,
+      "merged": false
+    },
+    "errors": {
+      "buses": 2,
+      "mixed": 0
+    },
+    "examples": [
+      ["停车", 12.700000383761223, 12.385, true],
+      ["停车", 12.70000000013809, 12.385, true]
+    ],
+    "stoppedInJunction": {
+      "buses": 2,
+      "mixed": 0
+    },
+    "runBuses": {
+      "samples": 4789,
+      "blocked": 8,
+      "stopped": 2104,
+      "speed": 0.55,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4785,
+      "blocked": 16,
+      "stopped": 1912,
+      "speed": 0.59,
+      "inLink": 0
+    }
+  },
+  {
+    "name": "十字接十字·隔 3 格",
+    "shape": "十字接十字",
+    "gap": 3,
+    "N": 24,
+    "clusters": 2,
+    "rings": 0,
+    "phases": 4,
+    "cycle": 25.2,
+    "room": {
+      "room": 2.69,
+      "buses": 6,
+      "merged": false
+    },
+    "errors": {
+      "buses": 1,
+      "mixed": 0
+    },
+    "examples": [["停车", 14.020044071407465, 12.385, true]],
+    "stoppedInJunction": {
+      "buses": 1,
+      "mixed": 0
+    },
+    "runBuses": {
+      "samples": 4787,
+      "blocked": 0,
+      "stopped": 2059,
+      "speed": 0.56,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4789,
+      "blocked": 0,
+      "stopped": 1966,
+      "speed": 0.59,
+      "inLink": 0
+    }
+  },
+  {
+    "name": "十字接丁字·隔 1 格",
+    "shape": "十字接丁字",
+    "gap": 1,
+    "N": 24,
+    "clusters": 2,
+    "rings": 0,
+    "phases": 4,
+    "cycle": 25.2,
+    "room": {
+      "room": 0.69,
+      "buses": 1,
+      "merged": false
+    },
+    "errors": {
+      "buses": 47,
+      "mixed": 29
+    },
+    "examples": [
+      ["停车", 11.820000005052806, 12.385, true],
+      ["停车", 11.820000000000968, 12.385, true],
+      ["停车", 11.82, 12.385, true],
+      ["停车", 11.82, 12.385, true],
+      ["停车", 11.860013840919159, 12.385, false],
+      ["停车", 11.860000005492344, 12.385, false]
+    ],
+    "stoppedInJunction": {
+      "buses": 47,
+      "mixed": 29
+    },
+    "runBuses": {
+      "samples": 4791,
+      "blocked": 153,
+      "stopped": 2768,
+      "speed": 0.38,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4787,
+      "blocked": 185,
+      "stopped": 2333,
+      "speed": 0.46,
+      "inLink": 0
+    }
+  },
+  {
+    "name": "十字接丁字·隔 2 格",
+    "shape": "十字接丁字",
+    "gap": 2,
+    "N": 24,
+    "clusters": 2,
+    "rings": 0,
+    "phases": 4,
+    "cycle": 25.2,
+    "room": {
+      "room": 1.69,
+      "buses": 4,
+      "merged": false
+    },
+    "errors": {
+      "buses": 4,
+      "mixed": 12
+    },
+    "examples": [
+      ["停车", 11.299999199603977, 12.615, true],
+      ["停车", 11.299999999628348, 12.615, true],
+      ["停车", 11.299999999999864, 12.615, true],
+      ["停车", 11.299999999999999, 12.615, true],
+      ["停车", 12.980005294433083, 12.385, false],
+      ["停车", 12.980000001777164, 12.385, false]
+    ],
+    "stoppedInJunction": {
+      "buses": 4,
+      "mixed": 12
+    },
+    "runBuses": {
+      "samples": 4791,
+      "blocked": 103,
+      "stopped": 2324,
+      "speed": 0.49,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4782,
+      "blocked": 171,
+      "stopped": 2349,
+      "speed": 0.46,
+      "inLink": 0
+    }
+  },
+  {
+    "name": "十字接丁字·隔 3 格",
+    "shape": "十字接丁字",
+    "gap": 3,
+    "N": 24,
+    "clusters": 2,
+    "rings": 0,
+    "phases": 4,
+    "cycle": 25.2,
+    "room": {
+      "room": 2.69,
+      "buses": 6,
+      "merged": false
+    },
+    "errors": {
+      "buses": 0,
+      "mixed": 7
+    },
+    "examples": [
+      ["停车", 13.820000160731176, 12.385, false],
+      ["停车", 13.820000000117433, 12.385, false],
+      ["停车", 13.820000000000066, 12.385, false],
+      ["停车", 13.82, 12.385, false]
+    ],
+    "stoppedInJunction": {
+      "buses": 0,
+      "mixed": 7
+    },
+    "runBuses": {
+      "samples": 4789,
+      "blocked": 35,
+      "stopped": 2308,
+      "speed": 0.47,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4793,
+      "blocked": 78,
+      "stopped": 2150,
+      "speed": 0.53,
+      "inLink": 0
+    }
+  },
+  {
+    "name": "斜路路口·隔 1 格",
+    "shape": "斜路路口",
+    "gap": 1,
+    "N": 24,
+    "clusters": 3,
+    "rings": 0,
+    "phases": 5,
+    "cycle": 33.4,
+    "room": {
+      "room": 0.19,
+      "buses": 0,
+      "merged": false
+    },
+    "errors": {
+      "buses": 116,
+      "mixed": 154
+    },
+    "examples": [
+      ["停车", 12.385, 13.119999490885375, true],
+      ["停车", 12.385, 12.679993324412086, true],
+      ["停车", 12.385, 13.11999999990908, true],
+      ["停车", 12.385, 12.679999998125968, true],
+      ["停车", 11.301452527740365, 13.46408708741327, false],
+      ["停车", 10.905474038902318, 13.068108598575224, false]
+    ],
+    "stoppedInJunction": {
+      "buses": 116,
+      "mixed": 154
+    },
+    "runBuses": {
+      "samples": 4796,
+      "blocked": 509,
+      "stopped": 3551,
+      "speed": 0.22,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4796,
+      "blocked": 964,
+      "stopped": 3298,
+      "speed": 0.26,
+      "inLink": 0
+    }
+  },
+  {
+    "name": "斜路路口·隔 2 格",
+    "shape": "斜路路口",
+    "gap": 2,
+    "N": 24,
+    "clusters": 3,
+    "rings": 0,
+    "phases": 5,
+    "cycle": 33.4,
+    "room": {
+      "room": 1.19,
+      "buses": 2,
+      "merged": false
+    },
+    "errors": {
+      "buses": 2,
+      "mixed": 51
+    },
+    "examples": [
+      ["停车", 13.615, 14.260001162416241, true],
+      ["停车", 13.615, 14.260000000419126, true],
+      ["停车", 13.200003767735387, 12.385, false],
+      ["停车", 12.920000570058557, 12.385, false],
+      ["停车", 13.62424846483706, 12.103741300743332, false],
+      ["停车", 13.760055375792838, 12.385, false]
+    ],
+    "stoppedInJunction": {
+      "buses": 2,
+      "mixed": 51
+    },
+    "runBuses": {
+      "samples": 4795,
+      "blocked": 296,
+      "stopped": 3307,
+      "speed": 0.28,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4792,
+      "blocked": 118,
+      "stopped": 3109,
+      "speed": 0.3,
+      "inLink": 0
+    }
+  },
+  {
+    "name": "斜路路口·隔 3 格",
+    "shape": "斜路路口",
+    "gap": 3,
+    "N": 24,
+    "clusters": 3,
+    "rings": 0,
+    "phases": 5,
+    "cycle": 33.4,
+    "room": {
+      "room": 2.19,
+      "buses": 5,
+      "merged": false
+    },
+    "errors": {
+      "buses": 17,
+      "mixed": 0
+    },
+    "examples": [
+      ["停车", 14.615, 15.140000044485607, true],
+      ["停车", 14.615, 15.140000000019601, true],
+      ["停车", 14.615, 15.140000000000008, true],
+      ["停车", 14.615, 15.14, true]
+    ],
+    "stoppedInJunction": {
+      "buses": 17,
+      "mixed": 0
+    },
+    "runBuses": {
+      "samples": 4793,
+      "blocked": 113,
+      "stopped": 2997,
+      "speed": 0.33,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4792,
+      "blocked": 58,
+      "stopped": 3158,
+      "speed": 0.28,
+      "inLink": 0
+    }
+  },
+  {
+    "name": "环岛接路口·隔 1 格",
+    "shape": "环岛接路口",
+    "gap": 1,
+    "N": 24,
+    "clusters": 2,
+    "rings": 1,
+    "phases": 5,
+    "cycle": 33.4,
+    "room": {
+      "room": 1.53,
+      "buses": 3,
+      "merged": false
+    },
+    "errors": {
+      "buses": 0,
+      "mixed": 0
+    },
+    "examples": [],
+    "stoppedInJunction": {
+      "buses": 0,
+      "mixed": 0
+    },
+    "runBuses": {
+      "samples": 4796,
+      "blocked": 0,
+      "stopped": 2278,
+      "speed": 0.45,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4796,
+      "blocked": 0,
+      "stopped": 2150,
+      "speed": 0.48,
+      "inLink": 0
+    }
+  },
+  {
+    "name": "环岛接路口·隔 2 格",
+    "shape": "环岛接路口",
+    "gap": 2,
+    "N": 24,
+    "clusters": 2,
+    "rings": 1,
+    "phases": 5,
+    "cycle": 33.4,
+    "room": {
+      "room": 2.53,
+      "buses": 5,
+      "merged": false
+    },
+    "errors": {
+      "buses": 0,
+      "mixed": 0
+    },
+    "examples": [],
+    "stoppedInJunction": {
+      "buses": 0,
+      "mixed": 0
+    },
+    "runBuses": {
+      "samples": 4792,
+      "blocked": 0,
+      "stopped": 2175,
+      "speed": 0.49,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4798,
+      "blocked": 0,
+      "stopped": 2294,
+      "speed": 0.46,
+      "inLink": 0
+    }
+  },
+  {
+    "name": "环岛接路口·隔 3 格",
+    "shape": "环岛接路口",
+    "gap": 3,
+    "N": 24,
+    "clusters": 2,
+    "rings": 1,
+    "phases": 5,
+    "cycle": 33.4,
+    "room": {
+      "room": 3.53,
+      "buses": 8,
+      "merged": false
+    },
+    "errors": {
+      "buses": 0,
+      "mixed": 0
+    },
+    "examples": [],
+    "stoppedInJunction": {
+      "buses": 0,
+      "mixed": 0
+    },
+    "runBuses": {
+      "samples": 4795,
+      "blocked": 0,
+      "stopped": 2178,
+      "speed": 0.46,
+      "inLink": 0
+    },
+    "runMixed": {
+      "samples": 4796,
+      "blocked": 0,
+      "stopped": 2148,
+      "speed": 0.47,
+      "inLink": 0
+    }
+  }
+]
