@@ -1,6 +1,6 @@
 {
   "32": {
-    "generateMs": 1139,
+    "generateMs": 1238,
     "parcels": 71,
     "hash": "16f280555be778a6",
     "sameOnSecondRun": true,
@@ -522,7 +522,11 @@
       "noSpec": 12385,
       "blocks": 27,
       "wholeBlocks": 8,
-      "millis": 981.6405,
+      "cachedBlocks": 0,
+      "solvedBlocks": 27,
+      "worstBlockMs": 253.8675,
+      "batches": 1,
+      "millis": 1072.2611,
       "blockAtoms": 632,
       "residualAtoms": 4,
       "fallbackShare": 0.006329113924050633,
@@ -680,7 +684,7 @@
     }
   },
   "64": {
-    "generateMs": 3921,
+    "generateMs": 4268,
     "parcels": 210,
     "hash": "e1221ef8dfa4661a",
     "sameOnSecondRun": true,
@@ -1653,7 +1657,11 @@
       "noSpec": 54346,
       "blocks": 69,
       "wholeBlocks": 16,
-      "millis": 3618.0971999999992,
+      "cachedBlocks": 0,
+      "solvedBlocks": 69,
+      "worstBlockMs": 230.60120000000006,
+      "batches": 1,
+      "millis": 3952.329499999997,
       "blockAtoms": 2228,
       "residualAtoms": 40,
       "fallbackShare": 0.017953321364452424,

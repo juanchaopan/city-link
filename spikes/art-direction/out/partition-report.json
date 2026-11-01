@@ -5,7 +5,11 @@
     "noSpec": 54346,
     "blocks": 69,
     "wholeBlocks": 16,
-    "millis": 4317.1050000000005
+    "cachedBlocks": 0,
+    "solvedBlocks": 69,
+    "worstBlockMs": 269.7777,
+    "batches": 1,
+    "millis": 4045.182599999999
   },
   "blockAtoms": 2228,
   "residualAtoms": 40,
