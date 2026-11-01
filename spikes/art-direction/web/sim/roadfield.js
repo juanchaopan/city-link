@@ -3,7 +3,6 @@ import { cellPaths, ROAD_SPEC, spokesOf } from './network.js';
 // 路面占地的距离场，和着色器算的是同一件事：每条路的中线距离，加上路口夹角里的圆角。
 // 地块、灯杆和斑马线都要知道路面实际到哪里，只看中线加半宽会漏掉圆角，锐角处的圆角能多出去好几成。
 
-const RAY_LENGTH = 1.5;
 const WALK_ROUND = 0.24;
 const DECK_ROUND = 0.36;
 const REACH = 2;
@@ -20,18 +19,24 @@ function segment(px, py, ax, ay, bx, by) {
   return Math.hypot(px - ax - t * dx, py - ay - t * dy);
 }
 
-/** 路口各方向的延长线。对向且同宽的两个方向合成一条穿过中心的直线。 */
+/**
+ * 路口各方向的延长线。对向且同宽的两个方向合成一条穿过中心的直线。
+ * 延长线到邻格中心为止，reach 是这段长度：路在邻格可能转弯或者收成丁字，再往前就伸到没有路的地方了。
+ */
 export function junctionRays(paths) {
   if (paths.length < 2 || paths[0].chained) return [];
   const rays = paths.map((entry) => {
     const spec = ROAD_SPEC[entry.kind];
     const [ex, ez] = entry.points[entry.points.length - 1];
     const length = Math.hypot(ex, ez);
+    const dx = ex / length;
+    const dz = ez / length;
     return {
-      dx: ex / length,
-      dz: ez / length,
+      dx,
+      dz,
       walk: spec.walk / 2,
       deck: spec.deck / 2,
+      reach: 1 / Math.max(Math.abs(dx), Math.abs(dz)),
       back: 0,
       merged: false,
     };
@@ -42,7 +47,7 @@ export function junctionRays(paths) {
       const other = rays[j];
       const opposite = Math.hypot(ray.dx + other.dx, ray.dz + other.dz) < 1e-6;
       if (!other.merged && opposite && other.walk === ray.walk) {
-        ray.back = RAY_LENGTH;
+        ray.back = ray.reach;
         other.merged = true;
       }
     }
@@ -81,7 +86,7 @@ function shapeDistance({ lines, rays, cx, cy }, px, py) {
     const ox = px - cx;
     const oy = py - cy;
     for (const ray of rays) {
-      const t = Math.max(-ray.back, Math.min(RAY_LENGTH, ox * ray.dx + oy * ray.dz));
+      const t = Math.max(-ray.back, Math.min(ray.reach, ox * ray.dx + oy * ray.dz));
       const d = Math.hypot(ox - ray.dx * t, oy - ray.dz * t);
       roundWalk = smin(roundWalk, d - ray.walk, WALK_ROUND);
       roundDeck = smin(roundDeck, d - ray.deck, DECK_ROUND);

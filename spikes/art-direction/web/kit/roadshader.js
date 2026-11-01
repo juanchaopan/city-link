@@ -8,7 +8,7 @@ import { junctionRays } from '../sim/roadfield.js';
 //    人行道和路缘因此不可能出现在车道上，不管相邻格怎么排列。
 // 2. 裁剪按整条路做，不按线段做。否则弯道折线中间的端点会带着圆头越过格子边界。
 // 3. 路口的圆角来自各方向沿直线延长后的平滑并集，只取比直路多出来的部分，垫在夹角里。
-//    对向的两个方向算一条直线，直通的一侧不会鼓包。
+//    对向的两个方向算一条直线，直通的一侧不会鼓包。延长线到邻格中心为止，见 junctionRays。
 // 4. 夹角里的这块垫片在路口这一格的精灵里，它旁边的直路在邻格的精灵里，两张精灵的边缘都是半透明的。
 //    如果垫片刚好停在直路边上，两层半透明叠起来还是漏，下面一层的颜色会透出一条细线。
 //    所以垫片往直路里多铺 PAD_OVERLAP，直路的抗锯齿边落在垫片的实色上。
@@ -17,7 +17,6 @@ import { junctionRays } from '../sim/roadfield.js';
 
 export const MAX_SEGMENTS = 32;
 const MAX_RAYS = 8;
-const RAY_LENGTH = 1.5;
 const CLIP_OVERLAP = 0.016;
 const PAD_OVERLAP = 0.03;
 const RING_ROUND = 0.3;
@@ -39,6 +38,7 @@ const HEADER = `
   uniform vec4 uClipB[MAX_SEGMENTS];
   uniform vec4 uRay[MAX_RAYS];
   uniform float uRayBack[MAX_RAYS];
+  uniform float uRayReach[MAX_RAYS];
   uniform vec3 uRing;
   uniform int uCount;
   uniform int uRayCount;
@@ -92,7 +92,7 @@ const BODY = `
   float rawDeck = 1e3;
   for (int i = 0; i < uRayCount; i++) {
     vec2 dir = uRay[i].xy;
-    float t = clamp(dot(p, dir), -uRayBack[i], ${RAY_LENGTH.toFixed(1)});
+    float t = clamp(dot(p, dir), -uRayBack[i], uRayReach[i]);
     float d = length(p - dir * t);
     rawWalk = min(rawWalk, d - uRay[i].z);
     rawDeck = min(rawDeck, d - uRay[i].w);
@@ -218,9 +218,11 @@ function uniformsFor(paths, P, layer, ring) {
   const rays = junctionRays(paths);
   const rayData = rays.map((ray) => new THREE.Vector4(ray.dx, ray.dz, ray.walk, ray.deck));
   const rayBack = rays.map((ray) => ray.back);
+  const rayReach = rays.map((ray) => ray.reach);
   while (rayData.length < MAX_RAYS) {
     rayData.push(blank());
     rayBack.push(0);
+    rayReach.push(0);
   }
   const vec3 = (hex) => new THREE.Vector3(...linear(hex));
   return {
@@ -232,6 +234,7 @@ function uniformsFor(paths, P, layer, ring) {
     uClipB: { value: clipB },
     uRay: { value: rayData },
     uRayBack: { value: rayBack },
+    uRayReach: { value: rayReach },
     uRing: {
       value: ring ? new THREE.Vector3(ring.radius, ring.walk, ring.deck) : new THREE.Vector3(),
     },
