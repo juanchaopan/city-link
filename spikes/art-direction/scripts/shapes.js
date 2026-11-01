@@ -53,7 +53,13 @@ async function runShapes() {
       [start, Math.min(BATCH, total - start)],
     );
     rows.push(...batch);
-    console.log(start + batch.length, '/', total, '错', rows.filter((row) => row.errors > 0).length);
+    console.log(
+      start + batch.length,
+      '/',
+      total,
+      '错',
+      rows.filter((row) => row.errors > 0).length,
+    );
   }
   const keys = Object.keys(rows[0]).filter((key) => typeof rows[0][key] === 'number');
   const totals = Object.fromEntries(
@@ -97,7 +103,10 @@ async function runSheets() {
     'out/r9-junction-shapes.png',
     await page.evaluate((rows) => window.renderShapeSheet(rows), shapes),
   );
-  write('out/r9-spacing.png', await page.evaluate((rows) => window.renderSpacingSheet(rows), spacing));
+  write(
+    'out/r9-spacing.png',
+    await page.evaluate((rows) => window.renderSpacingSheet(rows), spacing),
+  );
 }
 
 const steps = { shapes: runShapes, spacing: runSpacing, sheets: runSheets };

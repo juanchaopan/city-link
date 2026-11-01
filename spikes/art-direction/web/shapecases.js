@@ -64,7 +64,7 @@ const rotate = (mask, turns) => ((mask << turns) | (mask >> (8 - turns))) & 255;
 
 function mirror(mask) {
   let out = 0;
-  for (let dir = 0; dir < 8; dir += 1) if (mask & (1 << dir)) out |= 1 << (8 - dir) % 8;
+  for (let dir = 0; dir < 8; dir += 1) if (mask & (1 << dir)) out |= 1 << ((8 - dir) % 8);
   return out;
 }
 
