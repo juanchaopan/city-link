@@ -2,12 +2,13 @@
 // 灯光也算配色的一部分：太阳方向决定影子长短，太阳和天空的颜色决定冷暖。
 // sunny 是白天的素材，夜里靠调色和亮窗层；dusk 用来和"两套图集"的方案做对比。
 // service 是公共服务的专用色，饱和度比分区颜色高，普通物业不用，checkServiceColors 核对它们和分区颜色分得开。
+// 消防站用的是消防车那种深红，不是纯红：纯红在一片楼里太扎眼，深红在缩小的全图上照样一眼认得出。
 
 const service = {
   hospital: '#00b37a',
   school: '#ff7a1a',
   police: '#1248c8',
-  fire: '#ff1f1f',
+  fire: '#b3231f',
   water: '#00a8e8',
   power: '#ffc400',
   track: '#c9644a',

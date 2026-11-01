@@ -1,6 +1,6 @@
 {
   "32": {
-    "generateMs": 1247,
+    "generateMs": 1139,
     "parcels": 71,
     "hash": "16f280555be778a6",
     "sameOnSecondRun": true,
@@ -522,7 +522,7 @@
       "noSpec": 12385,
       "blocks": 27,
       "wholeBlocks": 8,
-      "millis": 1016.6016999999999,
+      "millis": 981.6405,
       "blockAtoms": 632,
       "residualAtoms": 4,
       "fallbackShare": 0.006329113924050633,
@@ -680,7 +680,7 @@
     }
   },
   "64": {
-    "generateMs": 3953,
+    "generateMs": 3921,
     "parcels": 210,
     "hash": "e1221ef8dfa4661a",
     "sameOnSecondRun": true,
@@ -1653,7 +1653,7 @@
       "noSpec": 54346,
       "blocks": 69,
       "wholeBlocks": 16,
-      "millis": 3626.0872,
+      "millis": 3618.0971999999992,
       "blockAtoms": 2228,
       "residualAtoms": 40,
       "fallbackShare": 0.017953321364452424,

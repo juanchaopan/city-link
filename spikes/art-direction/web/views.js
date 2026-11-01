@@ -1,17 +1,12 @@
-import { Graphics, Text } from 'pixi.js';
+import { Color, Graphics, Text } from 'pixi.js';
+import { palettes } from './kit/palettes.js';
 import { SERVICES } from './sim/services.js';
 import { screenOf } from './world.js';
 
 // 公共服务和地铁两个视图：在变暗的城市上盖一层图。交通视图在 trafficview.js。
+// 公共服务的颜色直接取配色表里的专用色，和建筑、图标牌是同一个颜色。
 
-const SERVICE_COLORS = {
-  hospital: 0x00b37a,
-  school: 0xff7a1a,
-  police: 0x1248c8,
-  fire: 0xff1f1f,
-  water: 0x00a8e8,
-  power: 0xffc400,
-};
+const serviceColor = (use) => new Color(palettes.sunny.service[use]).toNumber();
 
 export function label(text, x, y, size, anchorY = 0) {
   const item = new Text({
@@ -47,7 +42,7 @@ export function coverageView(city, ground) {
   for (const parcel of city.parcels.parcels) {
     if (parcel.shape !== 'service') continue;
     const { sx, sy } = ground(parcel.px, parcel.py);
-    g.circle(sx, sy, 40).fill(SERVICE_COLORS[parcel.use]).stroke({ color: 0xffffff, width: 7 });
+    g.circle(sx, sy, 40).fill(serviceColor(parcel.use)).stroke({ color: 0xffffff, width: 7 });
     const name = SERVICES.find((service) => service.id === parcel.use).name;
     g.addChild(label(name, sx, sy + 44, 52));
   }
