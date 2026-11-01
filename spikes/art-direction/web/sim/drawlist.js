@@ -1,9 +1,11 @@
 import { compareDepth, eachBin, overlapBoxes, prepareItem, topological } from './order.js';
 
-// 每帧的绘制顺序。静态物体（建筑、灯杆、桥墩、桥面）的先后只算一次；车是动的，每帧插进这串静态物体里。
-// 一辆车和屏幕上压着它的静态物体逐个比：在它后面的都要先画，这决定它最早能排在第几位。
-// 车和车按车身占地两两比，长车不会因为中心点靠前就盖住前面的短车；这个先后关系再把排位往后推。
-// 所有物体都走同一条比较规则，匝道上的车高度连续变化，比较结果自然跟着变，不用切换图层。
+// 每帧的绘制顺序。静态物体（建筑、灯杆、桥墩、桥面）两两之间的先后只算一次；车是动的，每帧和视野里的静态物体
+// 一起重新做一次拓扑排序，车和静态物体、车和车都按同一条比较规则连边，所以每一对的先后都成立，
+// 不会出现车被前面的车推到一个盖住路边灯杆的位置。
+// 只排视野里的静态物体：视野外的既不画也不参与比较。没有车的时候直接用静态序列里视野内的那一段，
+// 一个拓扑序的子序列还是拓扑序。
+// 车和车按车身占地两两比，长车不会因为中心点靠前就盖住前面的短车；匝道上的车高度连续变化，比较结果自然跟着变。
 
 const BODY_HALF_WIDTH = 0.06;
 const BODY_HEIGHT = 0.3;
@@ -37,7 +39,9 @@ export function carItem(car, halfLength, screen) {
   });
 }
 
+/** statics 是排好序的静态物体。order 返回这一帧要画的全部物体，车已经插在正确的位置上。 */
 export function createDrawList(statics) {
+  const size = statics.length;
   const bins = new Map();
   statics.forEach((item, index) => {
     eachBin(item, (key) => {
@@ -45,81 +49,78 @@ export function createDrawList(statics) {
       bins.get(key).push(index);
     });
   });
-  const seen = new Int32Array(statics.length);
+  const staticAfter = statics.map(() => []);
+  const seen = new Int32Array(size);
   let tick = 0;
-
-  /** 这辆车最早能排在静态序列的第几位。 */
-  const slotOf = (item) => {
+  statics.forEach((item, index) => {
     tick += 1;
-    let low = 0;
     eachBin(item, (key) => {
-      const list = bins.get(key);
-      if (!list) return;
-      for (const index of list) {
-        if (seen[index] === tick) continue;
-        seen[index] = tick;
-        const other = statics[index];
-        if (overlapBoxes(item, other) && compareDepth(other, item) < 0)
-          low = Math.max(low, index + 1);
+      for (const other of bins.get(key)) {
+        if (other <= index || seen[other] === tick) continue;
+        seen[other] = tick;
+        if (!overlapBoxes(item, statics[other])) continue;
+        const order = compareDepth(item, statics[other]);
+        if (order < 0) staticAfter[index].push(other);
+        else if (order > 0) staticAfter[other].push(index);
       }
     });
-    return low;
-  };
+  });
 
-  /** 车之间的先后。返回排好的车，每辆车带 slot：它排在第几个静态物体的前面。 */
-  const placeCars = (cars) => {
-    const size = cars.length;
-    const after = cars.map(() => []);
-    const blockers = new Int32Array(size);
+  const everything = new Uint8Array(size).fill(1);
+
+  /** visible[i] 不为 0 的静态物体参与这一帧。 */
+  const order = (cars, visible = everything) => {
+    if (cars.length === 0) return statics.filter((_, index) => visible[index]);
+    const local = new Int32Array(size).fill(-1);
+    const items = [];
+    for (let index = 0; index < size; index += 1) {
+      if (!visible[index]) continue;
+      local[index] = items.length;
+      items.push(statics[index]);
+    }
+    const firstCar = items.length;
+    items.push(...cars);
+    const after = items.map(() => []);
+    const blockers = new Int32Array(items.length);
+    const link = (before, next) => {
+      after[before].push(next);
+      blockers[next] += 1;
+    };
+    for (let index = 0; index < size; index += 1) {
+      if (!visible[index]) continue;
+      for (const other of staticAfter[index]) {
+        if (visible[other]) link(local[index], local[other]);
+      }
+    }
     const carBins = new Map();
-    cars.forEach((item, index) => {
-      item.slot = slotOf(item);
+    cars.forEach((item, offset) => {
+      const self = firstCar + offset;
+      tick += 1;
       eachBin(item, (key) => {
+        for (const other of bins.get(key) ?? []) {
+          if (!visible[other] || seen[other] === tick) continue;
+          seen[other] = tick;
+          if (!overlapBoxes(item, statics[other])) continue;
+          const result = compareDepth(statics[other], item);
+          if (result < 0) link(local[other], self);
+          else if (result > 0) link(self, local[other]);
+        }
         const list = carBins.get(key);
         if (!list) {
-          carBins.set(key, [index]);
+          carBins.set(key, [self]);
           return;
         }
         for (const other of list) {
-          if (!overlapBoxes(item, cars[other])) continue;
-          const order = compareDepth(cars[other], item);
-          if (order < 0 && !after[other].includes(index)) {
-            after[other].push(index);
-            blockers[index] += 1;
-          } else if (order > 0 && !after[index].includes(other)) {
-            after[index].push(other);
-            blockers[other] += 1;
-          }
+          if (!overlapBoxes(item, items[other])) continue;
+          const result = compareDepth(items[other], item);
+          if (result < 0 && !after[other].includes(self)) link(other, self);
+          else if (result > 0 && !after[self].includes(other)) link(self, other);
         }
-        list.push(index);
+        list.push(self);
       });
     });
-    const { order } = topological(cars, after, blockers);
-    order.forEach((index, rank) => {
-      cars[index].rank = rank;
-      for (const next of after[index])
-        cars[next].slot = Math.max(cars[next].slot, cars[index].slot);
-    });
-    return order.map((index) => cars[index]).sort((a, b) => a.slot - b.slot || a.rank - b.rank);
+    return topological(items, after, blockers).order.map((index) => items[index]);
   };
 
-  return { placeCars };
-}
-
-/** 静态序列和排好的车合成一串，给检查用。 */
-export function mergedSequence(statics, cars) {
-  const sequence = [];
-  let next = 0;
-  statics.forEach((item, index) => {
-    while (next < cars.length && cars[next].slot <= index) {
-      sequence.push(cars[next]);
-      next += 1;
-    }
-    sequence.push(item);
-  });
-  while (next < cars.length) {
-    sequence.push(cars[next]);
-    next += 1;
-  }
-  return sequence;
+  return { order };
 }

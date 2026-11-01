@@ -1,6 +1,6 @@
 {
   "32": {
-    "generateMs": 1424,
+    "generateMs": 1247,
     "parcels": 71,
     "hash": "16f280555be778a6",
     "sameOnSecondRun": true,
@@ -522,7 +522,7 @@
       "noSpec": 12385,
       "blocks": 27,
       "wholeBlocks": 8,
-      "millis": 1249.4268,
+      "millis": 1016.6016999999999,
       "blockAtoms": 632,
       "residualAtoms": 4,
       "fallbackShare": 0.006329113924050633,
@@ -680,7 +680,7 @@
     }
   },
   "64": {
-    "generateMs": 4379,
+    "generateMs": 3953,
     "parcels": 210,
     "hash": "e1221ef8dfa4661a",
     "sameOnSecondRun": true,
@@ -1653,7 +1653,7 @@
       "noSpec": 54346,
       "blocks": 69,
       "wholeBlocks": 16,
-      "millis": 4046.5734999999995,
+      "millis": 3626.0872,
       "blockAtoms": 2228,
       "residualAtoms": 40,
       "fallbackShare": 0.017953321364452424,
@@ -1817,9 +1817,9 @@
     },
     "order": {
       "items": 1272,
-      "cycles": 8,
-      "violations": 8,
-      "violationsIfSortedByCenter": 42
+      "cycles": 0,
+      "violations": 0,
+      "violationsIfSortedByCenter": 35
     }
   },
   "roadDemo": {
@@ -1844,9 +1844,9 @@
     },
     "order": {
       "items": 878,
-      "cycles": 12,
-      "violations": 23,
-      "violationsIfSortedByCenter": 179
+      "cycles": 2,
+      "violations": 13,
+      "violationsIfSortedByCenter": 155
     },
     "capacity": {
       "rows": 41,

@@ -3,26 +3,24 @@
 // 平面上重叠的只有上下两层：高架和它下面的路、车和它脚下的桥面，这时低的先画。
 // 相邻的两块桥面在接缝处互相盖住一点，它们不是上下两层，高度差也只是同一段坡上的高差，这种按前后排；
 // 否则下坡朝着观众的桥面会要求低的先画，和前后关系相反，排序就成了环。
-// 主线和旁边的匝道不是上下两层时，匝道在哪一侧都排在主线后面，路面才盖得住主线的路肩。
+// 车贴着路边的物体走过时，车身的一角会探进站牌或楼的占地一点点，这不是上下两层：高差不到一层的两样东西
+// 都不是桥面时按前后排，车在站牌后面就先画车。
+// 主线和旁边的匝道不是上下两层、平面上又叠在一起时，匝道在哪一侧都排在主线后面，路面才盖得住主线的路肩；
+// 平面上分得开的两块就按前后排，匝道在主线身后的一段不会被硬排到主线前面。
 // 桥墩的顶在桥面下面，屏幕上碰得到的同一层桥面都排在桥墩后面。桥墩的占地只算墩身，横梁比占地宽，所以这条规则不看占地。
 // 车和桥面比别的物体多两条规则。平面上靠后的物体投影整个在靠前物体的上方时，两者在屏幕上碰不到，这一对不排：
 // 桥上的车和它前面的桥墩、桥下的车和它后面的桥面、桥下的公交站和桥面都是这样，硬排只会和别的物体抢位置。
 // 车压在两块桥面的接缝上时算在桥面上：桥面的高度取这一块的最低点，坡上的车可能比邻块的最低点略低。
 // 车很短，一条视线判断不出它是不是钻到桥下，也判断不出投影碰不碰得到，所以这种比较看三条视线。
-// 车插进静态序列时只有下限：排在它身后的物体之后。要让这个位置也在它前面的物体之前，静态序列就得这样排：
-// 同时可以画的物体，先画最靠后的边更靠后的，一栋长楼只要后边在车后面就排在车前面的小物体之前；
-// 车能从下面穿过的桥面能多晚就多晚，只有必须盖在桥面上的物体才排到它后面，桥下的车才有位置。
 // base 是物体的底，peak 是物体的顶，单位都是层；视线坐标 u 一格 32 像素，和一层一样高，所以两者能直接相减。
 // left、right、top、bottom 是屏幕范围。
-// 这些关系基本没有环，两两比较后做一次拓扑排序就是绘制顺序。立交里挤在一起的几块桥面和桥墩偶尔成环，
-// 这时放行最靠后的一个再接着排，不会有一整串物体乱序；环的个数照常报告。
+// 这些关系基本没有环，两两比较后做一次拓扑排序就是绘制顺序；同时可以画的物体，先画最靠后的边更靠后的。
+// 立交里挤在一起的几块桥面和桥墩偶尔成环，这时放行最靠后的一个再接着排，不会有一整串物体乱序；环的个数照常报告。
 
 const EPS = 1e-6;
 const CELL = 256;
 const STACKED = 0.6;
 const ON_DECK = 0.3;
-const OVERHEAD = 1;
-const DECK_DELAY = 1000;
 
 function viewCoordinates(polygon) {
   return polygon.map(([x, y]) => [x + y, x - y]);
@@ -60,12 +58,14 @@ function clearOf(behind, spanBehind, front, spanFront) {
   return bottom <= spanFront[0] - (front.peak ?? Infinity);
 }
 
-/** 平面上重叠的两个物体谁先画。 */
+/** 平面上重叠的两个物体谁先画：上下两层时低的先画，不是上下两层时按这条视线上的前后。 */
 function stackedOrder(a, b, spanA, spanB) {
   if (onDeck(a, b)) return -1;
   if (onDeck(b, a)) return 1;
+  if (sameLevelDecks(a, b) && a.main !== b.main) return a.main ? -1 : 1;
   const gap = Math.abs(baseOf(a) - baseOf(b));
-  if (gap > EPS && !sameLevelDecks(a, b)) return baseOf(a) < baseOf(b) ? -1 : 1;
+  const stacked = a.deck || b.deck ? gap > EPS && !sameLevelDecks(a, b) : gap > ON_DECK;
+  if (stacked) return baseOf(a) < baseOf(b) ? -1 : 1;
   return (spanA[0] + spanA[1]) / 2 < (spanB[0] + spanB[1]) / 2 ? -1 : 1;
 }
 
@@ -98,7 +98,6 @@ export function compareDepth(a, b) {
   const lowV = Math.max(a.minV, b.minV);
   const highV = Math.min(a.maxV, b.maxV);
   if (lowV >= highV - EPS) return 0;
-  if (sameLevelDecks(a, b) && a.main !== b.main) return a.main ? -1 : 1;
   const middle = (lowV + highV) / 2;
   const spanA = spanAt(a.view, middle);
   const spanB = spanAt(b.view, middle);
@@ -111,15 +110,14 @@ export function compareDepth(a, b) {
 /** 给物体算好比较要用的视线坐标。footprint 是平面上的凸多边形，depth 是拓扑排序里并列时的先后。 */
 export function prepareItem(item) {
   const view = viewCoordinates(item.footprint);
-  let back = Infinity;
+  let depth = Infinity;
   let minV = Infinity;
   let maxV = -Infinity;
   for (const [u, v] of view) {
-    back = Math.min(back, u);
+    depth = Math.min(depth, u);
     minV = Math.min(minV, v);
     maxV = Math.max(maxV, v);
   }
-  const depth = back + (item.deck && baseOf(item) >= OVERHEAD ? DECK_DELAY : 0);
   return { ...item, view, depth, minV, maxV };
 }
 
@@ -161,8 +159,29 @@ function candidatePairs(items) {
   return pairs;
 }
 
+/** 两两比较得到的先后关系：after[i] 是必须画在 i 后面的物体，blockers[i] 是 i 前面还没画的物体数。 */
+export function constraintsOf(items) {
+  const size = items.length;
+  const after = items.map(() => []);
+  const blockers = new Int32Array(size);
+  for (const pair of candidatePairs(items)) {
+    const a = Math.floor(pair / size);
+    const b = pair % size;
+    if (!overlapBoxes(items[a], items[b])) continue;
+    const order = compareDepth(items[a], items[b]);
+    if (order < 0) {
+      after[a].push(b);
+      blockers[b] += 1;
+    } else if (order > 0) {
+      after[b].push(a);
+      blockers[a] += 1;
+    }
+  }
+  return { after, blockers };
+}
+
 /**
- * 拓扑排序。after[i] 是必须画在 i 后面的物体，blockers[i] 是 i 前面还没画的物体数；同时可以画的先画靠后的。
+ * 拓扑排序。同时可以画的先画靠后的。
  * 没有物体可画而还有物体没画时就是环，放行最靠后的一个，cycles 数放行了几次。
  */
 export function topological(items, after, blockers) {
@@ -213,22 +232,7 @@ export function topological(items, after, blockers) {
 
 export function sortByDepth(rawItems) {
   const items = rawItems.map(prepareItem);
-  const size = items.length;
-  const after = items.map(() => []);
-  const blockers = new Int32Array(size);
-  for (const pair of candidatePairs(items)) {
-    const a = Math.floor(pair / size);
-    const b = pair % size;
-    if (!overlapBoxes(items[a], items[b])) continue;
-    const order = compareDepth(items[a], items[b]);
-    if (order < 0) {
-      after[a].push(b);
-      blockers[b] += 1;
-    } else if (order > 0) {
-      after[b].push(a);
-      blockers[a] += 1;
-    }
-  }
+  const { after, blockers } = constraintsOf(items);
   const { order, cycles } = topological(items, after, blockers);
   return { sorted: order.map((index) => items[index]), cycles };
 }

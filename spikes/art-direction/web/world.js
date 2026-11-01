@@ -14,11 +14,13 @@ import { sceneItems } from './sim/sceneitems.js';
 // 地面分层绘制：地表、田块、人行道、路缘、车道、路面标记，路面的层序保证人行道不会盖到车道上。
 // 路面以上的东西都在一串粒子里，按遮挡顺序画：建筑、灯杆、桥墩、桥面和车用同一条规则比较，
 // 所以灯杆不会被路面盖住，车从桥下穿过时被桥面挡住，车绕到楼后面时被楼挡住。
-// 这一串每帧重排，全部粒子共用一张图集，只有一次绘制调用；视野外的物体不进这一串。
+// 每帧只处理视野和周边一圈的物体：视野外的既不排序也不进粒子串。视野在周边一圈以内移动时不换物体，
+// 滑出去了才重新挑一批。全部粒子共用一张图集，只有一次绘制调用。
 // 亮窗紧跟在所属建筑后面。模块拼装的物业由几张精灵叠成，从下往上画，每张抬高整数像素。
 
 const CHUNK = 16;
 const VIEW_PADDING = 300;
+const VIEW_SLACK = 150;
 const MODULE_FLOOR_LEVELS = 0.5;
 export const TILE_HALF_W = 64;
 export const TILE_HALF_H = 32;
@@ -166,22 +168,26 @@ function particlesOf(atlas, object, { dynamicTint, stress, bodies, lit }) {
   return particles;
 }
 
+const contains = (outer, inner) =>
+  inner.left >= outer.left &&
+  inner.right <= outer.right &&
+  inner.top >= outer.top &&
+  inner.bottom <= outer.bottom;
+
 /** 路面以上的场景：一串按遮挡顺序排好的粒子，车每帧插进去。 */
 function sceneLayerOf(atlas, city, options) {
   const { sorted, cycles } = sceneItems(city, (key) => atlas.frames[key]);
-  const entries = sorted.map((item) => ({
-    item,
-    particles: particlesOf(atlas, item, options),
-    visible: true,
-  }));
+  const particlesByItem = new Map(
+    sorted.map((item) => [item, particlesOf(atlas, item, options)]),
+  );
   const lamps = [];
-  for (const { item, particles } of entries) {
+  for (const item of sorted) {
     if (item.signal === undefined) continue;
     const key = `lamp-${String(item.dir)}`;
     if (!atlas.frames[key]) continue;
     const { sx, sy } = screenOf(item.px, item.py, item.level);
     const particle = particleFor(atlas, key, sx, sy);
-    particles.push(particle);
+    particlesByItem.get(item).push(particle);
     lamps.push({ signal: item.signal, phase: item.phase, particle });
   }
   const texture = atlas.textures[Object.keys(atlas.textures)[0]];
@@ -191,38 +197,41 @@ function sceneLayerOf(atlas, city, options) {
   });
   layer.boundsArea = options.area;
   const drawList = createDrawList(sorted);
+  const visible = new Uint8Array(sorted.length);
+  let kept = null;
+  let inView = 0;
 
   const compose = (cars) => {
-    const placed = drawList.placeCars(cars);
     const list = [];
-    let next = 0;
-    for (let i = 0; i < entries.length; i += 1) {
-      while (next < placed.length && placed[next].slot <= i) {
-        list.push(...placed[next].particles);
-        next += 1;
-      }
-      if (entries[i].visible) list.push(...entries[i].particles);
-    }
-    while (next < placed.length) {
-      list.push(...placed[next].particles);
-      next += 1;
+    for (const item of drawList.order(cars, visible)) {
+      list.push(...(item.car ? item.particles : particlesByItem.get(item)));
     }
     layer.particleChildren = list;
     layer.update();
   };
 
-  const setView = ({ left, right, top, bottom }) => {
-    for (const entry of entries) {
-      const { item } = entry;
-      entry.visible =
-        item.left < right + VIEW_PADDING &&
-        item.right > left - VIEW_PADDING &&
-        item.top < bottom + VIEW_PADDING &&
-        item.bottom > top - VIEW_PADDING;
-    }
+  /** 视野还在上一批的周边一圈以内就不换；滑出去了按新视野外扩一圈重新挑。 */
+  const setView = (box) => {
+    if (kept && contains(kept, box)) return;
+    kept = {
+      left: box.left - VIEW_SLACK,
+      right: box.right + VIEW_SLACK,
+      top: box.top - VIEW_SLACK,
+      bottom: box.bottom + VIEW_SLACK,
+    };
+    inView = 0;
+    sorted.forEach((item, index) => {
+      const shown =
+        item.left < kept.right + VIEW_PADDING &&
+        item.right > kept.left - VIEW_PADDING &&
+        item.top < kept.bottom + VIEW_PADDING &&
+        item.bottom > kept.top - VIEW_PADDING;
+      visible[index] = shown ? 1 : 0;
+      if (shown) inView += 1;
+    });
   };
 
-  return { layer, compose, setView, lamps, cycles };
+  return { layer, compose, setView, lamps, cycles, inView: () => inView };
 }
 
 /**
@@ -268,12 +277,21 @@ export function buildWorld(
   world.addChild(groundLayer);
   if (!layers.includes('objects')) {
     const idle = () => {};
-    return { world, groundLayer, bodies, lit, count, lamps: [], compose: idle, setView: idle };
+    return {
+      world,
+      groundLayer,
+      bodies,
+      lit,
+      count,
+      lamps: [],
+      compose: idle,
+      setView: idle,
+      inView: () => 0,
+    };
   }
   const scene = sceneLayerOf(atlas, city, { dynamicTint, stress, area, bodies, lit });
   world.addChild(scene.layer);
   count.sprites += bodies.length + lit.length;
-  scene.compose([]);
   return {
     world,
     groundLayer,
@@ -283,6 +301,7 @@ export function buildWorld(
     lamps: scene.lamps,
     compose: scene.compose,
     setView: scene.setView,
+    inView: scene.inView,
     cycles: scene.cycles,
   };
 }
