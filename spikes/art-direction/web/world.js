@@ -177,9 +177,7 @@ const contains = (outer, inner) =>
 /** 路面以上的场景：一串按遮挡顺序排好的粒子，车每帧插进去。 */
 function sceneLayerOf(atlas, city, options) {
   const { sorted, cycles } = sceneItems(city, (key) => atlas.frames[key]);
-  const particlesByItem = new Map(
-    sorted.map((item) => [item, particlesOf(atlas, item, options)]),
-  );
+  const particlesByItem = new Map(sorted.map((item) => [item, particlesOf(atlas, item, options)]));
   const lamps = [];
   for (const item of sorted) {
     if (item.signal === undefined) continue;

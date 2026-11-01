@@ -482,7 +482,13 @@ export function planPartition(atoms, table, front, diagonalFront, partitioner) {
 }
 
 /** 一口气把一组原子分成物业。 */
-export function partitionLand(atoms, table, front, diagonalFront, partitioner = createPartitioner()) {
+export function partitionLand(
+  atoms,
+  table,
+  front,
+  diagonalFront,
+  partitioner = createPartitioner(),
+) {
   const job = planPartition(atoms, table, front, diagonalFront, partitioner);
   job.run(Infinity);
   return job.result();

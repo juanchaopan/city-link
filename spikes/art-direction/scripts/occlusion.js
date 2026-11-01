@@ -110,9 +110,9 @@ function followsOwnDeck(a, b) {
   const own = deckUnder(car);
   return Boolean(
     own &&
-      own !== deck &&
-      Math.abs(floorOf(own) - floorOf(deck)) < SAME_LEVEL &&
-      overlapInPlan(own, deck),
+    own !== deck &&
+    Math.abs(floorOf(own) - floorOf(deck)) < SAME_LEVEL &&
+    overlapInPlan(own, deck),
   );
 }
 
