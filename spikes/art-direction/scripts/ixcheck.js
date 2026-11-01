@@ -30,11 +30,29 @@ const { rows, cells, failures } = await page.evaluate((city) => {
 }, Boolean(process.env.CITY));
 console.log(['类型', ...failures, '结果'].join('\t'));
 for (const row of rows) {
-  console.log([row.name, ...failures.map((key) => row[key]), row.pass ? '通过' : '不通过'].join('\t'));
-  const { piers, worstTurn, worstCarOffset, carSamples, sideSamples, driveSamples, openingSamples } = row;
+  console.log(
+    [row.name, ...failures.map((key) => row[key]), row.pass ? '通过' : '不通过'].join('\t'),
+  );
+  const {
+    piers,
+    worstTurn,
+    worstCarOffset,
+    carSamples,
+    sideSamples,
+    driveSamples,
+    openingSamples,
+  } = row;
   console.log(
     '  ',
-    JSON.stringify({ piers, worstTurn, worstCarOffset, carSamples, sideSamples, driveSamples, openingSamples }),
+    JSON.stringify({
+      piers,
+      worstTurn,
+      worstCarOffset,
+      carSamples,
+      sideSamples,
+      driveSamples,
+      openingSamples,
+    }),
   );
   if (!row.pass) console.log('  ', JSON.stringify(row.examples).slice(0, 600));
 }

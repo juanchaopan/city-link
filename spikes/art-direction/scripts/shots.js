@@ -235,8 +235,16 @@ function fpsCases() {
   const big = 'n=128&controls=0&warm=100';
   const bigCases = [
     { name: '128，默认视野，无车', query: 'n=128&controls=0&cars=0', cycle: false },
-    { name: '128，游戏视角，满额 300 辆', query: `${big}&zoom=0.42&x=62&y=60&cars=300&full=1`, cycle: false },
-    { name: '128，游戏视角，满额 600 辆', query: `${big}&zoom=0.42&x=62&y=60&cars=600&full=1`, cycle: false },
+    {
+      name: '128，游戏视角，满额 300 辆',
+      query: `${big}&zoom=0.42&x=62&y=60&cars=300&full=1`,
+      cycle: false,
+    },
+    {
+      name: '128，游戏视角，满额 600 辆',
+      query: `${big}&zoom=0.42&x=62&y=60&cars=600&full=1`,
+      cycle: false,
+    },
     { name: '128，全图缩小，满额 600 辆', query: `${big}&zoom=0.04&cars=600&full=1`, cycle: false },
   ];
   return process.env.BIG ? bigCases : cases;
@@ -253,7 +261,15 @@ if (process.env.SEAM) {
     const stats = await page.evaluate(() => window.sceneStats);
     const fps = await page.evaluate((flag) => window.measureFps(5, flag), cycle);
     const cars = await page.evaluate(() => window.trafficStats());
-    report[name] = { gpu: stats.gpu, sprites: stats.sprites, atlas: stats.atlas, arrows: stats.arrows, icons: stats.icons, ...fps, cars };
+    report[name] = {
+      gpu: stats.gpu,
+      sprites: stats.sprites,
+      atlas: stats.atlas,
+      arrows: stats.arrows,
+      icons: stats.icons,
+      ...fps,
+      cars,
+    };
     console.log(name, JSON.stringify(report[name]));
   }
   const prefix = process.env.BIG ? 'fps-big' : 'fps';

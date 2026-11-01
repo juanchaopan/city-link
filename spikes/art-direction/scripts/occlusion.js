@@ -192,7 +192,9 @@ for (let step = 0; step < STEPS; step += 1) {
   const sequence = mergedSequence(sorted, placed);
   audit(sequence, current, examples);
   audit(legacySequence(items), legacy);
-  conflicts += placed.filter((item, index) => index > 0 && placed[index - 1].slot > item.slot).length;
+  conflicts += placed.filter(
+    (item, index) => index > 0 && placed[index - 1].slot > item.slot,
+  ).length;
 }
 
 const totals = (tally) => Object.values(tally).reduce((sum, { wrong }) => sum + wrong, 0);

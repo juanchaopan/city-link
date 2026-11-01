@@ -113,8 +113,7 @@ function diamondTown() {
         [cx, y + 1],
       ],
     });
-    if (y % 2 === 0)
-      objects.push(pierObject({ x: 0, z: 0, h: ELEVATED, nx: 1, nz: 0 }, cx, y));
+    if (y % 2 === 0) objects.push(pierObject({ x: 0, z: 0, h: ELEVATED, nx: 1, nz: 0 }, cx, y));
   }
   return {
     world,
@@ -139,10 +138,7 @@ export const IX_SCENES = { tee: teeTown, diamond: diamondTown };
 function innerObjects(name, cx, cy, roads) {
   const land = interchangeLand([{ name, cx, cy }], roads, N);
   const taken = new Set(land.parking.flatMap(({ cells }) => cells));
-  return [
-    ...land.parking.map(parkingObject),
-    ...templateGreens(name, cx, cy, { roads, N, taken }),
-  ];
+  return [...land.parking.map(parkingObject), ...templateGreens(name, cx, cy, { roads, N, taken })];
 }
 
 export function ixTown(name) {

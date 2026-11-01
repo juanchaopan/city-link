@@ -32,12 +32,21 @@ export function linesOf(name) {
   const half = ROAD_SPEC.express.deck / 2;
   const shoulder = (ROAD_SPEC.express.walk - ROAD_SPEC.express.deck) / 2;
   if (main.length > 0) {
-    const band = main.map(() => ({ l: half, r: half, sl: shoulder, sr: shoulder, tone: 1, dash: false }));
+    const band = main.map(() => ({
+      l: half,
+      r: half,
+      sl: shoulder,
+      sr: shoulder,
+      tone: 1,
+      dash: false,
+    }));
     lines.push({ kind: 'main', center: main, band });
   }
   for (const { points, band } of shape.pads) lines.push({ kind: 'pad', center: points, band });
   const ramps = shape.ramps().map(({ center, band }) => ({ kind: 'ramp', center, band }));
-  ramps.sort((a, c) => Math.max(...c.center.map((p) => p[2])) - Math.max(...a.center.map((p) => p[2])));
+  ramps.sort(
+    (a, c) => Math.max(...c.center.map((p) => p[2])) - Math.max(...a.center.map((p) => p[2])),
+  );
   lines.push(...ramps);
   return lines;
 }
@@ -49,7 +58,8 @@ function convexHull(points) {
   const half = (list) => {
     const out = [];
     for (const point of list) {
-      while (out.length >= 2 && turn(out[out.length - 2], out[out.length - 1], point) <= 0) out.pop();
+      while (out.length >= 2 && turn(out[out.length - 2], out[out.length - 1], point) <= 0)
+        out.pop();
       out.push(point);
     }
     out.pop();
@@ -73,10 +83,7 @@ function edgePoints(line, i) {
   ];
 }
 
-const cellOfSegment = (a, c) => [
-  Math.round((a[0] + c[0]) / 2),
-  Math.round((a[1] + c[1]) / 2),
-];
+const cellOfSegment = (a, c) => [Math.round((a[0] + c[0]) / 2), Math.round((a[1] + c[1]) / 2)];
 
 /** 切成连续的段：一段在同一格里，高度属于同一层。 */
 function runsOf(line, index) {

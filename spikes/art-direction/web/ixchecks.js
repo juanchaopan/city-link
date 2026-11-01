@@ -81,7 +81,13 @@ function sameLevel({ name, cx, cy }, ramps) {
         if (!hit) continue;
         result.levelCrossings += 1;
         if (result.examples.length < 4)
-          result.examples.push(['同高', ramps[index].name, rounded(a.x), rounded(a.z), rounded(a.h)]);
+          result.examples.push([
+            '同高',
+            ramps[index].name,
+            rounded(a.x),
+            rounded(a.z),
+            rounded(a.h),
+          ]);
       }
     }
   });
@@ -289,7 +295,13 @@ function checkCars({ town, lanes }, scene) {
       if (offset <= MAX_CAR_OFFSET) continue;
       result.carsOffCenter += 1;
       if (result.examples.length < 4)
-        result.examples.push(['车偏', car.lane.id, rounded(car.x), rounded(car.y), rounded(offset)]);
+        result.examples.push([
+          '车偏',
+          car.lane.id,
+          rounded(car.x),
+          rounded(car.y),
+          rounded(offset),
+        ]);
     }
   }
   return result;

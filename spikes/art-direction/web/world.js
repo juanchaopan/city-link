@@ -72,7 +72,13 @@ function particleFor(atlas, key, sx, sy) {
 function batchContainer(particles, area) {
   const container = new ParticleContainer({
     texture: particles[0].texture,
-    dynamicProperties: { position: false, rotation: false, uvs: false, vertex: false, color: false },
+    dynamicProperties: {
+      position: false,
+      rotation: false,
+      uvs: false,
+      vertex: false,
+      color: false,
+    },
   });
   for (const particle of particles) container.addParticle(particle);
   container.boundsArea = area;
@@ -224,7 +230,11 @@ function sceneLayerOf(atlas, city, options) {
  * bare 为真时不垫底，露底检查用它看精灵本身有没有缝。
  * stress 大于 1 时每个物业多画几遍，用来量全城都走模块拼装时的开销。
  */
-export function buildWorld(atlas, city, { layers, dynamicTint, palette, bare = false, stress = 1 }) {
+export function buildWorld(
+  atlas,
+  city,
+  { layers, dynamicTint, palette, bare = false, stress = 1 },
+) {
   const { N } = city;
   const area = new Rectangle(-N * 80, -400, N * 160, N * 80 + 800);
   const groundLayer = new Container();

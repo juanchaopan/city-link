@@ -241,7 +241,9 @@ export function createFleet(
   const stopCells = new Set([...stops.values()].map(({ cell }) => cell));
   const ringOfCell = new Map();
   for (const ring of rings) for (const cell of ring.cells) ringOfCell.set(cell, ring);
-  const busStopAt = new Map(busStops.map((stop) => [`${String(stop.cell)}:${String(stop.from)}`, stop]));
+  const busStopAt = new Map(
+    busStops.map((stop) => [`${String(stop.cell)}:${String(stop.from)}`, stop]),
+  );
 
   const signals = signalPoles(clusters);
 
@@ -636,7 +638,8 @@ export function createFleet(
     car.dy = (b.y - a.y) / length;
     const target = roadAngle(car.path, s);
     const blend = Math.min(1, (car.speed * dt) / HEADING_REACH);
-    car.heading = car.heading === undefined ? target : car.heading + wrapAngle(target - car.heading) * blend;
+    car.heading =
+      car.heading === undefined ? target : car.heading + wrapAngle(target - car.heading) * blend;
     car.rotation = nearestSprite(car.heading);
     car.tilt = wrapAngle(car.heading - spriteAngle(car.rotation));
     return (

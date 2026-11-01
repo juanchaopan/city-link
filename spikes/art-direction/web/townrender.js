@@ -41,7 +41,10 @@ function tinted(sprite, color) {
   return { canvas, ax: sprite.ax, ay: sprite.ay };
 }
 
-export function renderTown(town, { palette = palettes.sunny, cars = 40, warm = 500, busShare } = {}) {
+export function renderTown(
+  town,
+  { palette = palettes.sunny, cars = 40, warm = 500, busShare } = {},
+) {
   const { canvas, context, place } = compose(town, palette, 'current', { withGround: true });
   const draw = (sprite, px, py, level, tilt = 0) => {
     const [sx, sy] = place.at(px, py, level);
@@ -91,7 +94,17 @@ export function pngData(sheet) {
 export function pasteCrop(context, source, [sx, sy], box, scale, label) {
   const { x, y, w, h } = box;
   context.imageSmoothingEnabled = false;
-  context.drawImage(source, sx - w / scale / 2, sy - h / scale / 2, w / scale, h / scale, x, y, w, h);
+  context.drawImage(
+    source,
+    sx - w / scale / 2,
+    sy - h / scale / 2,
+    w / scale,
+    h / scale,
+    x,
+    y,
+    w,
+    h,
+  );
   context.fillStyle = '#ffffff';
   context.font = '700 24px "Microsoft YaHei"';
   context.fillText(label, x + 8, y + 30);

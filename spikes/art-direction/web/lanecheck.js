@@ -1,6 +1,6 @@
 import { palettes } from './kit/palettes.js';
 import { maskScenes } from './ixchecks.js';
-import { CLASS, compose, frameOf, MASK, spriteOf } from './roadscene.js';
+import { CLASS, compose, frameOf, spriteOf } from './roadscene.js';
 import { generateCity } from './sim/city.js';
 import { generateRoadDemo } from './sim/roaddemo.js';
 import { template, templateFootprint, templateNames } from './sim/interchange.js';
@@ -157,7 +157,11 @@ const VIEWS = [
 
 window.renderLaneSheet = (rows) => {
   const city = generateRoadDemo();
-  const { canvas, context: paint, place } = compose(worldOf(city), palettes.sunny, 'current', {
+  const {
+    canvas,
+    context: paint,
+    place,
+  } = compose(worldOf(city), palettes.sunny, 'current', {
     withGround: true,
   });
   const { sorted } = sceneItems({ objects: city.objects }, frameOf(palettes.sunny));

@@ -52,8 +52,7 @@ function spanAt(points, v) {
 const baseOf = (item) => item.base ?? 0;
 const onDeck = (deck, other) => deck.deck && other.car && baseOf(other) > baseOf(deck) - ON_DECK;
 const pierUnder = (pier, deck) => pier.pier && deck.deck && baseOf(deck) > pier.peak - ON_DECK;
-const sameLevelDecks = (a, b) =>
-  a.deck && b.deck && Math.abs(baseOf(a) - baseOf(b)) < STACKED;
+const sameLevelDecks = (a, b) => a.deck && b.deck && Math.abs(baseOf(a) - baseOf(b)) < STACKED;
 
 /** 平面上靠后的 behind，最低的像素也在 front 最高的像素上方。没有高度数据的物体不算。 */
 function clearOf(behind, spanBehind, front, spanFront) {

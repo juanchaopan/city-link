@@ -59,7 +59,8 @@ export function createDrawList(statics) {
         if (seen[index] === tick) continue;
         seen[index] = tick;
         const other = statics[index];
-        if (overlapBoxes(item, other) && compareDepth(other, item) < 0) low = Math.max(low, index + 1);
+        if (overlapBoxes(item, other) && compareDepth(other, item) < 0)
+          low = Math.max(low, index + 1);
       }
     });
     return low;
@@ -96,7 +97,8 @@ export function createDrawList(statics) {
     const { order } = topological(cars, after, blockers);
     order.forEach((index, rank) => {
       cars[index].rank = rank;
-      for (const next of after[index]) cars[next].slot = Math.max(cars[next].slot, cars[index].slot);
+      for (const next of after[index])
+        cars[next].slot = Math.max(cars[next].slot, cars[index].slot);
     });
     return order.map((index) => cars[index]).sort((a, b) => a.slot - b.slot || a.rank - b.rank);
   };

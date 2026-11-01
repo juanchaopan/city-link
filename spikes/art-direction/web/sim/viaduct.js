@@ -188,5 +188,14 @@ export function viaductWorld(route, roads, N) {
     ...placed.flatMap(({ name, cx, cy }) => footprintCells(name, cx, cy, N)),
     ...cells.map((cell) => [cell.x, cell.y]),
   ].map(([cx, cy]) => cy * N + cx);
-  return { route, placed, cells, lanes, links: viaductLinks(route, lanes, N), low, objects, reserved };
+  return {
+    route,
+    placed,
+    cells,
+    lanes,
+    links: viaductLinks(route, lanes, N),
+    low,
+    objects,
+    reserved,
+  };
 }

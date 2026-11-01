@@ -58,7 +58,9 @@ export function buildStopLine(kind, dir, P) {
   const b = new Builder(hashString(`stop${kind}${String(dir)}`));
   const half = ROAD_SPEC[kind].deck / 2;
   const color = linear(P.road.line);
-  b.at(0, 0, 0, rotationOf(dir), (c) => quad(c, -STOP_DEPTH / 2, STOP_DEPTH / 2, -half + 0.01, -0.01, color));
+  b.at(0, 0, 0, rotationOf(dir), (c) =>
+    quad(c, -STOP_DEPTH / 2, STOP_DEPTH / 2, -half + 0.01, -0.01, color),
+  );
   return b;
 }
 
@@ -106,7 +108,10 @@ function splitter(b, dir, P) {
       [SPLITTER_TO, -w],
       [SPLITTER_TO, w],
     ];
-    c.poly(shape.map(([x, z]) => [x, y, z]), top);
+    c.poly(
+      shape.map(([x, z]) => [x, y, z]),
+      top,
+    );
     for (let i = 0; i < 3; i += 1) {
       const [ax, az] = shape[i];
       const [bx, bz] = shape[(i + 1) % 3];

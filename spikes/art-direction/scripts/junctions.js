@@ -30,7 +30,9 @@ const { rows, failures } = await page.evaluate(
 );
 console.log(['类型', ...failures, '结果'].join('\t'));
 for (const row of rows) {
-  console.log([row.name, ...failures.map((key) => row[key]), row.pass ? '通过' : '不通过'].join('\t'));
+  console.log(
+    [row.name, ...failures.map((key) => row[key]), row.pass ? '通过' : '不通过'].join('\t'),
+  );
   if (!row.pass) console.log('  ', JSON.stringify(row.examples).slice(0, 300));
 }
 const totals = Object.fromEntries(
@@ -38,7 +40,10 @@ const totals = Object.fromEntries(
 );
 console.log('合计', JSON.stringify(totals));
 writeFileSync(`out/${reportName}.json`, JSON.stringify({ totals, rows }, null, 2));
-write('out/r8-junction-sheet.png', await page.evaluate((list) => window.renderJunctionSheet(list), rows));
+write(
+  'out/r8-junction-sheet.png',
+  await page.evaluate((list) => window.renderJunctionSheet(list), rows),
+);
 write('out/r8-slope.png', await page.evaluate((list) => window.renderSlopeSheet(list), rows));
 await browser.close();
 server.close();

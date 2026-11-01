@@ -13,7 +13,12 @@ const DEFAULT_ZOOM = { 64: 0.078, 128: 0.04 };
 /** 存档里要留的东西：路网、分区和物业，别的都能重新生成。 */
 function saveBytes(city) {
   const state = {
-    roads: [...city.roads.entries()].map(([id, { road, highway, arterial }]) => [id, road, highway, arterial]),
+    roads: [...city.roads.entries()].map(([id, { road, highway, arterial }]) => [
+      id,
+      road,
+      highway,
+      arterial,
+    ]),
     parcels: city.parcels.parcels.map((parcel) => [
       parcel.id,
       parcel.zone,
@@ -41,7 +46,14 @@ function spritesInView(city, zoom) {
   const center = city.N / 2;
   const inView = (x, y) =>
     Math.abs((x - y) * 64) < halfW && Math.abs((x + y - 2 * center) * 32) < halfH;
-  const cells = [...city.ground, ...city.overlays, ...city.walks, ...city.curbs, ...city.decks, ...city.marks];
+  const cells = [
+    ...city.ground,
+    ...city.overlays,
+    ...city.walks,
+    ...city.curbs,
+    ...city.decks,
+    ...city.marks,
+  ];
   const ground = cells.filter(({ x, y }) => inView(x, y)).length;
   const objects = city.objects.reduce(
     (sum, { px, py, modules }) => sum + (inView(px, py) ? (modules?.length ?? 1) : 0),

@@ -387,7 +387,10 @@ window.renderJunctionSheet = (rows) => {
   const cropH = 420;
   const labelH = 44;
   const lines = Math.ceil(JUNCTION_CASES.length / columns);
-  const sheet = new OffscreenCanvas(columns * (cropW + 12) + 12, lines * (cropH + labelH + 12) + 12);
+  const sheet = new OffscreenCanvas(
+    columns * (cropW + 12) + 12,
+    lines * (cropH + labelH + 12) + 12,
+  );
   const context = sheet.getContext('2d');
   context.fillStyle = '#20303a';
   context.fillRect(0, 0, sheet.width, sheet.height);

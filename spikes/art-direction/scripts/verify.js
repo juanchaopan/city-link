@@ -301,9 +301,7 @@ function metroGeometryCheck(city) {
   const hallCells = metro.halls.map(({ id }) => id);
   const linePoints = (hall) => {
     const line = metro.lines.find(({ id }) => id === hall.line);
-    return Math.min(
-      ...line.path.map(([x, y]) => Math.hypot(x - hall.x - 0.5, y - hall.y - 0.5)),
-    );
+    return Math.min(...line.path.map(([x, y]) => Math.hypot(x - hall.x - 0.5, y - hall.y - 0.5)));
   };
   const radii = metro.lines.map(({ path }) => tightestRadius(path));
   const brokenLine = railLine(
@@ -333,7 +331,8 @@ function metroGeometryCheck(city) {
     }).length,
     tightCorners: metro.lines.reduce((sum, { tight }) => sum + tight.length, 0),
     tightCornerCaught: brokenLine.tight.length > 0,
-    polylineRadiusIsZero: tightestRadius(metro.lines[1].points.map(([x, y]) => [x, y])) === Infinity,
+    polylineRadiusIsZero:
+      tightestRadius(metro.lines[1].points.map(([x, y]) => [x, y])) === Infinity,
   };
 }
 

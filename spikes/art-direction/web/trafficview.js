@@ -202,7 +202,10 @@ export function createTrafficView({ city, renderer, screenOf }) {
     const [dx, dy] = cellCenter(parcel.access, N);
     const from = screen(parcel.px, parcel.py);
     const to = screen(dx, dy);
-    marks.moveTo(...from).lineTo(...to).stroke({ color: DOOR, width: 8 });
+    marks
+      .moveTo(...from)
+      .lineTo(...to)
+      .stroke({ color: DOOR, width: 8 });
     marks.circle(...from, 14).fill(DOOR);
     return routes;
   };

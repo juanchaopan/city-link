@@ -20,7 +20,8 @@ function touchesRoad(polygon, field) {
 export function clearLots(parcels, field) {
   let cleared = 0;
   for (const parcel of parcels) {
-    const small = parcel.shape === 'triangle' || (parcel.shape === 'green' && parcel.use !== 'lawn');
+    const small =
+      parcel.shape === 'triangle' || (parcel.shape === 'green' && parcel.use !== 'lawn');
     if (!small || !parcel.polygon || !touchesRoad(parcel.polygon, field)) continue;
     parcel.shape = 'green';
     parcel.use = 'bare';

@@ -54,8 +54,8 @@ export function junctionRays(paths) {
 function cellShape(entry, x, y) {
   const paths = cellPaths(entry.road, entry.highway, entry.arterial);
   const lines = paths.map((path) => ({
-    walk: (ROAD_SPEC[path.kind].walk) / 2,
-    deck: (ROAD_SPEC[path.kind].deck) / 2,
+    walk: ROAD_SPEC[path.kind].walk / 2,
+    deck: ROAD_SPEC[path.kind].deck / 2,
     points: path.points.map(([px, py]) => [px + x + 0.5, py + y + 0.5]),
   }));
   const rays = spokesOf(entry.road | entry.highway).length >= 3 ? junctionRays(paths) : [];

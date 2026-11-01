@@ -27,7 +27,10 @@ function stopOf(id, dir, kind, N) {
   const px = x - uy * side;
   const py = y + ux * side;
   const [along, across] = SHELTER;
-  const corner = (a, c) => [px + ux * a * along - uy * c * across, py + uy * a * along + ux * c * across];
+  const corner = (a, c) => [
+    px + ux * a * along - uy * c * across,
+    py + uy * a * along + ux * c * across,
+  ];
   return {
     key: `bs-${String(dir)}`,
     cell: id,

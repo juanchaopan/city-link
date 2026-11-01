@@ -98,11 +98,13 @@ function inspectNode(world, data, width, height, place, [cx, cy]) {
     samples: samples.length,
     dirty: dirty.length,
     worst: dirty.reduce((worst, [, , value]) => Math.max(worst, Math.abs(value - main)), 0),
-    examples: dirty.slice(0, 3).map(([px, py, value]) => [
-      Math.round(px * 100) / 100,
-      Math.round(py * 100) / 100,
-      Math.round(value),
-    ]),
+    examples: dirty
+      .slice(0, 3)
+      .map(([px, py, value]) => [
+        Math.round(px * 100) / 100,
+        Math.round(py * 100) / 100,
+        Math.round(value),
+      ]),
   };
 }
 
@@ -141,7 +143,10 @@ function cityCases(city) {
     const roads = cutRoads(city, x, y);
     const key = [...roads.entries()]
       .sort((a, b) => a[0] - b[0])
-      .map(([id, { road, highway, arterial }]) => `${String(id)}:${String(road)}:${String(highway)}:${String(arterial)}`)
+      .map(
+        ([id, { road, highway, arterial }]) =>
+          `${String(id)}:${String(road)}:${String(highway)}:${String(arterial)}`,
+      )
       .join('|');
     if (!seen.has(key)) seen.set(key, { roads, x, y });
   }

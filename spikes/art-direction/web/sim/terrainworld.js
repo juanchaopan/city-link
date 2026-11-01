@@ -48,7 +48,22 @@ export function roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates
     linked,
     rings,
   });
-  const surface = surfaceOf({ N, roads, cornersOf, levelOf, isFlat, isWater, grades: sprites.grades });
+  const surface = surfaceOf({
+    N,
+    roads,
+    cornersOf,
+    levelOf,
+    isFlat,
+    isWater,
+    grades: sprites.grades,
+  });
   const junctions = junctionPlan({ N, roads, surface, rings });
-  return { sprites, surface, rings, blockedRings: blocked, junctions, marks: markSprites(junctions.legs) };
+  return {
+    sprites,
+    surface,
+    rings,
+    blockedRings: blocked,
+    junctions,
+    marks: markSprites(junctions.legs),
+  };
 }

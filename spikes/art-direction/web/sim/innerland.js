@@ -31,7 +31,7 @@ function frontOf(id, roads, N) {
   return null;
 }
 
-/** 从贴普通路的格子往里连成片，碰不到普通路的格子不算。 */
+/** 从贴普通路的格子往里连成片，碰不到普通路的格子不算。片区一边走一边长，for-of 会走到新加进来的格子。 */
 function regionsOf({ name, cx, cy }, roads, N) {
   const land = new Set(
     clearCells(name)
@@ -45,8 +45,7 @@ function regionsOf({ name, cx, cy }, roads, N) {
     if (seen.has(start)) continue;
     seen.add(start);
     const region = [start];
-    for (let head = 0; head < region.length; head += 1) {
-      const id = region[head];
+    for (const id of region) {
       for (const [dx, dy] of SIDES) {
         const next = id + dy * N + dx;
         if (land.has(next) && !seen.has(next)) {

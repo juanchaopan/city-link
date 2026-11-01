@@ -293,13 +293,7 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
       addObject(`boat-${x % 2 === 0 ? '0' : '4'}`, x + 0.5, r + 0.5, 0, cellSquare(x, r));
   }
   const dockX = Math.round(center + 6 * s) + 1;
-  addObject(
-    'dock-0',
-    dockX + 0.5,
-    riverAt(dockX) - 0.5,
-    0,
-    cellSquare(dockX, riverAt(dockX) - 1),
-  );
+  addObject('dock-0', dockX + 0.5, riverAt(dockX) - 0.5, 0, cellSquare(dockX, riverAt(dockX) - 1));
 
   return {
     N,

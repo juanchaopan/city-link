@@ -19,18 +19,86 @@ const legs = (list) => (w) => {
   for (const [dx, dy] of list) w('road', toward(dx, dy));
 };
 const LEGS = {
-  five: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1]],
-  six: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]],
-  seven: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1]],
-  eight: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]],
+  five: [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+  ],
+  six: [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+    [-1, -1],
+  ],
+  seven: [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+    [-1, -1],
+    [1, -1],
+  ],
+  eight: [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+  ],
 };
 
 export const JUNCTION_CASES = [
-  { name: 'T 字', focus: [c, c], draw: (w) => { w('road', row(c)); w('road', toward(0, 1)); } },
-  { name: '十字', focus: [c, c], draw: (w) => { w('road', row(c)); w('road', column(c)); } },
-  { name: '四车道十字', focus: [c, c], draw: (w) => { w('arterial', row(c)); w('road', column(c)); } },
-  { name: '45° 的 T', focus: [c, c], draw: (w) => { w('road', row(c)); w('road', toward(1, 1)); } },
-  { name: '直斜交叉', focus: [c, c], draw: (w) => { w('road', row(c)); w('road', [[2, 2], [14, 14]]); } },
+  {
+    name: 'T 字',
+    focus: [c, c],
+    draw: (w) => {
+      w('road', row(c));
+      w('road', toward(0, 1));
+    },
+  },
+  {
+    name: '十字',
+    focus: [c, c],
+    draw: (w) => {
+      w('road', row(c));
+      w('road', column(c));
+    },
+  },
+  {
+    name: '四车道十字',
+    focus: [c, c],
+    draw: (w) => {
+      w('arterial', row(c));
+      w('road', column(c));
+    },
+  },
+  {
+    name: '45° 的 T',
+    focus: [c, c],
+    draw: (w) => {
+      w('road', row(c));
+      w('road', toward(1, 1));
+    },
+  },
+  {
+    name: '直斜交叉',
+    focus: [c, c],
+    draw: (w) => {
+      w('road', row(c));
+      w('road', [
+        [2, 2],
+        [14, 14],
+      ]);
+    },
+  },
   { name: '五向', focus: [c, c], draw: legs(LEGS.five) },
   { name: '六向', focus: [c, c], draw: legs(LEGS.six) },
   { name: '七向', focus: [c, c], draw: legs(LEGS.seven) },
@@ -58,7 +126,16 @@ export const JUNCTION_CASES = [
     name: '高地上的路口',
     focus: [c, c],
     heights: (x, y) => Math.max(0, Math.min(2, Math.min(x - 2, 14 - x, y - 2, 14 - y))),
-    draw: (w) => { w('road', [[4, c], [12, c]]); w('road', [[c, 4], [c, 12]]); },
+    draw: (w) => {
+      w('road', [
+        [4, c],
+        [12, c],
+      ]);
+      w('road', [
+        [c, 4],
+        [c, 12],
+      ]);
+    },
   },
   {
     name: '坡上的路',
@@ -70,12 +147,20 @@ export const JUNCTION_CASES = [
     name: '斜穿坡的路',
     focus: [c, c],
     heights: (x, y) => Math.max(0, Math.min(3, 12 - y)),
-    draw: (w) => w('road', [[3, 13], [13, 3]]),
+    draw: (w) =>
+      w('road', [
+        [3, 13],
+        [13, 3],
+      ]),
   },
   {
     name: '锐角小三角地块',
     focus: [c, c],
     lots: true,
-    draw: (w) => { w('road', row(c)); w('road', toward(1, 1)); w('road', toward(1, -1)); },
+    draw: (w) => {
+      w('road', row(c));
+      w('road', toward(1, 1));
+      w('road', toward(1, -1));
+    },
   },
 ];

@@ -367,11 +367,11 @@ export function buildSlopeRoad(cell, corners, grade, P, layer) {
           );
         }
         if (!wallVisible && (d0 < -FACE_MIN || d1 < -FACE_MIN)) {
-          b.poly([p0, p1, toe(e1, side), toe(e0, side)], shade(fill, 0.98 + (Math.floor(i / 4) % 2) * 0.03), [
-            nx * side,
-            0.6,
-            nz * side,
-          ]);
+          b.poly(
+            [p0, p1, toe(e1, side), toe(e0, side)],
+            shade(fill, 0.98 + (Math.floor(i / 4) % 2) * 0.03),
+            [nx * side, 0.6, nz * side],
+          );
         }
       }
     }
@@ -402,11 +402,11 @@ export function buildBridge(cell, P) {
       y,
       a[1] + dz * t + nz * side * half,
     ];
-    b.poly([corner(0, 1, -0.05), corner(1, 1, -0.05), corner(1, 1, 0), corner(0, 1, 0)], deckColor, [
-      nx,
-      0,
-      nz,
-    ]);
+    b.poly(
+      [corner(0, 1, -0.05), corner(1, 1, -0.05), corner(1, 1, 0), corner(0, 1, 0)],
+      deckColor,
+      [nx, 0, nz],
+    );
     b.poly(
       [corner(0, -1, -0.05), corner(1, -1, -0.05), corner(1, -1, 0), corner(0, -1, 0)],
       deckColor,

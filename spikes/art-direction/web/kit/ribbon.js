@@ -63,7 +63,10 @@ function strip(b, frames, a, c, colorOf, up = 0, keep = () => true) {
     const near = Math.abs(a(f0) - c(f0));
     const far = Math.abs(a(f1) - c(f1));
     if (near < 1e-4 && far < 1e-4) continue;
-    b.poly([at(f0, a(f0), up), at(f1, a(f1), up), at(f1, c(f1), up), at(f0, c(f0), up)], colorOf(f0));
+    b.poly(
+      [at(f0, a(f0), up), at(f1, a(f1), up), at(f1, c(f1), up), at(f0, c(f0), up)],
+      colorOf(f0),
+    );
   }
 }
 
@@ -84,11 +87,41 @@ function surfaceColors(P) {
 export function drawSurfaceFrames(b, frames, P) {
   const color = surfaceColors(P);
   const curbOf = (width) => Math.min(CURB, width);
-  strip(b, frames, (f) => f.l, (f) => -f.r, color.deck);
-  strip(b, frames, (f) => f.l, (f) => f.l + curbOf(f.sl), () => color.curb);
-  strip(b, frames, (f) => f.l + curbOf(f.sl), (f) => f.l + f.sl, color.side);
-  strip(b, frames, (f) => -f.r, (f) => -f.r - curbOf(f.sr), () => color.curb);
-  strip(b, frames, (f) => -f.r - curbOf(f.sr), (f) => -f.r - f.sr, color.side);
+  strip(
+    b,
+    frames,
+    (f) => f.l,
+    (f) => -f.r,
+    color.deck,
+  );
+  strip(
+    b,
+    frames,
+    (f) => f.l,
+    (f) => f.l + curbOf(f.sl),
+    () => color.curb,
+  );
+  strip(
+    b,
+    frames,
+    (f) => f.l + curbOf(f.sl),
+    (f) => f.l + f.sl,
+    color.side,
+  );
+  strip(
+    b,
+    frames,
+    (f) => -f.r,
+    (f) => -f.r - curbOf(f.sr),
+    () => color.curb,
+  );
+  strip(
+    b,
+    frames,
+    (f) => -f.r - curbOf(f.sr),
+    (f) => -f.r - f.sr,
+    color.side,
+  );
 }
 
 /** 路面边线。平行车道的主线一侧画虚线，车看得出这里可以并线；外侧边线在渐变段的尖上正好接到主线的边线。 */
@@ -125,7 +158,15 @@ function drawMainLines(b, frames, P) {
   const { line, median } = surfaceColors(P);
   const up = 0.002;
   const band = (lateral, half, color, keep) =>
-    strip(b, frames, () => lateral - half, () => lateral + half, () => color, up, keep);
+    strip(
+      b,
+      frames,
+      () => lateral - half,
+      () => lateral + half,
+      () => color,
+      up,
+      keep,
+    );
   const dashed = (f0) => (f0.s / DASH_PERIOD) % 1 < DASH_ON;
   band(0, MEDIAN, median);
   for (const side of [1, -1]) {
@@ -154,12 +195,7 @@ function drawSide(b, frames, side, P) {
     const low1 = at(f1, edgeOf(f1));
     const outward = [(f0.nx + f1.nx) * side, 0, (f0.nz + f1.nz) * side];
     b.poly(
-      [
-        [low0[0], bottomOf(f0.y), low0[2]],
-        [low1[0], bottomOf(f1.y), low1[2]],
-        top1,
-        top0,
-      ],
+      [[low0[0], bottomOf(f0.y), low0[2]], [low1[0], bottomOf(f1.y), low1[2]], top1, top0],
       wall,
       outward,
     );

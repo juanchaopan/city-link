@@ -29,7 +29,14 @@ const { rows, threshold, inset } = await page.evaluate(
 console.log(`亮度差上限 ${String(threshold)}（0 到 255），离路面边 ${String(inset)} 格以内不查`);
 for (const row of rows) {
   console.log(
-    [row.name, row.nodes, row.samples, row.dirty, row.worst, row.dirty > 0 ? JSON.stringify(row.examples) : ''].join('\t'),
+    [
+      row.name,
+      row.nodes,
+      row.samples,
+      row.dirty,
+      row.worst,
+      row.dirty > 0 ? JSON.stringify(row.examples) : '',
+    ].join('\t'),
   );
 }
 const dirty = rows.reduce((sum, row) => sum + row.dirty, 0);

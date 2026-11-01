@@ -94,7 +94,10 @@ const SHEETS = {
     columns: 3,
     shots: [
       { label: '全城', query: `${CITY}&cars=0&view=traffic&zoom=0.095&x=31&y=28` },
-      { label: '高架和匝道', query: `${CITY}&cars=0&view=traffic&zoom=0.35&x=${String(x + 1)}&y=${String(row)}` },
+      {
+        label: '高架和匝道',
+        query: `${CITY}&cars=0&view=traffic&zoom=0.35&x=${String(x + 1)}&y=${String(row)}`,
+      },
       {
         label: '点一个物业',
         query: `${CITY}&cars=0&view=traffic&zoom=0.2&x=31&y=30`,
@@ -112,7 +115,11 @@ async function capture(context, { query, pick }) {
   page.on('pageerror', (error) => console.error('页面错误', error.message));
   await page.goto(`http://localhost:${String(PORT)}/web/play.html?${query}`);
   await page.waitForSelector('html[data-ready="true"]', { state: 'attached', timeout: 120000 });
-  if (pick) console.log('物业的车走的路段数', await page.evaluate((point) => window.pickParcel(...point), pick));
+  if (pick)
+    console.log(
+      '物业的车走的路段数',
+      await page.evaluate((point) => window.pickParcel(...point), pick),
+    );
   await page.waitForTimeout(900);
   const shot = await page.screenshot({ type: 'png' });
   await page.close();
