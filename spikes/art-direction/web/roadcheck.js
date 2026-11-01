@@ -10,6 +10,7 @@ import { cellPaths, DIRECTIONS, ROAD_SPEC, spokesOf } from './sim/network.js';
 // 再和遮罩配色下读出来的层比较。边界两侧留一点容差，容差以内的像素不计。
 // 陡坡在屏幕上被压扁，1 像素的取整就对应较大的横向距离，所以坡路的容差放宽，车道内的判断不放宽。
 // 桥头的栏杆会挡住靠近相机一侧的一点路面，这一处按遮挡处理，不算错误。
+// 断头路的平头只查真正的断头：路进了立交占地就由立交的模板接着画，那一格不是断头。
 // 默认城市 128×128 整张拼不下，按 64 格见方的块逐块拼、逐块查，每块只查落在这一块里的路格；
 // 旧版本只跑验收样例，证明检查抓得到圆头和车道里的人行道就够了。
 
@@ -245,13 +246,13 @@ function inspect(world, mode, region = [0, 0, world.N, world.N]) {
     }
   }
 
-  // 断头路：平切线外面不能有路面。旧版本的圆头会越过这条线。
+  // 断头路：平切线外面不能有路面。旧版本的圆头会越过这条线。进了立交占地的路由模板接着画，不算断头。
   for (const [id, { road, highway }] of world.sprites.cells) {
     const spokes = spokesOf(road | highway);
     const cellX = id % world.N;
     const cellY = Math.floor(id / world.N);
     if (spokes.length !== 1 || world.isWater(cellX, cellY)) continue;
-    if (!insideRegion(region, cellX, cellY)) continue;
+    if (!insideRegion(region, cellX, cellY) || world.covered?.has(id)) continue;
     const [dx, dy] = DIRECTIONS[(spokes[0] + 4) % 8];
     const length = Math.hypot(dx, dy);
     const half = ROAD_SPEC[highway ? 'highway' : 'road'].walk / 2;
