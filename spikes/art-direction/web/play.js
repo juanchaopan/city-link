@@ -19,7 +19,7 @@ import { palettes } from './kit/palettes.js';
 
 // 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图，
 // 以及四级道路的立交场景。车流和红绿灯是纯视觉层，不改变任何结算结果。
-// 缩小到 CAR_MIN_ZOOM 以下是鸟瞰，车只有几个像素大，这时不画车也不模拟车流。
+// 缩小到 CAR_MIN_ZOOM 以下是鸟瞰，车只有几个像素大，这时不画车也不模拟车流；交通视图的箭头同理。
 
 const params = new URLSearchParams(location.search);
 const sceneName = params.get('scene') ?? 'city';
@@ -180,6 +180,7 @@ function applyCamera() {
   scene.setView(box);
   vehicles?.setView(zoom >= CAR_MIN_ZOOM ? box : null);
   icons?.setZoom(zoom);
+  trafficView?.setZoom(zoom);
   if (!vehicles) scene.compose([]);
 }
 applyCamera();
@@ -252,7 +253,7 @@ let pinch = null;
 let pressed = null;
 const canvas = app.canvas;
 const zoomAt = (factor, cx, cy) => {
-  const next = Math.max(0.05, Math.min(1.4, zoom * factor));
+  const next = Math.max(0.03, Math.min(1.4, zoom * factor));
   const ratio = next / zoom;
   offset.x = cx - window.innerWidth / 2 - (cx - window.innerWidth / 2 - offset.x) * ratio;
   offset.y = cy - window.innerHeight / 2 - (cy - window.innerHeight / 2 - offset.y) * ratio;
@@ -352,6 +353,13 @@ window.sceneStats = {
   arrows: trafficView?.arrowCount ?? 0,
   icons: icons?.count ?? 0,
 };
+window.viewStats = () => ({
+  zoom,
+  arrowsShown: trafficView?.arrowsShown() ?? 0,
+  iconGap: icons ? icons.nearest(zoom) : null,
+  iconSize: icons?.size ?? null,
+  staticsInView: scene.inView(),
+});
 window.trafficStats = () =>
   vehicles
     ? {
@@ -365,6 +373,7 @@ window.trafficStats = () =>
     : null;
 
 window.setHour = setTime;
+window.setZoom = (next) => zoomAt(next / zoom, window.innerWidth / 2, window.innerHeight / 2);
 
 window.measureFps = (seconds, cycleDay) =>
   new Promise((resolve) => {

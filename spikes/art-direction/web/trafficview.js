@@ -4,6 +4,7 @@ import { parcelRoutes } from './sim/traffic.js';
 
 // 交通视图。路面按负荷染色，宽度就是路面宽度，形状贴着真实路形；高速、快速路、高架和匝道都在，高架画在它真实的高度上。
 // 箭头沿着每个方向流动，流速表示拥堵：不堵时跑得快，接近饱和时几乎不动。箭头是一批粒子，全城一起动。
+// 缩小到 ARROW_MIN_ZOOM 以下时只留路面颜色：箭头在屏幕上只剩几个像素，一片碎点反而看不出哪条路堵，放大再显示。
 // 点一个物业才显示它的门到路的箭头，并把它的车走的路描出来，平时路面上没有这些线。
 
 const LANE_OFFSET = { road: 0.115, arterial: 0.25, highway: 0.29 };
@@ -15,6 +16,7 @@ const CHUNK = 1;
 const HIGHLIGHT = 0xffffff;
 const DOOR = 0x1f3a4d;
 const HIGHLIGHT_ALPHA = 0.9;
+export const ARROW_MIN_ZOOM = 0.2;
 
 function loadColor(ratio) {
   const load = Math.min(1, ratio / FULL_LOAD);
@@ -178,12 +180,17 @@ export function createTrafficView({ city, renderer, screenOf }) {
   };
 
   const step = (dt) => {
+    if (!arrows.visible) return;
     for (const track of tracks) {
       track.phase = (track.phase + track.rate * dt) % 1;
       placeArrow(track);
     }
   };
   step(0);
+
+  const setZoom = (zoom) => {
+    arrows.visible = zoom >= ARROW_MIN_ZOOM;
+  };
 
   /** 点中一个物业：门到路的箭头，加上它的车走的路。没点中时清掉。 */
   const select = (parcel) => {
@@ -210,5 +217,12 @@ export function createTrafficView({ city, renderer, screenOf }) {
     return routes;
   };
 
-  return { root, step, select, arrowCount: tracks.length };
+  return {
+    root,
+    step,
+    select,
+    setZoom,
+    arrowCount: tracks.length,
+    arrowsShown: () => (arrows.visible ? tracks.length : 0),
+  };
 }
