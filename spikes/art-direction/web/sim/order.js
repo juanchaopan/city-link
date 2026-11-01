@@ -6,7 +6,8 @@
 // 车贴着路边的物体走过时，车身的一角会探进站牌或楼的占地一点点，这不是上下两层：高差不到一层的两样东西
 // 都不是桥面时按前后排，车在站牌后面就先画车。
 // 主线和旁边的匝道不是上下两层、平面上又叠在一起时，匝道在哪一侧都排在主线后面，路面才盖得住主线的路肩；
-// 平面上分得开的两块就按前后排，匝道在主线身后的一段不会被硬排到主线前面。
+// 分岔口两块桥面可能只叠着一角，所以这种比较看三条视线。三条都分得开的两块按前后排，
+// 匝道在主线身后的一段不会被硬排到主线前面。
 // 桥墩的顶在桥面下面，屏幕上碰得到的同一层桥面都排在桥墩后面。桥墩的占地只算墩身，横梁比占地宽，所以这条规则不看占地。
 // 车和桥面比别的物体多两条规则。平面上靠后的物体投影整个在靠前物体的上方时，两者在屏幕上碰不到，这一对不排：
 // 桥上的车和它前面的桥墩、桥下的车和它后面的桥面、桥下的公交站和桥面都是这样，硬排只会和别的物体抢位置。
@@ -51,6 +52,7 @@ const baseOf = (item) => item.base ?? 0;
 const onDeck = (deck, other) => deck.deck && other.car && baseOf(other) > baseOf(deck) - ON_DECK;
 const pierUnder = (pier, deck) => pier.pier && deck.deck && baseOf(deck) > pier.peak - ON_DECK;
 const sameLevelDecks = (a, b) => a.deck && b.deck && Math.abs(baseOf(a) - baseOf(b)) < STACKED;
+const mainAndRamp = (a, b) => sameLevelDecks(a, b) && a.main !== b.main;
 
 /** 平面上靠后的 behind，最低的像素也在 front 最高的像素上方。没有高度数据的物体不算。 */
 function clearOf(behind, spanBehind, front, spanFront) {
@@ -62,7 +64,7 @@ function clearOf(behind, spanBehind, front, spanFront) {
 function stackedOrder(a, b, spanA, spanB) {
   if (onDeck(a, b)) return -1;
   if (onDeck(b, a)) return 1;
-  if (sameLevelDecks(a, b) && a.main !== b.main) return a.main ? -1 : 1;
+  if (mainAndRamp(a, b)) return a.main ? -1 : 1;
   const gap = Math.abs(baseOf(a) - baseOf(b));
   const stacked = a.deck || b.deck ? gap > EPS && !sameLevelDecks(a, b) : gap > ON_DECK;
   if (stacked) return baseOf(a) < baseOf(b) ? -1 : 1;
@@ -84,6 +86,13 @@ function acrossLevels(a, b, middle, quarter, aFirst) {
   return aFirst ? -1 : 1;
 }
 
+/** 主线和匝道在中间那条视线上分得开，两边的视线上叠着一角时也算叠在一起。 */
+function cornerOverlap(a, b, middle, quarter) {
+  return [middle - quarter, middle + quarter].some((v) =>
+    overlapping(spanAt(a.view, v), spanAt(b.view, v)),
+  );
+}
+
 /** 这一对用得上「投影碰不到」：一边是桥面或车，两辆车、两块桥面都要不在同一层。 */
 function mayMissEachOther(a, b) {
   if (a.car && b.car) return Math.abs(baseOf(a) - baseOf(b)) > ON_DECK;
@@ -99,11 +108,13 @@ export function compareDepth(a, b) {
   const highV = Math.min(a.maxV, b.maxV);
   if (lowV >= highV - EPS) return 0;
   const middle = (lowV + highV) / 2;
+  const quarter = (highV - lowV) / 4;
   const spanA = spanAt(a.view, middle);
   const spanB = spanAt(b.view, middle);
   if (overlapping(spanA, spanB)) return stackedOrder(a, b, spanA, spanB);
+  if (mainAndRamp(a, b) && cornerOverlap(a, b, middle, quarter)) return a.main ? -1 : 1;
   const aFirst = spanA[1] <= spanB[0] + EPS;
-  if (mayMissEachOther(a, b)) return acrossLevels(a, b, middle, (highV - lowV) / 4, aFirst);
+  if (mayMissEachOther(a, b)) return acrossLevels(a, b, middle, quarter, aFirst);
   return aFirst ? -1 : 1;
 }
 

@@ -5,17 +5,19 @@ import { ELEVATED } from './rampline.js';
 // 把一个立交切成一块块小精灵，每块都能单独参加遮挡排序。整张画成一张时，车和灯杆没法插到匝道中间去。
 // 贴地的路面按格子合成一块，画在路面层，所有物体都在它上面。
 // 离地的路面按「一条线在一格里的一段」切，每段是一个物体，有自己的占地和高度。
-// 相邻两块在接缝处多画一小段，互相盖住，不留透明的缝。
+// 相邻两块在接缝处多画两个节点，互相盖住，不留透明的缝。主线的节点要密：一块画出去的部分不在占地里，
+// 排序看不见它，节点稀了主线的路肩会盖到隔壁格的匝道上。
 // 平行车道的路面盖在主线的路肩上，所以同高时匝道排在主线后面画，main 标出主线的块。
 
 const LOW = 0.2;
 const RAMP_ABOVE = 0.01;
+const MAIN_STEP = 0.1;
 
 function mainlinePoints(name) {
   const { mainline } = TEMPLATES[name];
   if (mainline.length === 0) return [];
   const [[ax, az], [bx, bz]] = mainline;
-  const steps = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.5);
+  const steps = Math.ceil(Math.hypot(bx - ax, bz - az) / MAIN_STEP);
   const points = [];
   for (let i = 0; i <= steps; i += 1) {
     const t = i / steps;

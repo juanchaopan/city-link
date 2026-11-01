@@ -35,9 +35,9 @@
       "driveHoles": 0,
       "openingSamples": 650,
       "curbInOpening": 0,
-      "carSamples": 6,
+      "carSamples": 5,
       "carsOffCenter": 0,
-      "worstCarOffset": 0.03,
+      "worstCarOffset": 0.02,
       "pass": true
     },
     {
@@ -55,7 +55,7 @@
       "driveHoles": 0,
       "openingSamples": 1236,
       "curbInOpening": 0,
-      "carSamples": 16,
+      "carSamples": 17,
       "carsOffCenter": 0,
       "worstCarOffset": 0.03,
       "pass": true
