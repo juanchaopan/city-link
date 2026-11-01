@@ -2,7 +2,7 @@ import { LEVEL } from './kit/bake.js';
 import { palettes } from './kit/palettes.js';
 import { heightAt, hermite } from './kit/tiles.js';
 import { CASES } from './roadcases.js';
-import { compose, MASK, worldOf, worldOfCity } from './roadscene.js';
+import { compose, insideRegion, MASK, regionsOf, worldOf, worldOfCity } from './roadscene.js';
 import { generateCity } from './sim/city.js';
 import { cellPaths, DIRECTIONS, ROAD_SPEC, spokesOf } from './sim/network.js';
 
@@ -10,12 +10,14 @@ import { cellPaths, DIRECTIONS, ROAD_SPEC, spokesOf } from './sim/network.js';
 // 再和遮罩配色下读出来的层比较。边界两侧留一点容差，容差以内的像素不计。
 // 陡坡在屏幕上被压扁，1 像素的取整就对应较大的横向距离，所以坡路的容差放宽，车道内的判断不放宽。
 // 桥头的栏杆会挡住靠近相机一侧的一点路面，这一处按遮挡处理，不算错误。
+// 默认城市 128×128 整张拼不下，按 64 格见方的块逐块拼、逐块查，每块只查落在这一块里的路格；
+// 旧版本只跑验收样例，证明检查抓得到圆头和车道里的人行道就够了。
 
 const CLASS = { empty: 0, deck: 1, walk: 2, curb: 3, other: 4 };
 const MARGIN = 0.03;
 const SLOPE_MARGIN = 0.1;
 const FILLET_ZONE = 1.5;
-const CITY_SIZE = 64;
+const CITY_SIZE = 128;
 
 /** 标线是红加绿，混在车道上还是车道；只有蓝色分量明显或者绿色压过红色才算别的层。 */
 function classify(r, g, b, a) {
@@ -96,6 +98,8 @@ function linesOf(world, mode) {
       };
       lines.push({
         cell: id,
+        x,
+        y,
         kind: path.kind,
         points,
         heightOf,
@@ -158,8 +162,9 @@ function bucketsOf(lines) {
   return buckets;
 }
 
-function inspect(world, mode) {
-  const { canvas, context, place } = compose(world, MASK, mode, { withGround: false });
+/** 查一块：只查落在 region 里的路格，邻格的路照常参与"应该是什么"的判断。 */
+function inspect(world, mode, region = [0, 0, world.N, world.N]) {
+  const { canvas, context, place } = compose(world, MASK, mode, { withGround: false, region });
   const read = readPixels(context, canvas.width, canvas.height);
   const lines = linesOf(world, mode);
   const buckets = bucketsOf(lines);
@@ -187,6 +192,7 @@ function inspect(world, mode) {
     ]);
   let samples = 0;
   for (const line of lines) {
+    if (!insideRegion(region, line.x, line.y)) continue;
     for (let k = 0; k < line.points.length - 1; k += 1) {
       const [ax, ay] = line.points[k];
       const [bx, by] = line.points[k + 1];
@@ -242,17 +248,20 @@ function inspect(world, mode) {
   // 断头路：平切线外面不能有路面。旧版本的圆头会越过这条线。
   for (const [id, { road, highway }] of world.sprites.cells) {
     const spokes = spokesOf(road | highway);
-    if (spokes.length !== 1 || world.isWater(id % world.N, Math.floor(id / world.N))) continue;
+    const cellX = id % world.N;
+    const cellY = Math.floor(id / world.N);
+    if (spokes.length !== 1 || world.isWater(cellX, cellY)) continue;
+    if (!insideRegion(region, cellX, cellY)) continue;
     const [dx, dy] = DIRECTIONS[(spokes[0] + 4) % 8];
     const length = Math.hypot(dx, dy);
     const half = ROAD_SPEC[highway ? 'highway' : 'road'].walk / 2;
-    const cx = (id % world.N) + 0.5;
-    const cy = Math.floor(id / world.N) + 0.5;
+    const cx = cellX + 0.5;
+    const cy = cellY + 0.5;
     for (let u = 0.035; u < half + 0.1; u += 0.01) {
       for (let v = -half; v <= half; v += 0.01) {
         const px = cx + (dx * u - dy * v) / length;
         const py = cy + (dy * u + dx * v) / length;
-        const [sx, sy] = place.at(px, py, world.levelOf(id % world.N, Math.floor(id / world.N)));
+        const [sx, sy] = place.at(px, py, world.levelOf(cellX, cellY));
         const x = Math.round(sx);
         const y = Math.round(sy);
         const found = read(x, y);
@@ -266,6 +275,7 @@ function inspect(world, mode) {
   let sharp = 0;
   const sharpList = [];
   for (const junction of junctions) {
+    if (!insideRegion(region, Math.floor(junction.x), Math.floor(junction.y))) continue;
     const { spokes } = junction;
     for (let i = 0; i < spokes.length; i += 1) {
       const a = spokes[i];
@@ -384,12 +394,17 @@ window.runChecks = (mode) => {
     for (const variant of entry.variants) add(total, inspect(worldOf(variant), mode));
     rows.push({ name: entry.name, ...total, pass: errorCount(total) === 0 });
   }
-  const total = add({}, inspect(worldOfCity(generateCity(CITY_SIZE)), mode));
-  rows.push({
-    name: `全图 ${String(CITY_SIZE)}×${String(CITY_SIZE)}`,
-    ...total,
-    pass: errorCount(total) === 0,
-  });
+  if (mode === 'current') {
+    const city = worldOfCity(generateCity(CITY_SIZE));
+    const total = {};
+    for (const region of regionsOf(CITY_SIZE)) add(total, inspect(city, mode, region));
+    total.variants = 1;
+    rows.push({
+      name: `全图 ${String(CITY_SIZE)}×${String(CITY_SIZE)}`,
+      ...total,
+      pass: errorCount(total) === 0,
+    });
+  }
   return rows;
 };
 

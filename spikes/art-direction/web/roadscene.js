@@ -12,7 +12,8 @@ import { roadWorld, terrainOf } from './sim/terrainworld.js';
 
 // 路面验收用的场景：把路面按游戏里的方式烘焙成精灵，再按游戏里的层序拼到一张画布上。
 // mode 为 legacy 时用保留的旧着色器和逐格绘制的旧层序，用来证明检查抓得到用户报告过的错误。
-// region 只拼地图的一块，查局部时不用付整张地图的内存。
+// region 只拼地图的一块，查局部时不用付整张地图的内存；块外 REGION_MARGIN 格以内的精灵也画，块边上的像素才完整。
+// 128×128 整张拼不下：画布超过浏览器的上限，像素也有六百兆。regionsOf 把地图切成 64 格见方的块，检查一块一块读。
 // world.low 是贴地的匝道路面，和路面同一层，画在车道上面。
 // 拼图的大画布全程只有一张：改尺寸时旧的像素立刻释放，不等垃圾回收。上一次 compose 的结果读完再拼下一张。
 // 精灵的画布都留在内存里，不上显卡：它们只被画到大画布上，放显卡只会多占一份，还要来回传。
@@ -40,6 +41,8 @@ export const MASK = {
 };
 
 export const CLASS = { empty: 0, deck: 1, walk: 2, curb: 3, other: 4 };
+export const REGION_TILE = 64;
+const REGION_MARGIN = 3;
 
 /** 标线是红加绿，混在车道上还是车道；只有蓝色分量明显或者绿色压过红色才算别的层。 */
 export function classify(r, g, b, a) {
@@ -59,6 +62,19 @@ export function readerOf(context, width, height) {
     return classify(data[i], data[i + 1], data[i + 2], data[i + 3]);
   };
 }
+
+/** 地图切成的块，每块 [x0, y0, x1, y1]，不超过 REGION_TILE 格见方。 */
+export function regionsOf(N, tile = REGION_TILE) {
+  const regions = [];
+  for (let y = 0; y < N; y += tile) {
+    for (let x = 0; x < N; x += tile) {
+      regions.push([x, y, Math.min(N, x + tile), Math.min(N, y + tile)]);
+    }
+  }
+  return regions;
+}
+
+export const insideRegion = ([x0, y0, x1, y1], x, y) => x >= x0 && x < x1 && y >= y0 && y < y1;
 
 const PAD = 420;
 const baker = new Baker();
@@ -153,14 +169,15 @@ export function compose(world, palette, mode, { withGround, region }) {
   const canvas = stage;
   const context = stageContext;
   const [x0, y0, x1, y1] = region ?? [0, 0, N, N];
-  const inside = (x, y) => x >= x0 && x < x1 && y >= y0 && y < y1;
+  const drawn = [x0 - REGION_MARGIN, y0 - REGION_MARGIN, x1 + REGION_MARGIN, y1 + REGION_MARGIN];
+  const inside = (x, y) => insideRegion(drawn, x, y);
   const stamp = (sprite, x, y, level) => {
     const [sx, sy] = place.at(x + 0.5, y + 0.5, level);
     context.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - sprite.ay));
   };
   if (withGround) {
-    for (let y = y0; y < y1; y += 1) {
-      for (let x = x0; x < x1; x += 1) {
+    for (let y = Math.max(0, drawn[1]); y < Math.min(N, drawn[3]); y += 1) {
+      for (let x = Math.max(0, drawn[0]); x < Math.min(N, drawn[2]); x += 1) {
         const level = world.levelOf(x, y);
         const shape = shapeOf(world.cornersOf(x, y), level);
         const key = world.isWater(x, y)
@@ -178,7 +195,7 @@ export function compose(world, palette, mode, { withGround, region }) {
     for (const id of chunkOrder) {
       const x = id % N;
       const y = Math.floor(id / N);
-      if (world.isWater(x, y)) continue;
+      if (world.isWater(x, y) || !inside(x, y)) continue;
       const entry = sprites.cells.get(id);
       const level = world.levelOf(x, y);
       const corners = world.cornersOf(x, y).map((v) => v - level);
@@ -211,4 +228,41 @@ export function compose(world, palette, mode, { withGround, region }) {
     }
   }
   return { canvas, context, place };
+}
+
+/**
+ * 读一批世界坐标上的像素层：地图一块一块拼遮罩，每块只读落在这一块里的点，返回和 points 等长的结果。
+ * around 为真的点读它周围一圈，有一个像素在人行道或路缘上就返回 true。
+ */
+export function readPoints(world, points, { withGround = false } = {}) {
+  const { N } = world;
+  const found = new Array(points.length).fill(CLASS.empty);
+  for (const region of regionsOf(N)) {
+    const indices = [];
+    points.forEach((point, index) => {
+      if (insideRegion(region, Math.floor(point.px), Math.floor(point.py))) indices.push(index);
+    });
+    if (indices.length === 0) continue;
+    const { canvas, context, place } = compose(world, MASK, 'current', { withGround, region });
+    const read = readerOf(context, canvas.width, canvas.height);
+    for (const index of indices) {
+      const { px, py, level, around } = points[index];
+      const [sx, sy] = place.at(px, py, level);
+      const x = Math.round(sx);
+      const y = Math.round(sy);
+      if (!around) {
+        found[index] = read(x, y);
+        continue;
+      }
+      let onSidewalk = false;
+      for (let dy = -1; dy <= 1 && !onSidewalk; dy += 1) {
+        for (let dx = -1; dx <= 1 && !onSidewalk; dx += 1) {
+          const value = read(x + dx, y + dy);
+          onSidewalk = value === CLASS.walk || value === CLASS.curb;
+        }
+      }
+      found[index] = onSidewalk;
+    }
+  }
+  return found;
 }

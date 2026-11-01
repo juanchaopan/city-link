@@ -19,6 +19,7 @@ import { palettes } from './kit/palettes.js';
 
 // 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图，
 // 以及四级道路的立交场景。车流和红绿灯是纯视觉层，不改变任何结算结果。
+// 默认是 128×128 的城市，默认缩放正好把整张地图放进竖屏；n=64 是对比用的小城。
 // 缩小到 CAR_MIN_ZOOM 以下是鸟瞰，车只有几个像素大，这时不画车也不模拟车流；交通视图的箭头同理。
 
 const params = new URLSearchParams(location.search);
@@ -34,6 +35,8 @@ const iconsOn = params.get('icons') !== '0';
 const carCap = Number(params.get('cars') ?? 300);
 const carsFull = params.get('full') === '1';
 const stress = Number(params.get('stress') ?? 1);
+const DEFAULT_SIZE = 128;
+const OVERVIEW_ZOOM_AT_64 = 0.078;
 const TAP_DISTANCE = 6;
 const CAR_MIN_ZOOM = 0.2;
 
@@ -59,7 +62,7 @@ await app.init({
 const city =
   sceneName === 'interchange'
     ? generateRoadDemo()
-    : generateCity(Number(params.get('n') ?? 64), 11, publicLayout);
+    : generateCity(Number(params.get('n') ?? DEFAULT_SIZE), 11, publicLayout);
 const { N } = city;
 const atlas = await loadAtlas(style.atlas);
 const layers = seam ? ['ground'] : ['ground', 'overlays', 'objects'];
@@ -159,7 +162,7 @@ if (legend && LEGENDS[view]) {
   legend.textContent = LEGENDS[view];
 }
 
-let zoom = Number(params.get('zoom') ?? (N === 64 ? 0.078 : 0.145));
+let zoom = Number(params.get('zoom') ?? (OVERVIEW_ZOOM_AT_64 * 64) / N);
 const focusX = Number(params.get('x') ?? N / 2);
 const focusY = Number(params.get('y') ?? N / 2);
 const offset = { x: 0, y: 0 };
@@ -374,6 +377,11 @@ window.trafficStats = () =>
 
 window.setHour = setTime;
 window.setZoom = (next) => zoomAt(next / zoom, window.innerWidth / 2, window.innerHeight / 2);
+window.panBy = (dx, dy) => {
+  offset.x += dx;
+  offset.y += dy;
+  applyCamera();
+};
 
 window.measureFps = (seconds, cycleDay) =>
   new Promise((resolve) => {

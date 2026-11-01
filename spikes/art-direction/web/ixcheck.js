@@ -12,7 +12,7 @@ import { ELEVATED, template } from './sim/interchange.js';
 
 const MIN_CLEARANCE = 1;
 const CITY_MARGIN = 7;
-const CITY_SIZE = 64;
+const CITY_SIZE = 128;
 const STRUCTURES = /^(ixp|ev|pr)-/;
 
 const structuresOf = (objects) => objects.filter(({ key }) => STRUCTURES.test(key));

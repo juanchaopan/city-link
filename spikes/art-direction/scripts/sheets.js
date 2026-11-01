@@ -1,8 +1,9 @@
-// 成品样张：play.html 的真实画面截下来拼成一张。node scripts/sheets.js [样张名...]，不写名字时全出。
+// 成品样张：play.html 的真实画面截下来拼成一张。node scripts/sheets.js [样张名...]，不写名字时全出；SIZE=64 出 64 城的。
 // r8-viaduct-city：高架全景、上下匝道、高架跨路口、引道过渡、落地接干道，白天一排，夜里一排。
 // r8-occlusion：匝道和灯杆、桥下的车、路口里的车和公交、车和建筑。
 // r8-public：公共服务默认缩放和放大。r8-metro：地铁线路图和城市。r8-stations：地铁站厅和公交站。
 // r8-traffic：交通视图全城、高架和选中一个物业。要先有 out/atlas-sunny.png。
+// 市中心几处固定的取景位置按地图边长等比缩放，64 城和 128 城的布局是同一套比例。
 // 每张样张单独开一次浏览器，截图一页一关，出完就退出，所以峰值内存只看一页游戏，和样张数量无关。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
@@ -13,10 +14,15 @@ import { startServer } from './serve.js';
 const PORT = 4190;
 const WIDTH = 520;
 const HEIGHT = 640;
-const CITY = 'n=64&controls=0';
+const N = Number(process.env.SIZE ?? 128);
+const LOAD_TIMEOUT = 300000;
+const CITY = `n=${String(N)}&controls=0`;
 const BUSY = `${CITY}&warm=300&cars=300&full=1`;
+const s = N / 64;
+const at = (x, y) => `x=${String(Math.round(x * s))}&y=${String(Math.round(y * s))}`;
+const wide = (zoom) => String(Math.round((zoom / s) * 1000) / 1000);
 
-const city = generateCity(64);
+const city = generateCity(N);
 const { x, row, top, terminal } = city.viaduct.route;
 const { cx: teeX, cy: teeY } = city.plan.interchange;
 const service = city.parcels.parcels.find(({ shape }) => shape === 'service');
@@ -50,9 +56,9 @@ const SHEETS = {
       { label: '灯杆和匝道', query: `${BUSY}&zoom=1&x=${String(teeX)}&y=${String(teeY + 4)}` },
       { label: '车在桥下穿过', query: `${BUSY}&zoom=1&x=${String(teeX)}&y=${String(teeY)}` },
       { label: '高架和桥下的车', query: `${BUSY}&zoom=1&x=${String(x)}&y=${String(row)}` },
-      { label: '路口的车和公交', query: `${BUSY}&zoom=1.2&x=23&y=27` },
-      { label: '车和建筑', query: `${BUSY}&zoom=1&x=31&y=27` },
-      { label: '斜路路口', query: `${BUSY}&zoom=1&x=29&y=32` },
+      { label: '路口的车和公交', query: `${BUSY}&zoom=1.2&${at(23, 27)}` },
+      { label: '车和建筑', query: `${BUSY}&zoom=1&${at(31, 27)}` },
+      { label: '斜路路口', query: `${BUSY}&zoom=1&${at(29, 32)}` },
     ],
   },
   'r8-public': {
@@ -63,14 +69,17 @@ const SHEETS = {
         label: '放大',
         query: `${CITY}&cars=0&zoom=0.5&x=${String(Math.round(service.px))}&y=${String(Math.round(service.py))}`,
       },
-      { label: '公共服务视图', query: `${CITY}&cars=0&view=coverage&zoom=0.095&x=31&y=30` },
+      {
+        label: '公共服务视图',
+        query: `${CITY}&cars=0&view=coverage&zoom=${wide(0.095)}&${at(31, 30)}`,
+      },
     ],
   },
   'r8-metro': {
     columns: 2,
     shots: [
-      { label: '线路图', query: `${CITY}&cars=0&view=metro&zoom=0.16&x=31&y=26` },
-      { label: '环线转弯', query: `${CITY}&cars=0&view=metro&zoom=0.4&x=34&y=14` },
+      { label: '线路图', query: `${CITY}&cars=0&view=metro&zoom=${wide(0.16)}&${at(31, 26)}` },
+      { label: '环线转弯', query: `${CITY}&cars=0&view=metro&zoom=0.4&${at(34, 14)}` },
     ],
   },
   'r8-stations': {
@@ -93,15 +102,15 @@ const SHEETS = {
   'r8-traffic': {
     columns: 3,
     shots: [
-      { label: '全城', query: `${CITY}&cars=0&view=traffic&zoom=0.095&x=31&y=28` },
+      { label: '全城', query: `${CITY}&cars=0&view=traffic&zoom=${wide(0.095)}&${at(31, 28)}` },
       {
         label: '高架和匝道',
         query: `${CITY}&cars=0&view=traffic&zoom=0.35&x=${String(x + 1)}&y=${String(row)}`,
       },
       {
         label: '点一个物业',
-        query: `${CITY}&cars=0&view=traffic&zoom=0.2&x=31&y=30`,
-        pick: [neighbor?.px ?? 30, neighbor?.py ?? 30],
+        query: `${CITY}&cars=0&view=traffic&zoom=0.2&${at(31, 30)}`,
+        pick: [neighbor?.px ?? 30 * s, neighbor?.py ?? 30 * s],
       },
     ],
   },
@@ -113,8 +122,13 @@ const names = wanted.length > 0 ? wanted : Object.keys(SHEETS);
 async function capture(context, { query, pick }) {
   const page = await context.newPage();
   page.on('pageerror', (error) => console.error('页面错误', error.message));
-  await page.goto(`http://localhost:${String(PORT)}/web/play.html?${query}`);
-  await page.waitForSelector('html[data-ready="true"]', { state: 'attached', timeout: 120000 });
+  await page.goto(`http://localhost:${String(PORT)}/web/play.html?${query}`, {
+    timeout: LOAD_TIMEOUT,
+  });
+  await page.waitForSelector('html[data-ready="true"]', {
+    state: 'attached',
+    timeout: LOAD_TIMEOUT,
+  });
   if (pick)
     console.log(
       '物业的车走的路段数',

@@ -1,7 +1,7 @@
 import { buildObject } from './kit/objects.js';
 import { palettes } from './kit/palettes.js';
 import { JUNCTION_CASES } from './junctioncases.js';
-import { CLASS, compose, MASK, readerOf, worldOf, worldOfCity } from './roadscene.js';
+import { CLASS, readPoints, worldOf, worldOfCity } from './roadscene.js';
 import { generateCity, specKey } from './sim/city.js';
 import { createFleet, roadAngle, spriteAngle, wrapAngle } from './sim/fleet.js';
 import { unitOf } from './sim/junctions.js';
@@ -12,8 +12,9 @@ import { cornerHeight } from './sim/surface.js';
 import { computeTraffic } from './sim/traffic.js';
 import { pngData, randomFrom, renderTown } from './townrender.js';
 
-// 路口验收：看成品。场景按游戏流程生成，路面按真实烘焙拼到一张遮罩上，灯杆、斑马线端点、车脚点和地块的地面轮廓
+// 路口验收：看成品。场景按游戏流程生成，路面按真实烘焙拼到遮罩上，灯杆、斑马线端点、车脚点和地块的地面轮廓
 // 都换算成屏幕像素，直接读那个像素属于哪一层，不靠几何推断。
+// 要读的点先收齐，再由 readPoints 分块拼遮罩逐块读：128 城整张拼不下，这样每次只拼一块。
 // 地块的地面轮廓是建筑模型里贴地的三角形（地台和铺装），楼身不算，高楼挡住后面的路是正常的。
 // 停车检查量的是车身：停够 IDLE 秒的车，车头、车中、车尾三点都不能落在斑马线或路口里。
 // 斑马线的端点落在人行道和路面的分界上，那一个像素是两层的混色，所以读它周围一圈，有一个像素在人行道上就算到了。
@@ -23,7 +24,7 @@ import { pngData, randomFrom, renderTown } from './townrender.js';
 // oldFacingOff 按那个朝向算一遍，证明这项检查抓得到。
 
 const CASE_SIZE = 16;
-const CITY_SIZE = 64;
+const CITY_SIZE = 128;
 const RUN_STEPS = 900;
 const SAMPLE_EVERY = 30;
 const DT = 0.05;
@@ -77,17 +78,22 @@ function townOfCity(city) {
 }
 
 /** 灯杆底部要落在人行道或路缘上。落在车道上是最坏的情况，落到路外说明高度或位置错了。 */
-function checkPoles(fleet, scene) {
-  const result = { poles: fleet.signals.length, polesOnDeck: 0, polesOffRoad: 0, examples: [] };
-  for (const { px, py, level } of fleet.signals) {
-    const [sx, sy] = scene.place.at(px, py, level);
-    const found = scene.read(Math.round(sx), Math.round(sy));
-    if (found === CLASS.walk || found === CLASS.curb) continue;
-    if (found === CLASS.deck) result.polesOnDeck += 1;
-    else result.polesOffRoad += 1;
-    if (result.examples.length < 4) result.examples.push(['灯杆', px, py, level, found]);
-  }
-  return result;
+function polesCheck(fleet) {
+  const points = fleet.signals.map(({ px, py, level }) => ({ px, py, level }));
+  return {
+    points,
+    tally(found) {
+      const result = { poles: points.length, polesOnDeck: 0, polesOffRoad: 0, examples: [] };
+      found.forEach((value, index) => {
+        if (value === CLASS.walk || value === CLASS.curb) return;
+        if (value === CLASS.deck) result.polesOnDeck += 1;
+        else result.polesOffRoad += 1;
+        const { px, py, level } = points[index];
+        if (result.examples.length < 4) result.examples.push(['灯杆', px, py, level, value]);
+      });
+      return result;
+    },
+  };
 }
 
 /** 灯面法线和来车方向：来车方向从路口的腿算，不用灯自己的朝向字段。 */
@@ -117,42 +123,34 @@ function checkFacing(town, fleet) {
   return result;
 }
 
-function onSidewalk(scene, sx, sy) {
-  for (let dy = -1; dy <= 1; dy += 1) {
-    for (let dx = -1; dx <= 1; dx += 1) {
-      const found = scene.read(Math.round(sx) + dx, Math.round(sy) + dy);
-      if (found === CLASS.walk || found === CLASS.curb) return true;
-    }
-  }
-  return false;
-}
-
 /** 逐条腿核对：每条腿一条斑马线，两端都在人行道上。少一条就算不通过，环岛的腿也一样。 */
-function checkCrossings(town, scene) {
+function crossingsCheck(town) {
   const { legs } = town.junctions;
-  const result = {
-    legs: legs.length,
-    crossings: 0,
-    missingCrossings: 0,
-    crossingEndsOff: 0,
-    interiorCrossings: 0,
-    examples: [],
-  };
+  const points = [];
+  const base = { legs: legs.length, crossings: 0, missingCrossings: 0, examples: [] };
   for (const { crossing, node, dir } of legs) {
     if (!crossing) {
-      result.missingCrossings += 1;
-      if (result.examples.length < 4) result.examples.push(['缺斑马线', node, dir]);
+      base.missingCrossings += 1;
+      if (base.examples.length < 4) base.examples.push(['缺斑马线', node, dir]);
       continue;
     }
-    result.crossings += 1;
-    for (const [px, py] of crossing.ends) {
-      const [sx, sy] = scene.place.at(px, py, crossing.level);
-      if (onSidewalk(scene, sx, sy)) continue;
-      result.crossingEndsOff += 1;
-      if (result.examples.length < 4) result.examples.push(['端点', node, dir, px, py]);
-    }
+    base.crossings += 1;
+    for (const [px, py] of crossing.ends)
+      points.push({ px, py, level: crossing.level, around: true, node, dir });
   }
-  return result;
+  return {
+    points,
+    tally(found) {
+      const result = { ...base, crossingEndsOff: 0, interiorCrossings: 0 };
+      found.forEach((onSidewalk, index) => {
+        if (onSidewalk) return;
+        result.crossingEndsOff += 1;
+        const { node, dir, px, py } = points[index];
+        if (result.examples.length < 4) result.examples.push(['端点', node, dir, px, py]);
+      });
+      return result;
+    },
+  };
 }
 
 /** 这一点在斑马线上，或者在路口中心到斑马线之间。 */
@@ -187,32 +185,21 @@ function coreOf(legs) {
   return [...reach.values()];
 }
 
-/** 让车流跑一段时间，抽样检查车脚点和红灯时停着的车。 */
-function checkCars(town, scene) {
+/** 让车流跑一段时间，抽样记下车脚点，红灯时停着的车按车身查是不是停在路口里。 */
+function carsCheck(town) {
   const fleet = createFleet(town, { cap: 80, full: true, random: randomFrom(7) });
   const { legs } = town.junctions;
   const core = coreOf(legs);
-  const result = {
-    carSamples: 0,
-    carsOffRoad: 0,
-    stoppedSamples: 0,
-    stoppedInJunction: 0,
-    examples: [],
-  };
+  const points = [];
+  const base = { stoppedSamples: 0, stoppedInJunction: 0, examples: [] };
   for (let i = 0; i < RUN_STEPS; i += 1) {
     fleet.step(DT);
     if (i % SAMPLE_EVERY !== SAMPLE_EVERY - 1) continue;
     for (const car of fleet.cars) {
       if (car.x === undefined || car.high) continue;
-      const [sx, sy] = scene.place.at(car.x, car.y, car.h);
-      const found = scene.read(Math.round(sx), Math.round(sy));
-      result.carSamples += 1;
-      if (found !== CLASS.deck) {
-        result.carsOffRoad += 1;
-        if (result.examples.length < 4) result.examples.push(['车脚', car.x, car.y, car.h, found]);
-      }
+      points.push({ px: car.x, py: car.y, level: car.h });
       if (car.idle < IDLE) continue;
-      result.stoppedSamples += 1;
+      base.stoppedSamples += 1;
       const half = fleet.lengthOf(car) / 2;
       const angle = roadAngle(car.path, car.s);
       const dx = Math.cos(angle) / 64 / 2 + Math.sin(angle) / 32 / 2;
@@ -220,12 +207,24 @@ function checkCars(town, scene) {
       const scale = half / Math.hypot(dx, dy);
       const body = [-1, 0, 1].map((d) => [car.x + dx * scale * d, car.y + dy * scale * d]);
       if (body.some(([x, y]) => inJunction(x, y, legs, core))) {
-        result.stoppedInJunction += 1;
-        if (result.examples.length < 4) result.examples.push(['停车', car.x, car.y, car.bus]);
+        base.stoppedInJunction += 1;
+        if (base.examples.length < 4) base.examples.push(['停车', car.x, car.y, car.bus]);
       }
     }
   }
-  return result;
+  return {
+    points,
+    tally(found) {
+      const result = { ...base, carSamples: points.length, carsOffRoad: 0 };
+      found.forEach((value, index) => {
+        if (value === CLASS.deck) return;
+        result.carsOffRoad += 1;
+        const { px, py, level } = points[index];
+        if (result.examples.length < 4) result.examples.push(['车脚', px, py, level, value]);
+      });
+      return result;
+    },
+  };
 }
 
 const groundCache = new Map();
@@ -266,24 +265,32 @@ function groundSamples(key) {
 
 const OWNS_GROUND = /^(B|Q|S|P|t|farmhouse)(-|$)/;
 
-function checkLots(town, scene) {
-  const result = { lots: 0, lotsOnRoad: 0, lotPixels: 0, examples: [] };
+function lotsCheck(town) {
+  const points = [];
+  const lots = [];
   for (const { key, px, py, level } of town.objects) {
     if (!OWNS_GROUND.test(key)) continue;
-    result.lots += 1;
-    let hits = 0;
-    for (const [u, v] of groundSamples(key)) {
-      const [sx, sy] = scene.place.at(px + u, py + v, level);
-      const found = scene.read(Math.round(sx), Math.round(sy));
-      if (found === CLASS.deck || found === CLASS.walk || found === CLASS.curb) hits += 1;
-    }
-    if (hits > 0) {
-      result.lotsOnRoad += 1;
-      result.lotPixels += hits;
-      if (result.examples.length < 4) result.examples.push(['地块压路', key, px, py, hits]);
-    }
+    const lot = { key, px, py, hits: 0 };
+    lots.push(lot);
+    for (const [u, v] of groundSamples(key)) points.push({ px: px + u, py: py + v, level, lot });
   }
-  return result;
+  return {
+    points,
+    tally(found) {
+      found.forEach((value, index) => {
+        if (value === CLASS.deck || value === CLASS.walk || value === CLASS.curb)
+          points[index].lot.hits += 1;
+      });
+      const result = { lots: lots.length, lotsOnRoad: 0, lotPixels: 0, examples: [] };
+      for (const { key, px, py, hits } of lots) {
+        if (hits === 0) continue;
+        result.lotsOnRoad += 1;
+        result.lotPixels += hits;
+        if (result.examples.length < 4) result.examples.push(['地块压路', key, px, py, hits]);
+      }
+      return result;
+    },
+  };
 }
 
 /** 坡路的路面边缘到地面的高差，单位是屏幕像素。路贴在地上时这个数很小，腾空时就是一道看得见的竖面。 */
@@ -341,20 +348,19 @@ function checkHeading(town) {
   return result;
 }
 
+/** 四项要读像素的检查先收点，一起分块读，再各自计数；另外三项只看几何。 */
 function inspect(town) {
-  const { canvas, context, place } = compose(town, MASK, 'current', { withGround: false });
-  const read = readerOf(context, canvas.width, canvas.height);
-  const scene = { read, place };
   const fleet = createFleet(town, { cap: 1, random: randomFrom(3) });
-  const parts = [
-    checkPoles(fleet, scene),
-    checkFacing(town, fleet),
-    checkCrossings(town, scene),
-    checkCars(town, scene),
-    checkLots(town, scene),
-    checkHang(town),
-    checkHeading(town),
-  ];
+  const readers = [polesCheck(fleet), crossingsCheck(town), carsCheck(town), lotsCheck(town)];
+  const points = readers.flatMap((reader) => reader.points);
+  const found = readPoints(town, points);
+  let offset = 0;
+  const parts = readers.map((reader) => {
+    const slice = found.slice(offset, offset + reader.points.length);
+    offset += reader.points.length;
+    return reader.tally(slice);
+  });
+  parts.push(checkFacing(town, fleet), checkHang(town), checkHeading(town));
   const row = Object.assign({}, ...parts);
   row.rings = town.rings.length;
   row.examples = parts.flatMap((part) => part.examples ?? []).slice(0, 8);

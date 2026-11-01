@@ -18,7 +18,7 @@ import { overlapBoxes } from '../web/sim/order.js';
 import { sceneItems } from '../web/sim/sceneitems.js';
 
 const cars = Number(process.argv[2] ?? 600);
-const size = Number(process.argv[3] ?? 64);
+const size = Number(process.argv[3] ?? 128);
 const STEPS = 1200;
 const SAMPLE_EVERY = 60;
 const DT = 0.05;

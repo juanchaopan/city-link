@@ -1,17 +1,17 @@
 // 生成样张截图、拼缝检查和帧率测量。
 // 用法：node scripts/shots.js [截图名前缀...]；SEAM=1 时只跑拼缝和露底检查，FPS=1 时只测帧率，SOFT=1 时用软件渲染。
-// BIG=1 时只测 128×128 的地图，这个尺寸不是现有规格，只是量一量，图集要先用 BIG=1 node scripts/gen.js sunny 烘过。
+// 帧率用例以 128 城为主：游戏视角按车数上限 300、150、100 各量一次，鸟瞰不画车；64 城只留一个游戏视角做对比。
 // 截图脚本用自己的端口，不影响 4180 上正在运行的页面。
 // 每个场景开一个新页面并关掉上一个，图集纹理才会释放，连续跑几十个场景内存不会累积。
 // 显卡测帧率时关掉垂直同步和帧率上限，否则所有用例都只读得出屏幕刷新率。软件渲染不关，它不关上限也到不了刷新率，
 // 关了以后帧会成批提交，中位数失真。带 full=1 的用例屏幕里一直保持满额的车。
-// 页面在载入时生成城市，128×128 要半分钟以上，所以载入的等待时间放宽到三分钟。
+// 页面在载入时生成城市，128×128 要半分钟以上，所以载入的等待时间放宽到五分钟。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { startServer } from './serve.js';
 
 const PORT = process.env.SOFT ? 4184 : 4183;
-const LOAD_TIMEOUT = 180000;
+const LOAD_TIMEOUT = 300000;
 const filter = process.argv.slice(2);
 const base = 'n=64&controls=0&warm=200';
 const demo = 'scene=interchange&controls=0&warm=200';
@@ -182,70 +182,29 @@ async function gridCheck() {
 }
 
 function fpsCases() {
-  const game = 'n=64&controls=0&zoom=0.42&x=31&y=30&warm=300';
-  const overview = 'n=64&controls=0&zoom=0.078&warm=300';
-  const cases = [
-    { name: '全图，白天，无车', query: 'n=64&controls=0&cars=0&zoom=0.078', cycle: false },
-    { name: '游戏视角，白天，无车', query: `${game}&cars=0`, cycle: false },
-    { name: '游戏视角，满额 300 辆', query: `${game}&cars=300&full=1`, cycle: false },
-    { name: '游戏视角，满额 600 辆', query: `${game}&cars=600&full=1`, cycle: false },
-    { name: '夜间车灯，满额 300 辆', query: `${game}&cars=300&full=1&t=22`, cycle: false },
-    { name: '夜间车灯，满额 600 辆', query: `${game}&cars=600&full=1&t=22`, cycle: false },
-    { name: '全图缩小，满额 600 辆', query: `${overview}&cars=600&full=1`, cycle: false },
+  const game = 'n=128&controls=0&zoom=0.42&x=62&y=60&warm=300&full=1';
+  return [
+    { name: '128，鸟瞰全图，不画车', query: 'n=128&controls=0&cars=300', cycle: false },
+    { name: '128，半图缩小，不画车', query: 'n=128&controls=0&zoom=0.078&cars=300', cycle: false },
+    { name: '128，游戏视角，上限 300 辆', query: `${game}&cars=300`, cycle: false },
+    { name: '128，游戏视角，上限 150 辆', query: `${game}&cars=150`, cycle: false },
+    { name: '128，游戏视角，上限 100 辆', query: `${game}&cars=100`, cycle: false },
     {
-      name: '满城模块拼装（每物业 3 张），全图',
-      query: 'n=64&controls=0&zoom=0.078&cars=0&stress=3',
+      name: '128，夜间车灯，上限 300 辆',
+      query: `${game}&cars=300&t=22`,
       cycle: false,
     },
     {
-      name: '满城模块拼装（每物业 3 张），游戏视角满额 300 辆',
-      query: `${game}&cars=300&full=1&stress=3`,
+      name: '128，交通视图，游戏视角',
+      query: 'n=128&controls=0&view=traffic&zoom=0.42&x=62&y=60&cars=0',
       cycle: false,
     },
     {
-      name: '满城模块拼装（每物业 3 张），游戏视角满额 600 辆，夜间',
-      query: `${game}&cars=600&full=1&stress=3&t=22`,
+      name: '64，游戏视角，上限 300 辆（对比）',
+      query: 'n=64&controls=0&zoom=0.42&x=31&y=30&warm=300&full=1&cars=300',
       cycle: false,
     },
-    {
-      name: '立交场景，满额 300 辆',
-      query: 'scene=interchange&controls=0&zoom=0.2&x=22&y=20&cars=300&full=1&warm=300',
-      cycle: false,
-    },
-    {
-      name: '普通城市的丁字立交，满额 300 辆',
-      query: 'n=64&controls=0&zoom=0.26&x=33&y=8&cars=300&full=1&warm=300',
-      cycle: false,
-    },
-    {
-      name: '单图集加亮窗层，连续变换时间',
-      query: 'n=64&controls=0&zoom=0.3&x=31&y=30&t=20&cars=300&full=1&warm=300',
-      cycle: true,
-    },
-    {
-      name: '交通视图，全城箭头',
-      query: 'n=64&controls=0&view=traffic&zoom=0.095&x=31&y=28&cars=0',
-      cycle: false,
-    },
-    { name: '公共服务图标，默认缩放', query: 'n=64&controls=0&cars=0', cycle: false },
-    { name: '不画公共服务图标，默认缩放', query: 'n=64&controls=0&cars=0&icons=0', cycle: false },
   ];
-  const big = 'n=128&controls=0&warm=100';
-  const bigCases = [
-    { name: '128，默认视野，无车', query: 'n=128&controls=0&cars=0', cycle: false },
-    {
-      name: '128，游戏视角，满额 300 辆',
-      query: `${big}&zoom=0.42&x=62&y=60&cars=300&full=1`,
-      cycle: false,
-    },
-    {
-      name: '128，游戏视角，满额 600 辆',
-      query: `${big}&zoom=0.42&x=62&y=60&cars=600&full=1`,
-      cycle: false,
-    },
-    { name: '128，全图缩小，满额 600 辆', query: `${big}&zoom=0.04&cars=600&full=1`, cycle: false },
-  ];
-  return process.env.BIG ? bigCases : cases;
 }
 
 const report = {};
@@ -270,9 +229,8 @@ if (process.env.SEAM) {
     };
     console.log(name, JSON.stringify(report[name]));
   }
-  const prefix = process.env.BIG ? 'fps-big' : 'fps';
   writeFileSync(
-    process.env.SOFT ? `out/${prefix}-soft-report.json` : `out/${prefix}-report.json`,
+    process.env.SOFT ? 'out/fps-soft-report.json' : 'out/fps-report.json',
     JSON.stringify(report, null, 2),
   );
 } else {

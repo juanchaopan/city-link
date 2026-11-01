@@ -21,7 +21,7 @@ const EDGE = 0.6;
 const STEP = 0.0075;
 const REACH = 2;
 const CASE_SIZE = 16;
-const CITY_SIZE = 64;
+const CITY_SIZE = 128;
 const CUT = 4;
 const CUT_SIZE = CUT * 2 + 1;
 
