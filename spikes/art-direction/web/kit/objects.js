@@ -19,6 +19,14 @@ const ROW_MIN_LEGS = 4;
 const ROW_CORNER = ROW_HOUSE * 0.354;
 const MAX_TOWER = 1.3;
 const GREEN_ROOF_AREA = 2.5;
+const HALL_EDGE = 0.12;
+const HALL_INSET = 0.06;
+const HALL_GAP = 0.05;
+const HALL_SHARES = [0.44, 0.32, 0.18];
+const MIN_HALL_DEPTH = 0.12;
+const APEX_LEGS = 0.75;
+const YARD_LEGS = 0.4;
+const TANK_LEGS = 0.9;
 const PARKING_SIDES = [
   [1, 0],
   [0, 1],
@@ -895,20 +903,33 @@ function commercialBlock(lot) {
   if (level === 3) towersOn(lot, high * FLOOR);
 }
 
-/** 厂房的锯齿屋顶，一排排铺满楼形。屋脊总在世界 +z 一侧，玻璃才朝着相机。 */
-function sawRoof(lot, y) {
+/** 三角地块上的一座厂房：沿一条直角边铺开，靠斜路的一头按 45° 收掉，v 从 v0 到 v1。 */
+function hallBand(plan, v0, v1) {
+  const reach = (v) => plan.slope - v - HALL_INSET;
+  return [
+    [HALL_EDGE, v0],
+    [reach(v0), v0],
+    [reach(v1), v1],
+    [HALL_EDGE, v1],
+  ];
+}
+
+/** 厂房的锯齿屋顶，一排排铺满一座厂房。屋脊总在世界 +z 一侧，玻璃才朝着相机。 */
+function sawRoof(lot, v0, v1, y) {
   const { b, plan, sz, toLocal, P } = lot;
   const roof = linear(P.wall.concrete);
   const glass = linear(P.wall.glass);
-  const pitch = 0.34;
   const rise = 0.075;
-  const start = EDGE + 0.03;
+  const start = HALL_EDGE + 0.03;
+  const teeth = Math.max(1, Math.round((v1 - v0) / 0.3));
+  const pitch = (v1 - v0 - 0.06) / teeth;
   const point = (u, v, h) => {
     const [x, z] = toLocal(u, v);
     return [x, h, z];
   };
-  for (let v = start; ; v += pitch) {
-    const end = plan.slope - v - pitch - 0.03;
+  for (let i = 0; i < teeth; i += 1) {
+    const v = v0 + 0.03 + pitch * i;
+    const end = plan.slope - v - pitch - HALL_INSET - 0.03;
     if (end - start < 0.2) return;
     const [ridge, valley] = sz > 0 ? [v + pitch, v] : [v, v + pitch];
     b.poly(
@@ -933,22 +954,59 @@ function sawRoof(lot, y) {
   }
 }
 
-/** 工业是占满地块的厂房。变体 1 留出堆场，天窗开在三翼的屋顶上。 */
+/**
+ * 工业是一排排直角的厂房，不把楼身做成三角形：厂房沿一条直角边铺开，靠斜路的一头按 45° 收掉，
+ * 地块越大排数越多，最后一排铺到离尖角 APEX_LEGS 为止，剩下的尖角是堆场，放得下时立两个储罐。
+ * 变体 0 第一排是锯齿顶车间，后排是平顶仓库；变体 1 反过来，第一排是高一些的平顶仓库，车间在后排。
+ * 烟囱立在车间靠直角边的一头。
+ */
 function industrialBlock(lot) {
-  const { b, plan, place, toLocal, variant, seed, P } = lot;
+  const { b, plan, legs, place, toLocal, variant, seed, P } = lot;
   const wall = linear(P.zones.industrial[seed % P.zones.industrial.length]);
   const roof = linear(P.wall.concrete);
-  const floors = 2;
-  const top = LOT_Y + floors * FLOOR;
-  const open = variant === 1 && plan.court;
-  for (const part of open ? plan.wings : [plan.outer]) {
-    prism(b, place(part), LOT_Y, floors, wall, roof, P, { skip: 1 });
-    if (open) flat(b, scaled(place(part), 0.6), top + 0.002, linear(P.wall.glass));
+  const glass = linear(P.wall.glass);
+  const concrete = linear(P.wall.concrete);
+  const span = plan.slope - 2 * HALL_EDGE - HALL_INSET;
+  const bands = [];
+  let v = HALL_EDGE;
+  for (const share of HALL_SHARES) {
+    let depth = span * share;
+    if (legs - (v + depth + HALL_GAP) < APEX_LEGS) depth = legs - APEX_LEGS - v;
+    if (depth < MIN_HALL_DEPTH) break;
+    bands.push([v, v + depth]);
+    v += depth + HALL_GAP;
   }
-  if (open) courtyard(b, place(plan.court), 'i', P);
-  else sawRoof(lot, top);
-  const [x, z] = toLocal(EDGE + 0.14, EDGE + 0.14);
-  chimney(b, x, z, top, P);
+  bands.forEach(([v0, v1], index) => {
+    const workshop = (index === 0) === (variant === 0);
+    const floors = workshop ? 2 : index === 0 ? 3 : 1;
+    const top = LOT_Y + floors * FLOOR;
+    const points = place(hallBand(plan, v0, v1));
+    prism(b, points, LOT_Y, floors, workshop ? wall : shade(wall, 0.92), roof, P, {
+      skip: workshop ? 1 : 0,
+    });
+    if (workshop) {
+      sawRoof(lot, v0, v1, top);
+      const [x, z] = toLocal(HALL_EDGE + 0.1, (v0 + v1) / 2);
+      chimney(b, x, z, top, P);
+    } else flat(b, scaled(points, 0.55), top + 0.002, glass);
+  });
+  const apex = legs - LOT_SHRINK * 2.4 - v - HALL_EDGE;
+  if (apex < YARD_LEGS) return;
+  courtyard(
+    b,
+    place([
+      [HALL_EDGE, v],
+      [HALL_EDGE + apex, v],
+      [HALL_EDGE, v + apex],
+    ]),
+    'i',
+    P,
+  );
+  if (apex < TANK_LEGS) return;
+  for (const u of [0.3, 0.62]) {
+    const [x, z] = toLocal(HALL_EDGE + u * apex, v + 0.3 * apex);
+    b.cylinder(x, LOT_Y, z, 0.11, 0.11, 0.16, 10, concrete, shade(concrete, 0.6));
+  }
 }
 
 const TRIANGLE_MASSES = { r: residentialBlock, c: commercialBlock, i: industrialBlock };
