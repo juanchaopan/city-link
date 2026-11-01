@@ -14,6 +14,7 @@ import { signalPoles } from './sceneitems.js';
 //
 // 一格里的车道中线：进来的一头按进来那条路的车道偏移，出去的一头按出去那条路的车道偏移。
 // 两车道转进四车道时进来的一头还在两车道的车道上，不会因为出口宽就挪到进口路的路缘上。
+// 转弯的控制点是两条车道线的交点，45° 的弯里车道才和路面中线平行。
 //
 // 过路口：车按车身长度停在停车线后面。放行要同时满足绿灯和出口放得下自己，否则绿灯也不进，所以不会堵在路口里。
 // 过了停车线的车一路开走，全红时间按最长的通过路线算好，够它们清空。
@@ -70,6 +71,15 @@ function screenAt(px, py, level) {
   return { sx: (px - py) * TILE_HALF_W, sy: (px + py - 1) * TILE_HALF_H - level * LEVEL_PIXELS };
 }
 
+/** 两条车道线的交点，相对格子中心。normalA、normalB 是单位法向，掉头时两条线平行，取两个偏移的和。 */
+function laneCorner(normalA, offsetA, normalB, offsetB) {
+  const cosine = normalA[0] * normalB[0] + normalA[1] * normalB[1];
+  const parallel = 1 - cosine * cosine < 1e-6;
+  const a = parallel ? offsetA : (offsetA - offsetB * cosine) / (1 - cosine * cosine);
+  const b = parallel ? offsetB : (offsetB - offsetA * cosine) / (1 - cosine * cosine);
+  return [normalA[0] * a + normalB[0] * b, normalA[1] * a + normalB[1] * b];
+}
+
 /**
  * 一格里从 from 方向进来、往 to 方向出去的车道中线。靠右行驶，所以进出都偏向各自行进方向的右侧，
  * 偏移量各按进来那条路和出去那条路算。
@@ -93,7 +103,8 @@ function cellLane(x, y, from, to, fromKind, toKind) {
     }
     return points;
   }
-  const control = [cx + fy * offsetFrom - ty * offsetTo, cy - fx * offsetFrom + tx * offsetTo];
+  const corner = laneCorner([fy, -fx], offsetFrom, [-ty, tx], offsetTo);
+  const control = [cx + corner[0], cy + corner[1]];
   for (let i = 0; i <= TURNS; i += 1) {
     const t = i / TURNS;
     const a = (1 - t) * (1 - t);
