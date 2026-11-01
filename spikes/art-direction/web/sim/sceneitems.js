@@ -12,7 +12,7 @@ function screenOf(px, py, level) {
   return { sx: (px - py) * 64, sy: (px + py - 1) * 32 - level * 32 };
 }
 
-/** 全部信号灯。dir 是所管进口的方向，灯面朝这个方向，迎着驶来的车。占地是杆子本身，悬臂在车的头顶上。 */
+/** 全部信号灯。dir 是所管进口的方向，灯面朝这个方向，迎着驶来的车。占地是杆子本身，悬臂在车的头顶上。phase 是这根灯放行的相位表。 */
 export function signalPoles(clusters) {
   return clusters.flatMap(({ legs, signal }) =>
     legs
@@ -27,7 +27,7 @@ export function signalPoles(clusters) {
           level,
           base: level,
           signal,
-          phase: legs.indexOf(leg),
+          phase: leg.phases,
           footprint: [
             [px - POLE_HALF, py - POLE_HALF],
             [px + POLE_HALF, py - POLE_HALF],

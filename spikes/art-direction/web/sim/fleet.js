@@ -1,4 +1,5 @@
 import { lightAt } from './junctions.js';
+import { cellLane, laneKind, LANE_OFFSET, unitDirection } from './lanes.js';
 import { DIRECTIONS, spokesOf } from './network.js';
 import { RING } from './roundabout.js';
 import { signalPoles } from './sceneitems.js';
@@ -12,12 +13,9 @@ import { signalPoles } from './sceneitems.js';
 // 车身方向：heading 是车身在屏幕上的角度，跟着路面走向平滑变化，平滑量按走过的距离算，所以快慢车都一样；
 // 精灵选最接近 heading 的那张，差的角度由运行时旋转补上，上坡车头抬起，弯道也跟着路，换精灵时车身不跳。
 //
-// 一格里的车道中线：进来的一头按进来那条路的车道偏移，出去的一头按出去那条路的车道偏移。
-// 两车道转进四车道时进来的一头还在两车道的车道上，不会因为出口宽就挪到进口路的路缘上。
-// 转弯的控制点是两条车道线的交点，45° 的弯里车道才和路面中线平行。
-//
-// 过路口：车按车身长度停在停车线后面。放行要同时满足绿灯和出口放得下自己，否则绿灯也不进，所以不会堵在路口里。
-// 过了停车线的车一路开走，全红时间按最长的通过路线算好，够它们清空。
+// 过路口：车按车身长度停在停车线后面。车选好走向后等这条线的相位，放行要同时满足绿灯和出口放得下自己，
+// 否则绿灯也不进，所以不会堵在路口里。过了停车线的车一路开走，全红时间按最长的通过路线算好，够它们清空。
+// 一条进路只有一条车道，排头的车等自己的相位时后面的车跟着等。
 //
 // 环岛：车在斑马线外的让行线前看环上有没有车过来，没有才进；进环后逆时针绕到选定的出口。
 //
@@ -29,13 +27,11 @@ import { signalPoles } from './sceneitems.js';
 // 公交：经过站台的车停在格子中央，车门对着人行道上的站台，停够时间再走。后面的车在它后面等。
 
 const SPEED = { road: 1.1, arterial: 1.5, highway: 2.2, express: 2.2, ramp: 1.4 };
-const LANE_OFFSET = { road: 0.115, arterial: 0.25, highway: 0.29, express: 0.29, ramp: 0 };
 export const BUS_LENGTH = 0.36;
 export const CAR_LENGTH = 0.2;
 const CLEARANCE = 0.08;
 const STOP_MARGIN = 0.02;
 const RAMP_CHANCE = 0.35;
-const TURNS = 10;
 const VIEW_MARGIN = 240;
 const TILE_HALF_W = 64;
 const TILE_HALF_H = 32;
@@ -44,7 +40,6 @@ const SLOW = 0.4;
 const STRAIGHT_WEIGHT = 2.5;
 const HEADING_REACH = 0.03;
 const CHORD = 0.04;
-const LANE_STEPS = 6;
 const RING_ENTRY = 0.34;
 const RING_WATCH = 1.1;
 const RING_STEPS = 24;
@@ -55,67 +50,8 @@ const BUS_DWELL = 2.5;
 const BAY_MARGIN = 0.03;
 const ARRIVAL_CHORD = 0.05;
 
-function unitDirection(dir) {
-  const [dx, dy] = DIRECTIONS[dir];
-  const length = Math.hypot(dx, dy);
-  return [dx / length, dy / length];
-}
-
-function kindOf(entry, dir) {
-  const bit = 1 << dir;
-  if (entry.highway & bit) return 'highway';
-  return (entry.arterial ?? 0) & bit ? 'arterial' : 'road';
-}
-
 function screenAt(px, py, level) {
   return { sx: (px - py) * TILE_HALF_W, sy: (px + py - 1) * TILE_HALF_H - level * LEVEL_PIXELS };
-}
-
-/** 两条车道线的交点，相对格子中心。normalA、normalB 是单位法向，掉头时两条线平行，取两个偏移的和。 */
-function laneCorner(normalA, offsetA, normalB, offsetB) {
-  const cosine = normalA[0] * normalB[0] + normalA[1] * normalB[1];
-  const parallel = 1 - cosine * cosine < 1e-6;
-  const a = parallel ? offsetA : (offsetA - offsetB * cosine) / (1 - cosine * cosine);
-  const b = parallel ? offsetB : (offsetB - offsetA * cosine) / (1 - cosine * cosine);
-  return [normalA[0] * a + normalB[0] * b, normalA[1] * a + normalB[1] * b];
-}
-
-/**
- * 一格里从 from 方向进来、往 to 方向出去的车道中线。靠右行驶，所以进出都偏向各自行进方向的右侧，
- * 偏移量各按进来那条路和出去那条路算。
- */
-function cellLane(x, y, from, to, fromKind, toKind) {
-  const [fx, fy] = unitDirection(from);
-  const [tx, ty] = unitDirection(to);
-  const offsetFrom = LANE_OFFSET[fromKind];
-  const offsetTo = LANE_OFFSET[toKind];
-  const cx = x + 0.5;
-  const cy = y + 0.5;
-  const reachFrom = Math.hypot(...DIRECTIONS[from]) / 2;
-  const reachTo = Math.hypot(...DIRECTIONS[to]) / 2;
-  const start = [cx + fx * reachFrom + fy * offsetFrom, cy + fy * reachFrom - fx * offsetFrom];
-  const end = [cx + tx * reachTo - ty * offsetTo, cy + ty * reachTo + tx * offsetTo];
-  const points = [];
-  if (Math.abs(fx * tx + fy * ty + 1) < 1e-6) {
-    for (let i = 0; i <= LANE_STEPS; i += 1) {
-      const t = i / LANE_STEPS;
-      points.push([start[0] + (end[0] - start[0]) * t, start[1] + (end[1] - start[1]) * t]);
-    }
-    return points;
-  }
-  const corner = laneCorner([fy, -fx], offsetFrom, [-ty, tx], offsetTo);
-  const control = [cx + corner[0], cy + corner[1]];
-  for (let i = 0; i <= TURNS; i += 1) {
-    const t = i / TURNS;
-    const a = (1 - t) * (1 - t);
-    const b = 2 * t * (1 - t);
-    const c = t * t;
-    points.push([
-      a * start[0] + b * control[0] + c * end[0],
-      a * start[1] + b * control[1] + c * end[1],
-    ]);
-  }
-  return points;
 }
 
 function measured(points) {
@@ -364,6 +300,7 @@ export function createFleet(
       );
       car.route = pick ? [...pick.dirs] : null;
       car.exit = pick?.exit ?? null;
+      car.phases = pick ? [pick.phase] : stop.phases;
     }
     let to = null;
     if (clusterCells.has(cell) && car.route?.length > 0) to = car.route.shift();
@@ -377,14 +314,14 @@ export function createFleet(
       });
     }
     if (to === null) return false;
-    const kind = kindOf(entry, to);
+    const kind = laneKind(entry, to);
     car.mode = 'cell';
     car.cell = cell;
     car.from = from;
     car.to = to;
     car.kind = kind;
     car.path = measured(
-      cellLane(x, y, from, to, kindOf(entry, from), kind).map(([px, py]) => [
+      cellLane(x, y, from, to, laneKind(entry, from), kind).map(([px, py]) => [
         px,
         py,
         surface(px, py),
@@ -538,8 +475,7 @@ export function createFleet(
     if (car.mode !== 'cell' || !car.stop || car.cleared || car.stop.cell !== car.cell)
       return Infinity;
     const limit = car.stop.distance - lengthOf(car) / 2 - STOP_MARGIN;
-    const { signal, phase } = car.stop;
-    if (lightAt(signal, phase, time) === 'green' && exitFree(car)) {
+    if (lightAt(car.stop.signal, car.phases, time) === 'green' && exitFree(car)) {
       car.cleared = true;
       return Infinity;
     }
