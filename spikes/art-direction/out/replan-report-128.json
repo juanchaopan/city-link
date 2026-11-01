@@ -1,0 +1,35 @@
+{
+  "N": 128,
+  "budgetMs": 8,
+  "cold": {
+    "totalMs": 42693,
+    "partitionMs": 40358,
+    "blocks": 372,
+    "cachedBlocks": 0,
+    "solvedBlocks": 372,
+    "worstBlockMs": 848,
+    "batches": 1,
+    "parcels": 1289
+  },
+  "replan": {
+    "totalMs": 4639,
+    "partitionMs": 2456,
+    "blocks": 381,
+    "cachedBlocks": 328,
+    "solvedBlocks": 53,
+    "worstBlockMs": 251.4,
+    "batches": 37,
+    "parcels": 1291
+  },
+  "replanWithoutCache": {
+    "totalMs": 36965,
+    "partitionMs": 34584,
+    "blocks": 381,
+    "cachedBlocks": 0,
+    "solvedBlocks": 381,
+    "worstBlockMs": 255.8,
+    "batches": 1,
+    "parcels": 1291
+  },
+  "samePartition": true
+}

@@ -10,6 +10,10 @@ import { WEIGHTS } from './partition-weights.js';
 //
 // 淘汰规则：切出来的块不贴普通道路、或者不是任何规格的形状，都不能成为物业。
 // 这些原子记入 residual，排名时 residual 优先比较，只有所有切法都留下空地时才会用到这个兜底。
+//
+// 划分按街区增量计算：先把空地按连通和对半切分成街区，每个街区的解只取决于它自己的原子和沿街边长，
+// 所以用这两样做键缓存起来。玩家改了路，只有原子或沿街变了的街区才重算，其余的直接取缓存。
+// 一次划分是一个任务，按时间预算分批跑：每批解几个街区就交还控制权，画面不会被一次大改卡住。
 
 export const RECT_SPECS = [
   [3, 3],
@@ -393,27 +397,93 @@ function halve(region, table) {
   );
 }
 
+/** 一个街区的键：原子和每个原子的沿街边长。两样都没变，解就没变。 */
+function blockKey(block, front, diagonalFront) {
+  let fronts = '';
+  for (const id of block)
+    fronts += `${String(Math.round(front[id] * 1000))}/${String(Math.round(diagonalFront[id] * 1000))},`;
+  return `${block.join(',')}|${fronts}`;
+}
+
+/** 街区解的缓存。同一个缓存跨多次划分复用，改路以后没变的街区不重算。 */
+export function createPartitioner() {
+  const memo = new Map();
+  return {
+    get: (key) => memo.get(key),
+    set: (key, value) => memo.set(key, value),
+    size: () => memo.size,
+  };
+}
+
 /**
- * 把一组原子分成物业。front[atom] 是这个原子贴普通道路的边长，diagonalFront 是其中贴斜路的部分。
- * 返回物业、兜底的原子和统计；details 记录每块地的前几名候选，画对比图时用。
+ * 一次划分任务。front[atom] 是这个原子贴普通道路的边长，diagonalFront 是其中贴斜路的部分。
+ * run(budgetMs) 解几个街区就停，解完返回 true；result() 给出物业、兜底的原子、统计和每块地的候选。
  */
-export function partitionLand(atoms, table, front, diagonalFront) {
-  const stats = { enumerated: 0, noFrontage: 0, noSpec: 0, blocks: 0, wholeBlocks: 0, millis: 0 };
+export function planPartition(atoms, table, front, diagonalFront, partitioner) {
+  const stats = {
+    enumerated: 0,
+    noFrontage: 0,
+    noSpec: 0,
+    blocks: 0,
+    wholeBlocks: 0,
+    cachedBlocks: 0,
+    solvedBlocks: 0,
+    worstBlockMs: 0,
+    batches: 0,
+    millis: 0,
+  };
   const started = performance.now();
-  const pieces = [];
-  const residual = [];
-  const details = [];
+  const blocks = [];
   for (const whole of components(atoms, table)) {
     for (const block of halve(whole, table)) {
-      stats.blocks += 1;
-      const candidates = solveBlock(block, table, front, diagonalFront, stats);
+      const key = blockKey(block, front, diagonalFront);
+      blocks.push({ block, key, candidates: partitioner.get(key) ?? null });
+    }
+  }
+  stats.blocks = blocks.length;
+  stats.cachedBlocks = blocks.filter((entry) => entry.candidates).length;
+  stats.millis = performance.now() - started;
+  let next = 0;
+
+  const run = (budgetMs) => {
+    const batchStart = performance.now();
+    stats.batches += 1;
+    while (next < blocks.length) {
+      const entry = blocks[next];
+      next += 1;
+      if (entry.candidates) continue;
+      const t0 = performance.now();
+      entry.candidates = solveBlock(entry.block, table, front, diagonalFront, stats);
+      const ms = performance.now() - t0;
+      partitioner.set(entry.key, entry.candidates);
+      stats.solvedBlocks += 1;
+      stats.worstBlockMs = Math.max(stats.worstBlockMs, ms);
+      stats.millis += ms;
+      if (performance.now() - batchStart >= budgetMs) break;
+    }
+    return next >= blocks.length;
+  };
+
+  const result = () => {
+    const pieces = [];
+    const residual = [];
+    const details = [];
+    for (const { block, candidates } of blocks) {
       const best = candidates[0];
       if (best.cuts === 0 && best.pieces.length === 1) stats.wholeBlocks += 1;
       pieces.push(...best.pieces);
       residual.push(...best.residualAtoms);
       details.push({ atoms: block, candidates });
     }
-  }
-  stats.millis = performance.now() - started;
-  return { pieces, residual, stats, details };
+    return { pieces, residual, stats, details };
+  };
+
+  return { run, result, pending: () => blocks.length - stats.cachedBlocks };
+}
+
+/** 一口气把一组原子分成物业。 */
+export function partitionLand(atoms, table, front, diagonalFront, partitioner = createPartitioner()) {
+  const job = planPartition(atoms, table, front, diagonalFront, partitioner);
+  job.run(Infinity);
+  return job.result();
 }

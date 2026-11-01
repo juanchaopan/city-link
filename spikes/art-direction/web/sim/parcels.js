@@ -1,5 +1,5 @@
 import { polygonDistance, ROAD_SPEC, worldPolylines } from './network.js';
-import { atomTable, partitionLand } from './partition.js';
+import { atomTable, createPartitioner, planPartition } from './partition.js';
 import { placeServices } from './services.js';
 import { RATE, ZONE } from './zones.js';
 
@@ -13,6 +13,7 @@ import { RATE, ZONE } from './zones.js';
 // 一个地块就是一个物业：一个出入口、一份容量。楼、停车场和绿化都画在同一个物业里，不增加容量。
 // 物业的出入口只能接普通道路（双向两车道、双向四车道），不贴普通道路的土地不能成为独立物业。
 // 街区的切分在 partition.js 里；切不干净的边角只作为绿地，没有容量，也没有出入口。
+// 输入里带 partitioner 时街区的解跨多次生成复用，改路后只重算变了的街区；budgetMs 是每批解街区的时间预算。
 
 export { RATE, ZONE };
 
@@ -355,7 +356,15 @@ function placeBlocks(input, tools) {
   const member = new Set(land);
   const { front, diagonalFront } = frontageOf(input, (id) => member.has(id), table);
   const reached = withinReach(land, front, table);
-  const result = partitionLand(reached, table, front, diagonalFront);
+  const job = planPartition(
+    reached,
+    table,
+    front,
+    diagonalFront,
+    input.partitioner ?? createPartitioner(),
+  );
+  while (!job.run(input.budgetMs ?? Infinity));
+  const result = job.result();
   for (const piece of result.pieces) {
     const { atoms, spec } = piece;
     const zone = majorityZone(atoms, zoneAt);
