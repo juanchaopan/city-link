@@ -19,6 +19,7 @@ import { palettes } from './kit/palettes.js';
 
 // 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图，
 // 以及四级道路的立交场景。车流和红绿灯是纯视觉层，不改变任何结算结果。
+// 缩小到 CAR_MIN_ZOOM 以下是鸟瞰，车只有几个像素大，这时不画车也不模拟车流。
 
 const params = new URLSearchParams(location.search);
 const sceneName = params.get('scene') ?? 'city';
@@ -34,6 +35,7 @@ const carCap = Number(params.get('cars') ?? 300);
 const carsFull = params.get('full') === '1';
 const stress = Number(params.get('stress') ?? 1);
 const TAP_DISTANCE = 6;
+const CAR_MIN_ZOOM = 0.2;
 
 // 风格解析和存档无关：缺包时退回标准风格。样张里只装了标准风格。
 const installedStyles = { standard: { id: 'standard', atlas: 'sunny' } };
@@ -175,8 +177,8 @@ function applyCamera() {
     top: -camera.position.y / zoom,
     bottom: (window.innerHeight - camera.position.y) / zoom,
   };
-  vehicles?.setView(box);
   scene.setView(box);
+  vehicles?.setView(zoom >= CAR_MIN_ZOOM ? box : null);
   icons?.setZoom(zoom);
   if (!vehicles) scene.compose([]);
 }
@@ -358,6 +360,7 @@ window.trafficStats = () =>
         stopped: vehicles.stopped(),
         signals: vehicles.signals,
         sortMs: vehicles.sortMs(),
+        staticsInView: scene.inView(),
       }
     : null;
 

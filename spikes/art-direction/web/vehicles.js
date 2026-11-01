@@ -7,9 +7,11 @@ import { screenOf } from './world.js';
 // 车不分图层：每帧按车身占地和高度插进场景的绘制序列，路口里的车、桥下的车和匝道上的车都走同一条规则。
 // 精灵只有 8 个方向，运行时再旋转到路面走向，这样不用多烘焙精灵，上坡、下坡和弯道都对得上。
 // 精灵的锚点在车轮接地点，车身比它高，画面上看车偏向路的一侧，所以往下挪半个车身，车看起来走在车道中间。
+// 缩小到鸟瞰比例时不画车：视野设到地图外面，车流在一帧里全部回收，之后不再模拟，静态物体照常画。
 
 const LIGHTS = { green: 0x45e07a, yellow: 0xffc832, red: 0xff4438 };
 const HIGH_CAP = 120;
+const NOWHERE = { left: 1e9, right: 1e9 + 1, top: 1e9, bottom: 1e9 + 1 };
 export const BODY_DROP = 3;
 
 function newParticle(atlas) {
@@ -33,6 +35,7 @@ export function createVehicles(atlas, city, scene, { cap, full = false }) {
   let glow = 0;
   let tint = 0xffffff;
   let frameMs = 0;
+  let shown = true;
 
   const setSprite = (particle, key, sx, sy, rotation) => {
     const frame = atlas.frames[key];
@@ -66,6 +69,7 @@ export function createVehicles(atlas, city, scene, { cap, full = false }) {
 
   return {
     step(dt) {
+      if (!shown && fleet.count() === 0) return;
       fleet.step(dt);
       for (const car of fleet.removed.splice(0)) {
         if (car.slot) free.push(car.slot.body, car.slot.light);
@@ -78,7 +82,12 @@ export function createVehicles(atlas, city, scene, { cap, full = false }) {
         particle.tint = LIGHTS[fleet.lightOf({ signal, phase })];
       }
     },
-    setView: fleet.setView,
+    /** box 为空时是鸟瞰：车全部回收，之后这一层只画静态物体。 */
+    setView(box) {
+      shown = Boolean(box);
+      fleet.setView(box ?? NOWHERE);
+      if (!shown) scene.compose([]);
+    },
     setTime(nextTint, nextGlow) {
       tint = nextTint;
       glow = nextGlow;
