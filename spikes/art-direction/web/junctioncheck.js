@@ -16,7 +16,7 @@ import { pngData, randomFrom, renderTown } from './townrender.js';
 // 都换算成屏幕像素，直接读那个像素属于哪一层，不靠几何推断。
 // 要读的点先收齐，再由 readPoints 分块拼遮罩逐块读：128 城整张拼不下，这样每次只拼一块。
 // 地块的地面轮廓是建筑模型里贴地的三角形（地台和铺装），楼身不算，高楼挡住后面的路是正常的。
-// 停车检查量的是车身：停够 IDLE 秒的车，车头、车中、车尾三点都不能落在斑马线或路口里。
+// 停车检查量的是车身：停够 IDLE 秒的车，车头、车中、车尾三点都不能落在斑马线、路口或大路口的连接段里。
 // 斑马线的端点落在人行道和路面的分界上，那一个像素是两层的混色，所以读它周围一圈，有一个像素在人行道上就算到了。
 // 坡路的边缘高差：角点按四分之一层存，一层 32 像素，地形最多有 8 像素的取整误差，上限定 6 像素，
 // 超过这个数才是看得见的竖面；腾空的路是几十像素，分得开。
@@ -78,7 +78,7 @@ function townOfCity(city) {
 }
 
 /** 灯杆底部要落在人行道或路缘上。落在车道上是最坏的情况，落到路外说明高度或位置错了。 */
-function polesCheck(fleet) {
+export function polesCheck(fleet) {
   const points = fleet.signals.map(({ px, py, level }) => ({ px, py, level }));
   return {
     points,
@@ -97,7 +97,7 @@ function polesCheck(fleet) {
 }
 
 /** 灯面法线和来车方向：来车方向从路口的腿算，不用灯自己的朝向字段。 */
-function checkFacing(town, fleet) {
+export function checkFacing(town, fleet) {
   const result = { facingChecked: 0, facingOff: 0, oldFacingOff: 0, examples: [] };
   const facing = (dir) => {
     const [dx, dy] = DIRECTIONS[dir];
@@ -124,7 +124,7 @@ function checkFacing(town, fleet) {
 }
 
 /** 逐条腿核对：每条腿一条斑马线，两端都在人行道上。少一条就算不通过，环岛的腿也一样。 */
-function crossingsCheck(town) {
+export function crossingsCheck(town) {
   const { legs } = town.junctions;
   const points = [];
   const base = { legs: legs.length, crossings: 0, missingCrossings: 0, examples: [] };
@@ -154,7 +154,7 @@ function crossingsCheck(town) {
 }
 
 /** 这一点在斑马线上，或者在路口中心到斑马线之间。 */
-function inJunction(x, y, legs, core) {
+export function inJunction(x, y, legs, core) {
   for (const leg of legs) {
     if (!leg.crossing) continue;
     const [ux, uy] = unitOf(leg.dir);
@@ -173,7 +173,7 @@ function inJunction(x, y, legs, core) {
 }
 
 /** 每个路口的中心区：半径取这个路口最近的斑马线。 */
-function coreOf(legs) {
+export function coreOf(legs) {
   const reach = new Map();
   for (const leg of legs) {
     if (!leg.crossing) continue;
@@ -185,14 +185,36 @@ function coreOf(legs) {
   return [...reach.values()];
 }
 
+/** 大路口连接段的格子：车不能停在这里。 */
+export function linkCellsOf({ clusters }) {
+  const cells = new Set();
+  for (const { cells: all, nodes } of clusters) {
+    for (const cell of all) if (!nodes.includes(cell)) cells.add(cell);
+  }
+  return cells;
+}
+
+/** 车身的头、中、尾三点。 */
+export function bodyOf(fleet, car) {
+  const half = fleet.lengthOf(car) / 2;
+  const angle = roadAngle(car.path, car.s);
+  const dx = Math.cos(angle) / 64 / 2 + Math.sin(angle) / 32 / 2;
+  const dy = Math.sin(angle) / 32 / 2 - Math.cos(angle) / 64 / 2;
+  const scale = half / Math.hypot(dx, dy);
+  return [-1, 0, 1].map((d) => [car.x + dx * scale * d, car.y + dy * scale * d]);
+}
+
 /** 让车流跑一段时间，抽样记下车脚点，红灯时停着的车按车身查是不是停在路口里。 */
-function carsCheck(town) {
-  const fleet = createFleet(town, { cap: 80, full: true, random: randomFrom(7) });
-  const { legs } = town.junctions;
+export function carsCheck(town, { cap = 80, steps = RUN_STEPS, busShare } = {}) {
+  const fleet = createFleet(town, { cap, full: true, random: randomFrom(7), busShare });
+  const { N, junctions } = town;
+  const { legs } = junctions;
   const core = coreOf(legs);
+  const links = linkCellsOf(junctions);
+  const onLink = ([x, y]) => links.has(Math.floor(y) * N + Math.floor(x));
   const points = [];
   const base = { stoppedSamples: 0, stoppedInJunction: 0, examples: [] };
-  for (let i = 0; i < RUN_STEPS; i += 1) {
+  for (let i = 0; i < steps; i += 1) {
     fleet.step(DT);
     if (i % SAMPLE_EVERY !== SAMPLE_EVERY - 1) continue;
     for (const car of fleet.cars) {
@@ -200,13 +222,8 @@ function carsCheck(town) {
       points.push({ px: car.x, py: car.y, level: car.h });
       if (car.idle < IDLE) continue;
       base.stoppedSamples += 1;
-      const half = fleet.lengthOf(car) / 2;
-      const angle = roadAngle(car.path, car.s);
-      const dx = Math.cos(angle) / 64 / 2 + Math.sin(angle) / 32 / 2;
-      const dy = Math.sin(angle) / 32 / 2 - Math.cos(angle) / 64 / 2;
-      const scale = half / Math.hypot(dx, dy);
-      const body = [-1, 0, 1].map((d) => [car.x + dx * scale * d, car.y + dy * scale * d]);
-      if (body.some(([x, y]) => inJunction(x, y, legs, core))) {
+      const body = bodyOf(fleet, car);
+      if (body.some((point) => onLink(point) || inJunction(point[0], point[1], legs, core))) {
         base.stoppedInJunction += 1;
         if (base.examples.length < 4) base.examples.push(['停车', car.x, car.y, car.bus]);
       }
