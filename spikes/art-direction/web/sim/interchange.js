@@ -18,6 +18,8 @@ export const LANE = MAIN_LANE;
 
 const PIER_HALF = 0.07;
 const PIER_ANGLES = 12;
+const MAIN_PIER = 0.8;
+const RAMP_PIER = 0.34;
 const FREE_CLEARANCE = 0.75;
 const GREEN_VARIANTS = 2;
 const LOT_MARGIN = 0.02;
@@ -77,7 +79,7 @@ export function piersOf(name) {
   const lines = TEMPLATES[name].ramps().map(({ name: id, center }) => ({
     id,
     points: center,
-    wide: 0.34,
+    wide: RAMP_PIER,
     spacing: 1.5,
     half: ROAD_SPEC.ramp.walk / 2,
   }));
@@ -85,7 +87,7 @@ export function piersOf(name) {
     lines.unshift({
       id: 'main',
       points: main,
-      wide: 0.8,
+      wide: MAIN_PIER,
       spacing: 1.3,
       half: ROAD_SPEC.express.walk / 2,
     });
@@ -179,20 +181,19 @@ export function footprintCells(name, cx, cy, N) {
   return cells;
 }
 
-/** 桥墩精灵的名字：高度到十分之一层，横梁方向到 15°。 */
-function pierKey(h, nx, nz) {
+/** 桥墩精灵的名字：高度到十分之一层，横梁方向到 15°，横梁宽度到百分之一格。 */
+function pierKey(h, nx, nz, wide) {
   const angle = ((Math.atan2(nz, nx) % Math.PI) + Math.PI) % Math.PI;
   const index = Math.round((angle / Math.PI) * PIER_ANGLES) % PIER_ANGLES;
-  return `pr-${String(Math.round(h * 10))}-${String(index)}`;
+  return `pr-${String(Math.round(h * 10))}-${String(index)}-${String(Math.round(wide * 100))}`;
 }
 
 /** 一根桥墩是一个单独的物体，x、z 相对格子中心 (cx, cy)。顶就是桥面的底。 */
-export function pierObject({ x, z, h, nx, nz }, cx, cy, wide = 0.8) {
+export function pierObject({ x, z, h, nx, nz, wide = MAIN_PIER }, cx, cy) {
   const px = x + cx + 0.5;
   const py = z + cy + 0.5;
   return {
-    key: pierKey(h, nx, nz),
-    wide,
+    key: pierKey(h, nx, nz, wide),
     px,
     py,
     level: 0,

@@ -11,7 +11,6 @@ const VIADUCT_STEPS = 4;
 const VIADUCT_REACH = 0.008;
 const SEAM_OVERLAP = 2;
 const CROSS_ANGLE = Math.PI / 12;
-const WIDE_ABOVE = 1;
 
 /** 一格高架。h0、h1 是这一格两端的路面高度（层），可以是坡。 */
 export function buildViaduct(axis, h0, h1, P) {
@@ -32,13 +31,11 @@ export function buildViaduct(axis, h0, h1, P) {
   return { build };
 }
 
-/** 一根桥墩。height 是十分之一层，angle 是横梁方向，每份 15°。 */
-export function buildPierSprite(height, angle, P) {
-  const h = height / 10;
+/** 一根桥墩。height 是十分之一层，angle 是横梁方向，每份 15°，wide 是横梁宽度，主线宽、匝道窄。 */
+export function buildPierSprite(height, angle, wide, P) {
   const a = angle * CROSS_ANGLE;
-  const wide = h > WIDE_ABOVE ? 0.8 : 0.34;
-  const b = new Builder(hashString(`pier${String(height)}${String(angle)}`));
-  drawPier(b, { x: 0, z: 0, h, wide, nx: Math.cos(a), nz: Math.sin(a) }, P);
+  const b = new Builder(hashString(`pier${String(height)}${String(angle)}${String(wide)}`));
+  drawPier(b, { x: 0, z: 0, h: height / 10, wide, nx: Math.cos(a), nz: Math.sin(a) }, P);
   return b;
 }
 

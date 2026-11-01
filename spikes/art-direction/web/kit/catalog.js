@@ -26,7 +26,8 @@ import { cornersOfShape } from '../sim/surface.js';
 // 路面名字：rw、rc、rd 是人行道、路缘、车道三层，r 是三层合一，只用于界面缩略图；坡上的路加前缀 s。
 // 路面名字的第二段是普通路方向位，有双向四车道时写成 普通路_四车道，第三段是高速方向位。
 // 路面标记：xw 是斑马线，sl 是停车线，rb 是整个环岛。
-// 高架：ev-走向-起点高度-终点高度，高度是百分之一层。ixp-模板-序号 是立交的一小块，pr-高度-方向 是一根桥墩。
+// 高架：ev-走向-起点高度-终点高度，高度是百分之一层。ixp-模板-序号 是立交的一小块，
+// pr-高度-方向-横梁宽度 是一根桥墩，横梁宽度是百分之一格。
 // 这三种用同一块画布，渲染目标不用反复换尺寸，烘焙时显存不会一阵一阵涨。
 // 信号灯：pole-方向 是灯杆和灯箱，lamp-方向 是灯面。公共设施：si 图标牌，bs 公交站，ms 地铁站厅。
 
@@ -194,12 +195,13 @@ export function specFor(key, P) {
     return { group: '立交', ...STRUCTURE_BOX, shadow: true, reach: 2.2, build };
   }
   if (kind === 'pr') {
+    const wide = Number(parts[3]) / 100;
     return {
       group: '高架',
       ...STRUCTURE_BOX,
       shadow: true,
       reach: 2.2,
-      build: () => buildPierSprite(Number(parts[1]), Number(parts[2]), P),
+      build: () => buildPierSprite(Number(parts[1]), Number(parts[2]), wide, P),
     };
   }
   if (kind === 'Mp' || kind === 'Mb' || kind === 'Mr') {

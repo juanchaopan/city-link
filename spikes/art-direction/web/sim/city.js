@@ -30,6 +30,7 @@ const RAMP_CHANCE_FLOOR = 0.1;
 const RAMP_CHANCE_SCALE = 2;
 const RAMP_CHANCE_CEILING = 0.7;
 const ICON_LIFT = 1.4;
+const ATOMS_PER_CELL = 4;
 
 function bits(list) {
   return list.map((v) => (v ? '1' : '0')).join('');
@@ -63,6 +64,17 @@ function modularSize(parcel) {
   if (parcel.shape === 'rect' && parcel.spanU === 2 && parcel.spanV === 2) return '2x2';
   if (parcel.shape === 'bigTriangle' && parcel.spanU === 3) return 'Q3';
   return null;
+}
+
+/** 每个物业占哪些格子，从原子的归属读出来，压到一格就能找到这块物业。农田自带格子。 */
+function assignCells({ parcels, atomOwner }) {
+  const cells = new Map();
+  atomOwner.forEach((owner, atom) => {
+    if (owner < 0) return;
+    if (!cells.has(owner)) cells.set(owner, new Set());
+    cells.get(owner).add(Math.floor(atom / ATOMS_PER_CELL));
+  });
+  for (const [owner, own] of cells) parcels[owner].cells ??= [...own];
 }
 
 function groundEntries(N, { levelOf, cornersOf, isWater }) {
@@ -184,6 +196,7 @@ export function generateCity(N, seed = 11, publicLayout = 'spread', linked = fal
   const { zones, density } = makeZones(N, s, center, riverAt, plan, usable, publicLayout);
   zoneShops(land, zones, density);
   const result = generateParcels({ N, roads, water, slopes, zones, density, seed, reserved });
+  assignCells(result);
   const clearedLots = clearLots(result.parcels, junctions.field);
   const gateCells = gates.map(({ x, y }) => y * N + x);
   const traffic = computeTraffic(result.parcels, roads, N, links, gateCells);
