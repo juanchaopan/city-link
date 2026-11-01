@@ -1,7 +1,7 @@
 {
   "threshold": 2,
   "inset": 0.035,
-  "dirty": 1895,
+  "dirty": 0,
   "rows": [
     {
       "name": "T 字",
@@ -79,27 +79,17 @@
       "name": "相邻路口",
       "nodes": 2,
       "samples": 203449,
-      "dirty": 9,
-      "worst": 2,
-      "examples": [
-        [8.69, 7.87, 108],
-        [8.69, 7.88, 108],
-        [8.69, 7.88, 108],
-        [8.68, 7.87, 108]
-      ]
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
     },
     {
       "name": "相邻路口·公交",
       "nodes": 2,
       "samples": 203449,
-      "dirty": 9,
-      "worst": 2,
-      "examples": [
-        [8.69, 7.87, 108],
-        [8.69, 7.88, 108],
-        [8.69, 7.88, 108],
-        [8.68, 7.87, 108]
-      ]
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
     },
     {
       "name": "锐角小三角地块",
@@ -110,7 +100,7 @@
       "examples": []
     },
     {
-      "name": "城市路口 14,17",
+      "name": "城市路口 11,14",
       "nodes": 1,
       "samples": 116923,
       "dirty": 0,
@@ -118,31 +108,31 @@
       "examples": []
     },
     {
-      "name": "城市路口 14,23",
+      "name": "城市路口 11,20",
       "nodes": 2,
-      "samples": 173473,
+      "samples": 168920,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 14,27",
+      "name": "城市路口 11,24",
       "nodes": 2,
-      "samples": 178185,
+      "samples": 169387,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 14,38",
+      "name": "城市路口 11,49",
       "nodes": 1,
-      "samples": 116923,
+      "samples": 125721,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 19,12",
+      "name": "城市路口 16,9",
       "nodes": 3,
       "samples": 131551,
       "dirty": 0,
@@ -150,36 +140,31 @@
       "examples": []
     },
     {
-      "name": "城市路口 19,17",
+      "name": "城市路口 16,14",
       "nodes": 3,
       "samples": 155446,
-      "dirty": 9,
-      "worst": 2,
-      "examples": [
-        [8.26, 2.92, 108],
-        [8.27, 2.92, 108],
-        [8.27, 2.93, 108],
-        [8.26, 2.91, 108]
-      ]
-    },
-    {
-      "name": "城市路口 19,23",
-      "nodes": 4,
-      "samples": 138573,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 19,27",
+      "name": "城市路口 16,20",
       "nodes": 4,
-      "samples": 150826,
+      "samples": 125742,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 19,32",
+      "name": "城市路口 16,24",
+      "nodes": 4,
+      "samples": 126723,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 16,29",
       "nodes": 2,
       "samples": 93000,
       "dirty": 0,
@@ -187,23 +172,23 @@
       "examples": []
     },
     {
-      "name": "城市路口 19,38",
-      "nodes": 4,
-      "samples": 189753,
+      "name": "城市路口 16,49",
+      "nodes": 2,
+      "samples": 117103,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 19,42",
-      "nodes": 4,
-      "samples": 171387,
+      "name": "城市路口 16,90",
+      "nodes": 2,
+      "samples": 73227,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 23,12",
+      "name": "城市路口 20,9",
       "nodes": 3,
       "samples": 144702,
       "dirty": 0,
@@ -211,78 +196,87 @@
       "examples": []
     },
     {
-      "name": "城市路口 23,16",
+      "name": "城市路口 20,13",
       "nodes": 6,
       "samples": 419205,
-      "dirty": 138,
-      "worst": 2,
-      "examples": [
-        [3.86, 5.69, 108],
-        [3.87, 5.69, 108],
-        [4.26, 3.92, 108],
-        [3.86, 5.69, 108]
-      ]
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
     },
     {
-      "name": "城市路口 23,17",
+      "name": "城市路口 20,14",
       "nodes": 4,
       "samples": 353325,
-      "dirty": 138,
-      "worst": 2,
-      "examples": [
-        [3.86, 4.69, 108],
-        [3.87, 4.69, 108],
-        [4.26, 2.92, 108],
-        [3.86, 4.69, 108]
-      ]
-    },
-    {
-      "name": "城市路口 23,23",
-      "nodes": 5,
-      "samples": 202889,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 23,27",
+      "name": "城市路口 20,20",
       "nodes": 5,
-      "samples": 177569,
+      "samples": 190058,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 23,32",
+      "name": "城市路口 20,24",
+      "nodes": 5,
+      "samples": 153460,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 20,29",
       "nodes": 3,
-      "samples": 183825,
-      "dirty": 16,
-      "worst": 2,
-      "examples": [
-        [3.86, 4.69, 108],
-        [3.87, 4.69, 108],
-        [5.96, 4.28, 108],
-        [3.86, 4.68, 108]
-      ]
-    },
-    {
-      "name": "城市路口 23,38",
-      "nodes": 4,
-      "samples": 34474,
+      "samples": 183135,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 23,42",
+      "name": "城市路口 20,35",
       "nodes": 4,
-      "samples": 171619,
+      "samples": 126723,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 29,12",
+      "name": "城市路口 20,39",
+      "nodes": 4,
+      "samples": 127705,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 20,44",
+      "nodes": 2,
+      "samples": 93661,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 20,49",
+      "nodes": 2,
+      "samples": 117770,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 20,90",
+      "nodes": 2,
+      "samples": 73592,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 26,9",
       "nodes": 1,
       "samples": 52224,
       "dirty": 0,
@@ -290,7 +284,7 @@
       "examples": []
     },
     {
-      "name": "城市路口 29,17",
+      "name": "城市路口 26,14",
       "nodes": 1,
       "samples": 68899,
       "dirty": 0,
@@ -298,247 +292,31 @@
       "examples": []
     },
     {
-      "name": "城市路口 29,22",
+      "name": "城市路口 26,19",
       "nodes": 4,
       "samples": 400327,
-      "dirty": 141,
-      "worst": 2,
-      "examples": [
-        [3.86, 5.69, 108],
-        [3.87, 5.69, 108],
-        [4.26, 3.92, 108],
-        [3.86, 5.69, 108]
-      ]
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
     },
     {
-      "name": "城市路口 29,23",
+      "name": "城市路口 26,20",
       "nodes": 5,
-      "samples": 434382,
-      "dirty": 141,
-      "worst": 2,
-      "examples": [
-        [3.86, 4.69, 108],
-        [3.87, 4.69, 108],
-        [4.26, 2.92, 108],
-        [3.86, 4.68, 108]
-      ]
+      "samples": 425831,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
     },
     {
-      "name": "城市路口 29,27",
+      "name": "城市路口 26,24",
       "nodes": 4,
-      "samples": 199060,
-      "dirty": 15,
-      "worst": 2,
-      "examples": [
-        [3.86, 0.69, 108],
-        [3.86, 0.69, 108],
-        [3.87, 0.69, 108],
-        [5.96, 0.71, 108]
-      ]
-    },
-    {
-      "name": "城市路口 29,32",
-      "nodes": 1,
-      "samples": 0,
+      "samples": 182335,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 29,38",
-      "nodes": 2,
-      "samples": 93000,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 29,42",
-      "nodes": 2,
-      "samples": 77724,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 38,12",
-      "nodes": 2,
-      "samples": 80933,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 38,17",
-      "nodes": 2,
-      "samples": 102218,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 38,23",
-      "nodes": 4,
-      "samples": 58782,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 38,27",
-      "nodes": 5,
-      "samples": 297029,
-      "dirty": 1,
-      "worst": 2,
-      "examples": [[0.79, 1.97, 108]]
-    },
-    {
-      "name": "城市路口 38,31",
-      "nodes": 6,
-      "samples": 443643,
-      "dirty": 139,
-      "worst": 2,
-      "examples": [
-        [0.79, 1.97, 108],
-        [3.86, 5.69, 108],
-        [3.87, 5.69, 108],
-        [4.26, 3.92, 108]
-      ]
-    },
-    {
-      "name": "城市路口 38,32",
-      "nodes": 4,
-      "samples": 361882,
-      "dirty": 138,
-      "worst": 2,
-      "examples": [
-        [3.86, 4.69, 108],
-        [3.87, 4.69, 108],
-        [4.26, 2.92, 108],
-        [3.86, 4.69, 108]
-      ]
-    },
-    {
-      "name": "城市路口 38,38",
-      "nodes": 4,
-      "samples": 139633,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 38,42",
-      "nodes": 4,
-      "samples": 120716,
-      "dirty": 1,
-      "worst": 2,
-      "examples": [[0.79, 1.97, 108]]
-    },
-    {
-      "name": "城市路口 44,12",
-      "nodes": 1,
-      "samples": 52890,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 44,23",
-      "nodes": 2,
-      "samples": 101551,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 44,27",
-      "nodes": 2,
-      "samples": 109720,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 44,32",
-      "nodes": 1,
-      "samples": 68899,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 44,37",
-      "nodes": 3,
-      "samples": 327160,
-      "dirty": 138,
-      "worst": 2,
-      "examples": [
-        [3.86, 5.69, 108],
-        [3.87, 5.69, 108],
-        [4.26, 3.92, 108],
-        [3.86, 5.69, 108]
-      ]
-    },
-    {
-      "name": "城市路口 44,38",
-      "nodes": 4,
-      "samples": 352664,
-      "dirty": 138,
-      "worst": 2,
-      "examples": [
-        [3.86, 4.69, 108],
-        [3.87, 4.69, 108],
-        [4.26, 2.92, 108],
-        [3.86, 4.69, 108]
-      ]
-    },
-    {
-      "name": "城市路口 44,42",
-      "nodes": 3,
-      "samples": 140639,
-      "dirty": 14,
-      "worst": 2,
-      "examples": [
-        [3.86, 0.69, 108],
-        [3.87, 0.69, 108],
-        [5.96, 0.71, 108],
-        [3.86, 0.69, 108]
-      ]
-    },
-    {
-      "name": "城市路口 49,12",
-      "nodes": 1,
-      "samples": 59479,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 49,17",
-      "nodes": 1,
-      "samples": 52962,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 49,23",
-      "nodes": 2,
-      "samples": 77790,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 49,27",
-      "nodes": 2,
-      "samples": 82404,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 49,32",
+      "name": "城市路口 26,29",
       "nodes": 1,
       "samples": 68196,
       "dirty": 0,
@@ -546,44 +324,615 @@
       "examples": []
     },
     {
-      "name": "城市路口 49,38",
-      "nodes": 3,
-      "samples": 148289,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 49,42",
-      "nodes": 3,
-      "samples": 132463,
-      "dirty": 0,
-      "worst": 0,
-      "examples": []
-    },
-    {
-      "name": "城市路口 34,12",
+      "name": "城市路口 26,35",
       "nodes": 2,
-      "samples": 89722,
+      "samples": 93000,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 24,17",
+      "name": "城市路口 26,39",
+      "nodes": 2,
+      "samples": 93661,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 26,49",
+      "nodes": 1,
+      "samples": 84255,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 26,90",
+      "nodes": 1,
+      "samples": 52259,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 31,9",
+      "nodes": 2,
+      "samples": 73181,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 31,20",
+      "nodes": 5,
+      "samples": 196978,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 31,24",
+      "nodes": 6,
+      "samples": 46706,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 31,90",
+      "nodes": 2,
+      "samples": 73505,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 35,9",
+      "nodes": 2,
+      "samples": 73551,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 35,20",
+      "nodes": 4,
+      "samples": 126906,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 35,24",
+      "nodes": 5,
+      "samples": 198849,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 35,28",
+      "nodes": 6,
+      "samples": 419205,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 35,29",
+      "nodes": 4,
+      "samples": 353325,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 35,35",
+      "nodes": 4,
+      "samples": 126723,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 35,84",
+      "nodes": 2,
+      "samples": 93661,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 35,90",
+      "nodes": 2,
+      "samples": 96319,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 41,29",
+      "nodes": 1,
+      "samples": 68899,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 41,34",
+      "nodes": 3,
+      "samples": 327160,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 41,35",
+      "nodes": 4,
+      "samples": 352664,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 41,39",
+      "nodes": 3,
+      "samples": 156576,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 41,79",
+      "nodes": 1,
+      "samples": 68862,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 41,84",
+      "nodes": 1,
+      "samples": 0,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 41,90",
+      "nodes": 1,
+      "samples": 52259,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 46,35",
+      "nodes": 3,
+      "samples": 164236,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 46,39",
+      "nodes": 3,
+      "samples": 19735,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 46,44",
+      "nodes": 1,
+      "samples": 68899,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 46,74",
+      "nodes": 2,
+      "samples": 94327,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 46,84",
+      "nodes": 1,
+      "samples": 68899,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 51,39",
+      "nodes": 4,
+      "samples": 127426,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 51,44",
+      "nodes": 3,
+      "samples": 18713,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 51,49",
+      "nodes": 3,
+      "samples": 187822,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 51,70",
+      "nodes": 4,
+      "samples": 189766,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 51,74",
+      "nodes": 4,
+      "samples": 34474,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 51,79",
+      "nodes": 2,
+      "samples": 93703,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 55,44",
+      "nodes": 3,
+      "samples": 164805,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 55,48",
+      "nodes": 6,
+      "samples": 469458,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 55,49",
+      "nodes": 4,
+      "samples": 402870,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 55,70",
+      "nodes": 4,
+      "samples": 34474,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 55,74",
+      "nodes": 4,
+      "samples": 191601,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 61,49",
+      "nodes": 1,
+      "samples": 84958,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 61,59",
+      "nodes": 3,
+      "samples": 157242,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 61,70",
+      "nodes": 2,
+      "samples": 93000,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 70,9",
+      "nodes": 2,
+      "samples": 80887,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 70,14",
+      "nodes": 2,
+      "samples": 102218,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 70,20",
+      "nodes": 4,
+      "samples": 139560,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 70,24",
+      "nodes": 4,
+      "samples": 140542,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 70,49",
+      "nodes": 2,
+      "samples": 125958,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 70,55",
+      "nodes": 4,
+      "samples": 46654,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 70,59",
+      "nodes": 5,
+      "samples": 274064,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 70,63",
+      "nodes": 6,
+      "samples": 431420,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 70,64",
+      "nodes": 4,
+      "samples": 361882,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 70,70",
+      "nodes": 4,
+      "samples": 139560,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 70,90",
+      "nodes": 2,
+      "samples": 82392,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 76,49",
+      "nodes": 1,
+      "samples": 0,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 81,49",
+      "nodes": 1,
+      "samples": 84958,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 90,90",
+      "nodes": 2,
+      "samples": 73592,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 96,89",
+      "nodes": 3,
+      "samples": 239044,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 96,90",
+      "nodes": 3,
+      "samples": 239040,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 101,90",
+      "nodes": 3,
+      "samples": 90436,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 105,90",
+      "nodes": 3,
+      "samples": 106056,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 111,9",
+      "nodes": 1,
+      "samples": 52890,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 111,79",
+      "nodes": 1,
+      "samples": 68196,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 111,84",
+      "nodes": 3,
+      "samples": 198493,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 111,87",
+      "nodes": 5,
+      "samples": 332989,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 111,90",
+      "nodes": 3,
+      "samples": 175516,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 116,9",
+      "nodes": 1,
+      "samples": 59479,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 116,14",
+      "nodes": 1,
+      "samples": 52962,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 116,20",
+      "nodes": 2,
+      "samples": 73227,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 116,24",
+      "nodes": 2,
+      "samples": 73592,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 116,29",
+      "nodes": 1,
+      "samples": 52259,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 116,49",
+      "nodes": 1,
+      "samples": 61071,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 116,79",
+      "nodes": 2,
+      "samples": 138772,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 116,82",
+      "nodes": 4,
+      "samples": 337958,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 116,84",
+      "nodes": 3,
+      "samples": 264676,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 66,9",
+      "nodes": 2,
+      "samples": 89700,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 21,14",
       "nodes": 3,
       "samples": 327539,
-      "dirty": 139,
-      "worst": 2,
-      "examples": [
-        [2.86, 4.69, 108],
-        [2.87, 4.69, 108],
-        [3.26, 2.92, 108],
-        [2.86, 4.69, 108]
-      ]
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
     },
     {
-      "name": "城市路口 34,17",
+      "name": "城市路口 66,14",
       "nodes": 2,
       "samples": 109059,
       "dirty": 0,
@@ -591,111 +940,137 @@
       "examples": []
     },
     {
-      "name": "城市路口 26,23",
+      "name": "城市路口 23,20",
       "nodes": 7,
-      "samples": 431811,
-      "dirty": 127,
-      "worst": 2,
-      "examples": [
-        [6.86, 4.69, 108],
-        [6.87, 4.69, 108],
-        [7.26, 2.92, 108],
-        [6.86, 4.69, 108]
-      ]
-    },
-    {
-      "name": "城市路口 30,23",
-      "nodes": 7,
-      "samples": 482473,
-      "dirty": 141,
-      "worst": 2,
-      "examples": [
-        [2.86, 4.69, 108],
-        [2.87, 4.69, 108],
-        [3.26, 2.92, 108],
-        [2.86, 4.69, 108]
-      ]
-    },
-    {
-      "name": "城市路口 34,23",
-      "nodes": 5,
-      "samples": 295293,
+      "samples": 420648,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 24,32",
+      "name": "城市路口 27,20",
+      "nodes": 7,
+      "samples": 458039,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 66,20",
+      "nodes": 4,
+      "samples": 149845,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 66,24",
+      "nodes": 4,
+      "samples": 150832,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 21,29",
       "nodes": 2,
-      "samples": 158925,
-      "dirty": 16,
-      "worst": 2,
-      "examples": [
-        [2.86, 4.69, 108],
-        [2.87, 4.69, 108],
-        [4.96, 4.28, 108],
-        [2.86, 4.68, 108]
-      ]
+      "samples": 158191,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
     },
     {
-      "name": "城市路口 34,32",
-      "nodes": 3,
-      "samples": 172208,
-      "dirty": 9,
-      "worst": 2,
-      "examples": [
-        [8.26, 2.92, 108],
-        [8.27, 2.92, 108],
-        [8.27, 2.93, 108],
-        [8.26, 2.91, 108]
-      ]
-    },
-    {
-      "name": "城市路口 39,32",
+      "name": "城市路口 36,29",
       "nodes": 3,
       "samples": 327539,
-      "dirty": 139,
-      "worst": 2,
-      "examples": [
-        [2.86, 4.69, 108],
-        [2.87, 4.69, 108],
-        [3.26, 2.92, 108],
-        [2.86, 4.69, 108]
-      ]
-    },
-    {
-      "name": "城市路口 34,38",
-      "nodes": 4,
-      "samples": 150000,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 45,38",
+      "name": "城市路口 42,35",
       "nodes": 6,
       "samples": 417539,
-      "dirty": 139,
-      "worst": 2,
-      "examples": [
-        [2.86, 4.69, 108],
-        [2.87, 4.69, 108],
-        [3.26, 2.92, 108],
-        [2.86, 4.69, 108]
-      ]
-    },
-    {
-      "name": "城市路口 34,42",
-      "nodes": 4,
-      "samples": 139754,
       "dirty": 0,
       "worst": 0,
       "examples": []
     },
     {
-      "name": "城市路口 34,27",
+      "name": "城市路口 62,55",
       "nodes": 6,
-      "samples": 52617,
+      "samples": 429756,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 66,55",
+      "nodes": 5,
+      "samples": 283712,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 66,59",
+      "nodes": 6,
+      "samples": 51522,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 66,64",
+      "nodes": 3,
+      "samples": 172208,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 114,84",
+      "nodes": 5,
+      "samples": 405008,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 66,90",
+      "nodes": 2,
+      "samples": 97981,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 97,90",
+      "nodes": 4,
+      "samples": 260130,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 108,90",
+      "nodes": 4,
+      "samples": 215751,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 66,49",
+      "nodes": 2,
+      "samples": 132494,
+      "dirty": 0,
+      "worst": 0,
+      "examples": []
+    },
+    {
+      "name": "城市路口 56,49",
+      "nodes": 3,
+      "samples": 369021,
       "dirty": 0,
       "worst": 0,
       "examples": []

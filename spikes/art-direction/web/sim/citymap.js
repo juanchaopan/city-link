@@ -217,10 +217,13 @@ export function buildRoads(N, s, center, riverAt) {
   ]);
 
   // 上台地的路：沿 (+1, -1) 方向斜穿朝南的直坡。这个方向在屏幕上接近水平，地形顺着路面抬起，路贴在地上。
-  const climbFrom = [27 * s, south];
-  const climbTo = [climbFrom[0] + 3 * s, south - 3 * s];
-  walk('road', [[right, south], climbFrom, climbTo]);
+  // 斜路最多爬到直通路下面一行，再用一小段直路接上去：爬过头三条路会在坡上夹出小三角，
+  // 正好爬到那一行又和直通路成一个回头的锐角。
   const directRow = usableRows[Math.max(0, usableRows.length - 3)];
+  const climbFrom = [27 * s, south];
+  const rise = Math.min(3 * s, south - directRow - 1);
+  const climbTo = [climbFrom[0] + rise, south - rise];
+  walk('road', [[right, south], climbFrom, climbTo]);
   walk('road', [
     [right, directRow],
     [climbTo[0], directRow],
