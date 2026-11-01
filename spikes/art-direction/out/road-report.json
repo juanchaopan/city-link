@@ -218,14 +218,14 @@
     },
     {
       "name": "六向路口",
-      "samples": 82472,
+      "samples": 36920,
       "walkInDeck": 0,
       "deckHole": 0,
       "deckOutside": 0,
       "walkHole": 0,
       "overshoot": 0,
       "capOvershoot": 0,
-      "corners": 6,
+      "corners": 0,
       "sharpCorners": 0,
       "wobblePixels": 0,
       "variants": 1,
@@ -436,9 +436,9 @@
       "name": "边界已打通·普通路",
       "samples": 25584,
       "walkInDeck": 0,
-      "deckHole": 0,
+      "deckHole": 1587,
       "deckOutside": 0,
-      "walkHole": 0,
+      "walkHole": 214,
       "overshoot": 0,
       "capOvershoot": 0,
       "corners": 0,
@@ -447,20 +447,34 @@
       "variants": 1,
       "examples": {
         "walkInDeck": [],
-        "deckHole": [],
+        "deckHole": [
+          [8.7, 12.02, 0],
+          [8.68, 12.02, 0],
+          [8.66, 12.02, 0],
+          [8.65, 12.02, 0],
+          [8.64, 12.02, 0],
+          [8.62, 12.02, 0]
+        ],
         "deckOutside": [],
-        "walkHole": [],
+        "walkHole": [
+          [8.79, 12.02, 0],
+          [8.77, 12.02, 0],
+          [8.23, 12.02, 0],
+          [8.22, 12.02, 0],
+          [8.79, 12.04, 0],
+          [8.77, 12.04, 0]
+        ],
         "overshoot": [],
         "capOvershoot": [],
         "sharp": []
       },
-      "pass": true
+      "pass": false
     },
     {
       "name": "边界已打通·高速",
       "samples": 33456,
       "walkInDeck": 0,
-      "deckHole": 0,
+      "deckHole": 2891,
       "deckOutside": 0,
       "walkHole": 0,
       "overshoot": 0,
@@ -471,25 +485,32 @@
       "variants": 1,
       "examples": {
         "walkInDeck": [],
-        "deckHole": [],
+        "deckHole": [
+          [12, 8.86, 0],
+          [12, 8.83, 0],
+          [12, 8.8, 0],
+          [12, 8.77, 0],
+          [12, 8.74, 0],
+          [12, 8.71, 0]
+        ],
         "deckOutside": [],
         "walkHole": [],
         "overshoot": [],
         "capOvershoot": [],
         "sharp": []
       },
-      "pass": true
+      "pass": false
     },
     {
       "name": "全图 64×64·未打通",
-      "samples": 2052090,
+      "samples": 1818345,
       "walkInDeck": 0,
       "deckHole": 0,
       "deckOutside": 0,
       "walkHole": 0,
       "overshoot": 0,
-      "capOvershoot": 0,
-      "corners": 221,
+      "capOvershoot": 156,
+      "corners": 195,
       "sharpCorners": 0,
       "wobblePixels": 4.9,
       "variants": 1,
@@ -499,34 +520,62 @@
         "deckOutside": [],
         "walkHole": [],
         "overshoot": [],
-        "capOvershoot": [],
+        "capOvershoot": [
+          [34.17, 11.47, 1],
+          [34.81, 11.47, 1],
+          [34.17, 11.45, 1],
+          [34.79, 11.45, 1],
+          [34.8, 11.44, 1],
+          [34.18, 11.45, 1]
+        ],
         "sharp": []
       },
-      "pass": true
+      "pass": false
     },
     {
       "name": "全图 64×64·已打通",
-      "samples": 2068822,
+      "samples": 1835077,
       "walkInDeck": 0,
-      "deckHole": 0,
+      "deckHole": 7357,
       "deckOutside": 0,
-      "walkHole": 0,
+      "walkHole": 316,
       "overshoot": 0,
-      "capOvershoot": 0,
-      "corners": 221,
+      "capOvershoot": 156,
+      "corners": 195,
       "sharpCorners": 0,
       "wobblePixels": 4.9,
       "variants": 1,
       "examples": {
         "walkInDeck": [],
-        "deckHole": [],
+        "deckHole": [
+          [64, 7.86, 0],
+          [64, 7.83, 0],
+          [64, 7.8, 0],
+          [64, 7.77, 0],
+          [64, 7.74, 0],
+          [64, 7.71, 0]
+        ],
         "deckOutside": [],
-        "walkHole": [],
+        "walkHole": [
+          [34.78, 64.02, 0],
+          [34.77, 64.02, 0],
+          [34.23, 64.02, 0],
+          [34.21, 64.02, 0],
+          [34.78, 64.04, 0],
+          [34.77, 64.04, 0]
+        ],
         "overshoot": [],
-        "capOvershoot": [],
+        "capOvershoot": [
+          [34.17, 11.47, 1],
+          [34.81, 11.47, 1],
+          [34.17, 11.45, 1],
+          [34.79, 11.45, 1],
+          [34.8, 11.44, 1],
+          [34.18, 11.45, 1]
+        ],
         "sharp": []
       },
-      "pass": true
+      "pass": false
     }
   ],
   "legacy": [
@@ -898,36 +947,36 @@
     },
     {
       "name": "六向路口",
-      "samples": 82472,
-      "walkInDeck": 104,
-      "deckHole": 48,
+      "samples": 36920,
+      "walkInDeck": 0,
+      "deckHole": 33,
       "deckOutside": 0,
-      "walkHole": 0,
+      "walkHole": 7,
       "overshoot": 0,
       "capOvershoot": 3073,
-      "corners": 6,
-      "sharpCorners": 4,
+      "corners": 0,
+      "sharpCorners": 0,
       "wobblePixels": 0,
       "variants": 1,
       "examples": {
-        "walkInDeck": [
-          [6.41, 5.98, 2],
-          [6.31, 5.96, 2],
-          [6.32, 5.96, 2],
-          [6.33, 5.95, 2],
-          [6.35, 5.96, 2],
-          [6.36, 5.96, 2]
-        ],
+        "walkInDeck": [],
         "deckHole": [
-          [6.31, 5.98, 4],
-          [6.34, 5.98, 4],
-          [6.37, 5.98, 4],
-          [6.4, 5.97, 4],
-          [6.42, 5.98, 4],
-          [6.41, 5.96, 4]
+          [3.86, 4.14, 0],
+          [3.87, 4.13, 0],
+          [3.88, 4.12, 0],
+          [3.89, 4.11, 0],
+          [3.9, 4.1, 0],
+          [3.92, 4.08, 0]
         ],
         "deckOutside": [],
-        "walkHole": [],
+        "walkHole": [
+          [3.79, 4.21, 0],
+          [3.8, 4.2, 0],
+          [3.81, 4.19, 0],
+          [4.19, 3.81, 0],
+          [4.2, 3.8, 0],
+          [4, 6.8, 0]
+        ],
         "overshoot": [],
         "capOvershoot": [
           [1.46, 6.78, 2],
@@ -937,12 +986,7 @@
           [1.47, 6.71, 1],
           [1.46, 6.69, 1]
         ],
-        "sharp": [
-          [7.07, 6.74, 4, 0, 1],
-          [6.74, 7.07, 4, 1, 2],
-          [5.93, 6.26, 3, 4, 5],
-          [6.26, 5.93, 2, 5, 6]
-        ]
+        "sharp": []
       },
       "pass": false
     },
@@ -1026,10 +1070,10 @@
       "name": "坡道接平地",
       "samples": 68568,
       "walkInDeck": 0,
-      "deckHole": 0,
+      "deckHole": 5,
       "deckOutside": 0,
       "walkHole": 0,
-      "overshoot": 351,
+      "overshoot": 0,
       "capOvershoot": 3115,
       "corners": 0,
       "sharpCorners": 0,
@@ -1037,17 +1081,16 @@
       "variants": 3,
       "examples": {
         "walkInDeck": [],
-        "deckHole": [],
+        "deckHole": [
+          [4.15, 8.12, 4],
+          [4.16, 8.1, 4],
+          [4.17, 8.11, 4],
+          [4.17, 8.09, 4],
+          [4.18, 8.07, 4]
+        ],
         "deckOutside": [],
         "walkHole": [],
-        "overshoot": [
-          [5.72, 5.66, 2],
-          [5.73, 5.65, 2],
-          [5.74, 5.63, 2],
-          [5.75, 5.64, 2],
-          [5.75, 5.61, 2],
-          [5.76, 5.62, 2]
-        ],
+        "overshoot": [],
         "capOvershoot": [
           [1.46, 6.78, 2],
           [1.47, 6.77, 2],
@@ -1266,9 +1309,9 @@
       "name": "边界已打通·普通路",
       "samples": 25584,
       "walkInDeck": 0,
-      "deckHole": 0,
+      "deckHole": 1587,
       "deckOutside": 0,
-      "walkHole": 0,
+      "walkHole": 214,
       "overshoot": 0,
       "capOvershoot": 528,
       "corners": 0,
@@ -1277,9 +1320,23 @@
       "variants": 1,
       "examples": {
         "walkInDeck": [],
-        "deckHole": [],
+        "deckHole": [
+          [8.7, 12.02, 0],
+          [8.68, 12.02, 0],
+          [8.66, 12.02, 0],
+          [8.65, 12.02, 0],
+          [8.64, 12.02, 0],
+          [8.62, 12.02, 0]
+        ],
         "deckOutside": [],
-        "walkHole": [],
+        "walkHole": [
+          [8.79, 12.02, 0],
+          [8.77, 12.02, 0],
+          [8.23, 12.02, 0],
+          [8.22, 12.02, 0],
+          [8.79, 12.04, 0],
+          [8.77, 12.04, 0]
+        ],
         "overshoot": [],
         "capOvershoot": [
           [8.19, 3.47, 2],
@@ -1297,7 +1354,7 @@
       "name": "边界已打通·高速",
       "samples": 33456,
       "walkInDeck": 0,
-      "deckHole": 0,
+      "deckHole": 2890,
       "deckOutside": 0,
       "walkHole": 0,
       "overshoot": 0,
@@ -1308,7 +1365,14 @@
       "variants": 1,
       "examples": {
         "walkInDeck": [],
-        "deckHole": [],
+        "deckHole": [
+          [12, 8.86, 0],
+          [12, 8.83, 0],
+          [12, 8.8, 0],
+          [12, 8.77, 0],
+          [12, 8.74, 0],
+          [12, 8.71, 0]
+        ],
         "deckOutside": [],
         "walkHole": [],
         "overshoot": [],
@@ -1326,15 +1390,15 @@
     },
     {
       "name": "全图 64×64·未打通",
-      "samples": 2052090,
-      "walkInDeck": 1996,
-      "deckHole": 1228,
+      "samples": 1818345,
+      "walkInDeck": 1175,
+      "deckHole": 701,
       "deckOutside": 0,
-      "walkHole": 0,
-      "overshoot": 351,
-      "capOvershoot": 3301,
-      "corners": 221,
-      "sharpCorners": 118,
+      "walkHole": 12,
+      "overshoot": 0,
+      "capOvershoot": 5660,
+      "corners": 195,
+      "sharpCorners": 100,
       "wobblePixels": 4.1,
       "variants": 1,
       "examples": {
@@ -1355,15 +1419,15 @@
           [12.81, 8.72, 4]
         ],
         "deckOutside": [],
-        "walkHole": [],
-        "overshoot": [
-          [57.72, 38.66, 2],
-          [57.73, 38.65, 2],
-          [57.74, 38.63, 2],
-          [57.75, 38.64, 2],
-          [57.75, 38.61, 2],
-          [57.76, 38.62, 2]
+        "walkHole": [
+          [42, 17.77, 0],
+          [36, 23.77, 0],
+          [31.79, 25.21, 0],
+          [31.8, 25.2, 0],
+          [31.81, 25.19, 0],
+          [32.19, 24.81, 0]
         ],
+        "overshoot": [],
         "capOvershoot": [
           [34.19, 11.47, 1],
           [34.19, 11.46, 1],
@@ -1385,15 +1449,15 @@
     },
     {
       "name": "全图 64×64·已打通",
-      "samples": 2068822,
-      "walkInDeck": 1996,
-      "deckHole": 1228,
+      "samples": 1835077,
+      "walkInDeck": 1175,
+      "deckHole": 8056,
       "deckOutside": 0,
-      "walkHole": 0,
-      "overshoot": 351,
-      "capOvershoot": 793,
-      "corners": 221,
-      "sharpCorners": 118,
+      "walkHole": 328,
+      "overshoot": 0,
+      "capOvershoot": 3152,
+      "corners": 195,
+      "sharpCorners": 100,
       "wobblePixels": 4.1,
       "variants": 1,
       "examples": {
@@ -1406,23 +1470,23 @@
           [13.3, 9.16, 2]
         ],
         "deckHole": [
-          [12.77, 8.74, 4],
-          [13.27, 9.24, 4],
-          [12.78, 8.73, 4],
-          [13.26, 9.21, 4],
-          [12.8, 8.71, 4],
-          [12.81, 8.72, 4]
+          [64, 7.86, 0],
+          [64, 7.83, 0],
+          [64, 7.8, 0],
+          [64, 7.77, 0],
+          [64, 7.74, 0],
+          [64, 7.71, 0]
         ],
         "deckOutside": [],
-        "walkHole": [],
-        "overshoot": [
-          [57.72, 38.66, 2],
-          [57.73, 38.65, 2],
-          [57.74, 38.63, 2],
-          [57.75, 38.64, 2],
-          [57.75, 38.61, 2],
-          [57.76, 38.62, 2]
+        "walkHole": [
+          [42, 17.77, 0],
+          [36, 23.77, 0],
+          [31.79, 25.21, 0],
+          [31.8, 25.2, 0],
+          [31.81, 25.19, 0],
+          [32.19, 24.81, 0]
         ],
+        "overshoot": [],
         "capOvershoot": [
           [34.19, 11.47, 1],
           [34.19, 11.46, 1],
@@ -1450,14 +1514,20 @@
         "lanes": 4,
         "samples": 4368,
         "holes": 0,
-        "side": 0,
-        "pass": true,
-        "examples": []
+        "side": 5,
+        "pass": false,
+        "examples": [
+          [14.2, 6.3, 1.3, 2],
+          [14.8, 16.8, 1.3, 2],
+          [14.8, 16.7, 1.3, 2],
+          [14.8, 12.7, 1.3, 2],
+          [30.8, 16.8, 1.3, 2]
+        ]
       },
       {
         "name": "立交·diamond",
         "lanes": 8,
-        "samples": 3600,
+        "samples": 4056,
         "holes": 0,
         "side": 0,
         "pass": true,
@@ -1466,20 +1536,20 @@
       {
         "name": "立交·cloverleaf",
         "lanes": 8,
-        "samples": 6312,
+        "samples": 6276,
         "holes": 0,
-        "side": 0,
-        "pass": true,
-        "examples": []
+        "side": 1,
+        "pass": false,
+        "examples": [[10.6, 5.6, 0.6, 2]]
       },
       {
         "name": "立交·trumpet",
         "lanes": 4,
-        "samples": 4011,
-        "holes": 0,
+        "samples": 3990,
+        "holes": 1,
         "side": 0,
-        "pass": true,
-        "examples": []
+        "pass": false,
+        "examples": [[28.2, 9, 0, 0]]
       },
       {
         "name": "高架下方的地面路",
@@ -1493,27 +1563,33 @@
       {
         "name": "普通城市·tee",
         "lanes": 4,
-        "samples": 4578,
+        "samples": 4137,
         "holes": 0,
-        "side": 0,
-        "pass": true,
-        "examples": []
+        "side": 3,
+        "pass": false,
+        "examples": [
+          [33.5, 6.9, 0, 2],
+          [33.5, 7, 0, 2],
+          [33.5, 6.8, 0, 2]
+        ]
       }
     ],
     "footprints": [
       {
         "name": "diamond",
-        "w": 9,
-        "h": 15,
-        "cells": 135,
+        "w": 7,
+        "h": 11,
+        "cells": 77,
+        "usable": 28,
         "ramps": 4,
-        "bbox": [-4, -7, 4, 7]
+        "bbox": [-3, -5, 3, 5]
       },
       {
         "name": "cloverleaf",
         "w": 17,
         "h": 17,
         "cells": 289,
+        "usable": 176,
         "ramps": 8,
         "bbox": [-8, -8, 8, 8]
       },
@@ -1522,17 +1598,47 @@
         "w": 17,
         "h": 15,
         "cells": 255,
+        "usable": 173,
         "ramps": 4,
         "bbox": [-8, -6, 8, 8]
       },
       {
         "name": "tee",
-        "w": 17,
-        "h": 11,
-        "cells": 187,
+        "w": 11,
+        "h": 9,
+        "cells": 99,
+        "usable": 51,
         "ramps": 4,
-        "bbox": [-8, -6, 8, 4]
+        "bbox": [-5, -4, 5, 4]
+      },
+      {
+        "name": "sidediamond",
+        "w": 3,
+        "h": 10,
+        "cells": 30,
+        "usable": 6,
+        "ramps": 2,
+        "bbox": [0, -5, 2, 4]
+      },
+      {
+        "name": "spur",
+        "w": 10,
+        "h": 3,
+        "cells": 30,
+        "usable": 9,
+        "ramps": 2,
+        "bbox": [-5, 0, 4, 2]
+      },
+      {
+        "name": "expressfoot",
+        "w": 1,
+        "h": 1,
+        "cells": 1,
+        "usable": 1,
+        "ramps": 0,
+        "bbox": [0, 0, 0, 0]
       }
-    ]
+    ],
+    "pass": false
   }
 }

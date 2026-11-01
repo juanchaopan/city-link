@@ -3,115 +3,42 @@
     {
       "name": "tee",
       "levelCrossings": 0,
-      "examples": [
-        [
-          "桥墩",
-          "西转南",
-          -0.18,
-          -0.65
-        ],
-        [
-          "侧面",
-          "西转南",
-          89,
-          1,
-          1.47,
-          15.3,
-          8.95
-        ]
-      ],
-      "piers": 13,
-      "piersOnRoad": 1,
+      "examples": [],
+      "piers": 12,
+      "piersOnRoad": 0,
       "worstTurn": 6,
       "sharpRamps": 0,
-      "sideSamples": 184,
-      "sideGaps": 1,
-      "driveSamples": 892,
+      "sideSamples": 182,
+      "sideGaps": 0,
+      "driveSamples": 905,
       "driveBlocked": 0,
       "driveHoles": 0,
-      "openingSamples": 1252,
+      "openingSamples": 1232,
       "curbInOpening": 0,
-      "carSamples": 111,
+      "carSamples": 154,
       "carsOffCenter": 0,
       "worstCarOffset": 0.04,
-      "pass": false
+      "pass": true
     },
     {
       "name": "diamond",
       "levelCrossings": 0,
-      "examples": [
-        [
-          "开到主线",
-          "diamond15-0",
-          15.07,
-          11.07,
-          2
-        ],
-        [
-          "开到主线",
-          "diamond15-0",
-          15.05,
-          11.11,
-          2
-        ],
-        [
-          "开到主线",
-          "diamond15-0",
-          15.04,
-          11.14,
-          2
-        ],
-        [
-          "开到主线",
-          "diamond15-1",
-          15.04,
-          19.86,
-          2
-        ],
-        [
-          "开口",
-          "南向出口",
-          15.07,
-          11.07,
-          2
-        ],
-        [
-          "开口",
-          "南向出口",
-          15.04,
-          11.17,
-          2
-        ],
-        [
-          "开口",
-          "南向出口",
-          15.05,
-          11.17,
-          2
-        ],
-        [
-          "开口",
-          "南向出口",
-          15.06,
-          11.17,
-          2
-        ]
-      ],
+      "examples": [],
       "piers": 18,
       "piersOnRoad": 0,
       "worstTurn": 7.6,
       "sharpRamps": 0,
-      "sideSamples": 144,
+      "sideSamples": 145,
       "sideGaps": 0,
-      "driveSamples": 1911,
-      "driveBlocked": 5,
+      "driveSamples": 1918,
+      "driveBlocked": 0,
       "driveHoles": 0,
       "openingSamples": 776,
-      "curbInOpening": 33,
-      "carSamples": 19,
+      "curbInOpening": 0,
+      "carSamples": 22,
       "carsOffCenter": 0,
       "worstCarOffset": 0.03,
-      "pass": false
+      "pass": true
     }
   ],
   "cells": null

@@ -2,22 +2,7 @@
   "pass": true,
   "maxJump": 3,
   "maxEndHeight": 2,
-  "worstJump": 2,
-  "worstEnd": 1,
-  "runs": [
-    {
-      "cells": 3,
-      "columns": 120,
-      "tallest": 7,
-      "jump": 1,
-      "ends": 1
-    },
-    {
-      "cells": 3,
-      "columns": 373,
-      "tallest": 33,
-      "jump": 2,
-      "ends": 1
-    }
-  ]
+  "worstJump": 0,
+  "worstEnd": 0,
+  "runs": []
 }

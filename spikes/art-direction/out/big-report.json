@@ -1,0 +1,46 @@
+{
+  "64": {
+    "generateMs": 4364,
+    "partitionMs": 3827,
+    "enumerated": 61877,
+    "heapMb": 102,
+    "parcels": 210,
+    "roads": 646,
+    "objects": 1272,
+    "junctions": 50,
+    "rings": 5,
+    "blockedRings": 0,
+    "distinctSprites": 612,
+    "view": {
+      "ground": 6315,
+      "objects": 1046,
+      "total": 7361
+    },
+    "save": {
+      "rawKb": 20,
+      "gzipKb": 3
+    }
+  },
+  "128": {
+    "generateMs": 36795,
+    "partitionMs": 33034,
+    "enumerated": 571549,
+    "heapMb": -62,
+    "parcels": 1289,
+    "roads": 3647,
+    "objects": 3914,
+    "junctions": 355,
+    "rings": 20,
+    "blockedRings": 0,
+    "distinctSprites": 772,
+    "view": {
+      "ground": 28598,
+      "objects": 3328,
+      "total": 31926
+    },
+    "save": {
+      "rawKb": 110,
+      "gzipKb": 17
+    }
+  }
+}

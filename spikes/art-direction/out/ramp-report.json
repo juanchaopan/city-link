@@ -1,0 +1,134 @@
+{
+  "grades": [
+    {
+      "name": "tee·东转南",
+      "percent": 0,
+      "pass": true
+    },
+    {
+      "name": "tee·北转东",
+      "percent": 0,
+      "pass": true
+    },
+    {
+      "name": "tee·西转南",
+      "percent": 19.5,
+      "pass": true
+    },
+    {
+      "name": "tee·北转西",
+      "percent": 19.5,
+      "pass": true
+    },
+    {
+      "name": "diamond·南向出口",
+      "percent": 16.3,
+      "pass": true
+    },
+    {
+      "name": "diamond·南向入口",
+      "percent": 16.3,
+      "pass": true
+    },
+    {
+      "name": "diamond·北向出口",
+      "percent": 16.2,
+      "pass": true
+    },
+    {
+      "name": "diamond·北向入口",
+      "percent": 16.3,
+      "pass": true
+    },
+    {
+      "name": "spur·东转南",
+      "percent": 17.2,
+      "pass": true
+    },
+    {
+      "name": "spur·北转东",
+      "percent": 17.2,
+      "pass": true
+    },
+    {
+      "name": "sidediamond·北向出口",
+      "percent": 19.6,
+      "pass": true
+    },
+    {
+      "name": "sidediamond·北向入口",
+      "percent": 17.8,
+      "pass": true
+    },
+    {
+      "name": "主线·vs24",
+      "percent": 19.8,
+      "pass": true
+    },
+    {
+      "name": "主线·vn24",
+      "percent": 19.8,
+      "pass": true
+    }
+  ],
+  "land": {
+    "默认城市": {
+      "parking": 2,
+      "parkingCells": 8,
+      "shopCells": 22,
+      "parcels": 6,
+      "capacity": 52,
+      "parkingBadAccess": 0,
+      "parcelsBadAccess": 0,
+      "lotsOnLanes": 0,
+      "pass": true
+    },
+    "四级道路样张": {
+      "parking": 8,
+      "parkingCells": 16,
+      "shopCells": 8,
+      "parcels": 0,
+      "capacity": 0,
+      "parkingBadAccess": 0,
+      "parcelsBadAccess": 0,
+      "lotsOnLanes": 0,
+      "pass": true
+    }
+  },
+  "footprints": {
+    "tee": {
+      "w": 11,
+      "h": 9,
+      "cells": 99,
+      "usable": 51,
+      "ramps": 4
+    },
+    "diamond": {
+      "w": 7,
+      "h": 11,
+      "cells": 77,
+      "usable": 28,
+      "ramps": 4
+    },
+    "spur": {
+      "w": 10,
+      "h": 3,
+      "cells": 30,
+      "usable": 9,
+      "ramps": 2
+    },
+    "sidediamond": {
+      "w": 3,
+      "h": 10,
+      "cells": 30,
+      "usable": 6,
+      "ramps": 2
+    }
+  },
+  "proof": {
+    "steepGradePercent": 22.8,
+    "steepCaught": true,
+    "lotOnRampCaught": true
+  },
+  "pass": true
+}
