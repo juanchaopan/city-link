@@ -12,6 +12,14 @@ import { compareDepth, eachBin, overlapBoxes, prepareItem, topological } from '.
 // 车身画出来比占地低一点（vehicles.js 的 BODY_DROP），朝观众挪了 SPRITE_DROP，车身连同挪过的车身一起算。
 // 车压着的桥面都要先画。这件事不交给视线比较：几条视线会漏掉只压住一角的情况，弯道上桥面一块叠一块，
 // 漏掉一块，车就被它切掉一角。所以先看两个凸多边形有没有重叠，重叠就是桥面先画，不重叠再按视线比。
+// 车只可能压着比自己低不到 ON_DECK 的桥面：接缝前坡上的车比邻块的最低点略低，这是多画的那一截和车身前探的范围
+// 在最陡的坡上能差出的高度。贴地开过匝道脚旁边的车比匝道块低得多，它在匝道块身后，按视线排。
+// 车身前面、顶不比车底高的桥面不排：这种桥面连护栏在内都在车身下方，屏幕上碰不到车身，排了只会和别的规则成环。
+// 并口的匝道块盖着主线的路肩，按规则排在主线后面；主线上的车贴着并口开过时压在匝道块的边上，匝道块要先画，
+// 车又在前面那块主线身后，三样东西就成了环，放行谁都画错：放行车，车被匝道的路面切掉一边；放行匝道块，
+// 主线的路缘线画在并口上，有车经过时出现，车走了又消失。
+// 排序成环时沿前驱找到真正的环，先放行只被别的车挡着的车，没有再放行环上最靠后的；成环的次数每帧报告出来，
+// 遮挡检查要求它是 0。
 
 const BODY_HALF_WIDTH = 0.06;
 const BODY_HEIGHT = 0.3;
@@ -20,7 +28,8 @@ const CAR_BOTTOM = 18;
 const CAR_SIDE = 44;
 const LANE_LIFT = 0.02;
 const SPRITE_DROP = 0.047;
-const ON_DECK = 0.3;
+const ON_DECK = 0.15;
+const BELOW_BODY = 0.05;
 
 /** 车身的占地：沿车头方向的矩形。drawn 是画出来的车身，比较桥面时用。 */
 export function carItem(car, halfLength, screen) {
@@ -52,17 +61,18 @@ export function carItem(car, halfLength, screen) {
   };
 }
 
-/** 车和一块静态物体谁先画。桥面先看车有没有压着它画出来的范围。 */
+/** 车和一块静态物体谁先画。桥面先看车有没有压着它画出来的范围，再看它是不是车身前面、顶不比车底高的桥面。 */
 function carAgainst(statics, drawnDecks, other, item) {
   const deck = drawnDecks[other];
   if (!deck) return compareDepth(statics[other], item);
   const { drawn } = item;
   if (drawn.base >= deck.base - ON_DECK && convexOverlap(deck.footprint, drawn.footprint))
     return -1;
-  return compareDepth(deck, drawn);
+  const order = compareDepth(deck, drawn);
+  return order > 0 && deck.peak <= drawn.base + BELOW_BODY ? 0 : order;
 }
 
-/** statics 是排好序的静态物体。order 返回这一帧要画的全部物体，车已经插在正确的位置上。 */
+/** statics 是排好序的静态物体。order 返回这一帧要画的全部物体，车已经插在正确的位置上，以及成环放行的次数。 */
 export function createDrawList(statics) {
   const size = statics.length;
   const bins = new Map();
@@ -97,7 +107,9 @@ export function createDrawList(statics) {
 
   /** visible[i] 不为 0 的静态物体参与这一帧。 */
   const order = (cars, visible = everything) => {
-    if (cars.length === 0) return statics.filter((_, index) => visible[index]);
+    if (cars.length === 0) {
+      return { sequence: statics.filter((_, index) => visible[index]), cycles: 0 };
+    }
     const local = new Int32Array(size).fill(-1);
     const items = [];
     for (let index = 0; index < size; index += 1) {
@@ -146,7 +158,8 @@ export function createDrawList(statics) {
         list.push(self);
       });
     });
-    return topological(items, after, blockers).order.map((index) => items[index]);
+    const { order: indices, cycles } = topological(items, after, blockers);
+    return { sequence: indices.map((index) => items[index]), cycles };
   };
 
   return { order };

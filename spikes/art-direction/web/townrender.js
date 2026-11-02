@@ -64,7 +64,7 @@ export function renderTown(
   const items = fleet.cars
     .filter((car) => car.x !== undefined)
     .map((car) => carItem(car, fleet.lengthOf(car) / 2, screenOf));
-  for (const item of list.order(items)) {
+  for (const item of list.order(items).sequence) {
     if (item.car) {
       const { car } = item;
       stamp(carKey(car), car.x, car.y, car.h, car.tilt);

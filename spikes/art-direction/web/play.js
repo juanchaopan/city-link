@@ -393,6 +393,7 @@ window.trafficStats = () =>
         stopped: vehicles.stopped(),
         signals: vehicles.signals,
         sortMs: vehicles.sortMs(),
+        cycles: scene.frameCycles(),
         staticsInView: scene.inView(),
       }
     : null;

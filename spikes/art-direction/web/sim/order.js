@@ -8,10 +8,12 @@
 // 主线和旁边的匝道不是上下两层、平面上又叠在一起时，匝道在哪一侧都排在主线后面，路面才盖得住主线的路肩；
 // 分岔口两块桥面可能只叠着一角，所以这种比较看三条视线。三条都分得开的两块按前后排，
 // 匝道在主线身后的一段不会被硬排到主线前面。
-// 桥墩的顶在桥面下面，屏幕上碰得到的同一层桥面都排在桥墩后面。桥墩的占地只算墩身，横梁比占地宽，所以这条规则不看占地。
+// 桥墩的顶在桥面下面，屏幕上碰得到的同一层桥面都排在桥墩后面，桥面上的车也一样：车在桥墩身后时按视线排会把车排到
+// 桥墩前面，车脚下的桥面又排在桥墩后面，三样东西就成了环。桥墩的占地只算墩身，横梁比占地宽，所以这条规则不看占地。
 // 车和桥面比别的物体多两条规则。平面上靠后的物体投影整个在靠前物体的上方时，两者在屏幕上碰不到，这一对不排：
 // 桥上的车和它前面的桥墩、桥下的车和它后面的桥面、桥下的公交站和桥面都是这样，硬排只会和别的物体抢位置。
-// 车压在两块桥面的接缝上时算在桥面上：桥面的高度取这一块的最低点，坡上的车可能比邻块的最低点略低。
+// 车压在两块桥面的接缝上时算在桥面上：桥面的高度取这一块的最低点，坡上的车可能比邻块的最低点略低，差不过 SEAM_DROP；
+// 比桥面低得更多的车不在桥面上，贴地从匝道脚旁边开过的车就是这样，按前后排。
 // 车很短，一条视线判断不出它是不是钻到桥下，也判断不出投影碰不碰得到，所以这种比较看三条视线。
 // base 是物体的底，peak 是物体的顶，单位都是层；视线坐标 u 一格 32 像素，和一层一样高，所以两者能直接相减。
 // left、right、top、bottom 是屏幕范围。
@@ -25,6 +27,7 @@ const EPS = 1e-6;
 const CELL = 256;
 const STACKED = 0.6;
 const ON_DECK = 0.3;
+const SEAM_DROP = 0.15;
 
 function viewCoordinates(polygon) {
   return polygon.map(([x, y]) => [x + y, x - y]);
@@ -52,8 +55,9 @@ function spanAt(points, v) {
 }
 
 const baseOf = (item) => item.base ?? 0;
-const onDeck = (deck, other) => deck.deck && other.car && baseOf(other) > baseOf(deck) - ON_DECK;
-const pierUnder = (pier, deck) => pier.pier && deck.deck && baseOf(deck) > pier.peak - ON_DECK;
+const onDeck = (deck, other) => deck.deck && other.car && baseOf(other) > baseOf(deck) - SEAM_DROP;
+const pierUnder = (pier, other) =>
+  pier.pier && (other.deck || other.car) && baseOf(other) > pier.peak - ON_DECK;
 const sameLevelDecks = (a, b) => a.deck && b.deck && Math.abs(baseOf(a) - baseOf(b)) < STACKED;
 const mainAndRamp = (a, b) => sameLevelDecks(a, b) && a.main !== b.main;
 

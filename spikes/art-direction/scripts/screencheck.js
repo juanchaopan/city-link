@@ -2,6 +2,7 @@
 // views：play.html?n=128 默认缩放下，公共服务图标互不压住、绿黄红覆盖色没被盖掉，地铁线有几个像素粗。
 // 读的是粒子实际的屏幕大小和画面像素，不是常量：常量写着多大不算数。地铁线沿法线数像素，取中位数，站点不算进粗细。
 // cars：高架和立交上的车，同一帧画三遍：只画车、只画桥面、车和桥面按真实顺序一起画。
+// 两处各取 CAR_SAMPLES 帧，隔 CAR_INTERVAL 毫秒一帧：排序成环时车只在经过接缝的那一两帧里被切，帧取少了看不到。
 // 车身的实心像素在第三遍里变成了桥面的颜色，就是被桥面切了；边缘的半透明像素不算。
 // 车在屏幕上落在更高一层的桥面底下时被盖住是对的，这种车不算。楼和灯杆不画，它们挡车由 occlusion.js 查。
 // 写 out/screen-report.json，不通过时退出码是 1。
@@ -19,7 +20,8 @@ const MIN_COVERAGE_KEPT = 0.75;
 const MIN_LINE_PIXELS = 2.5;
 const LINE_SAMPLES = 41;
 const CAR_ZOOM = 0.7;
-const CAR_SAMPLES = 8;
+const CAR_SAMPLES = 24;
+const CAR_INTERVAL = 300;
 const CAR_BOX = 20;
 const CUT_SHARE = 0.08;
 const ON_DECK = 0.2;
@@ -263,7 +265,7 @@ async function carSite(name, x, y, decks) {
   let cars = 0;
   const cuts = [];
   for (let sample = 0; sample < CAR_SAMPLES; sample += 1) {
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(CAR_INTERVAL);
     const rows = await page.evaluate(measureCuts, {
       onDeck: ON_DECK,
       box: Math.round(CAR_BOX * PIXEL_RATIO * CAR_ZOOM),
