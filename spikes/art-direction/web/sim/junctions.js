@@ -8,8 +8,9 @@ import { roadField } from './roadfield.js';
 // 位置放斑马线，斑马线外面紧贴着停车线，停车线右侧的人行道上立灯杆。45° 夹角的腿退到两条路真正分开的地方，
 // 退让距离超过一格时就退到下一格，灯杆这时落在两条路之间的尖角岛上。
 //
-// 路口合并：两个路口之间的直路段不超过 MERGE_LINKS 格时算一个大路口，连接段上不画斑马线、不放灯，只在外圈进口放，
-// 整组共用一套信号，车过了停车线就一路通过，不会被困在中间。
+// 路口合并：相邻或只隔 MERGE_LINKS 格的两个路口算一个大路口，连接段上不画斑马线、不放灯，只在外圈进口放，
+// 整组共用一套信号，车过了停车线就一路通过，不会被困在中间。隔得更远的路口各自独立：连接段放得下排队的车，
+// 分开放行比合并车速高。
 //
 // 进出连线表：每条进口到每条别的外圈腿走哪条线，线就是车走的车道中线。靠右行驶，线在相邻格之间切线连续。
 //
@@ -30,7 +31,7 @@ const POLE_GAP = 0.03;
 const DECK_MARGIN = 0.012;
 const END_OUTSIDE = 0.05;
 const CURB_STRAIGHT = 0.008;
-const MERGE_LINKS = 2;
+const MERGE_LINKS = 1;
 const LANE_GAP = 0.1;
 const TURN_ORDER = { straight: 0, right: 1, left: 2 };
 
@@ -54,7 +55,7 @@ const cellStep = (id, dir, N) => {
   return (Math.floor(id / N) + dy) * N + (id % N) + dx;
 };
 
-/** 两个路口之间的直路段不超过 MERGE_LINKS 格的，并成一组。 */
+/** 相邻或只隔 MERGE_LINKS 格的路口并成一组。 */
 function clusterNodes(roads, N, skip) {
   const nodes = [...roads.keys()]
     .filter((id) => isNode(roads.get(id)) && !skip.has(id))
