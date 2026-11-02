@@ -79,7 +79,10 @@ export function createServiceIcons(atlas, city, { minZoom = 0 } = {}) {
     if (!layer.visible) return;
     const spots = spread(zoom);
     particles.forEach(({ particle, size }, index) => {
-      const scale = Math.max(MIN_SCALE * (screenSize(zoom) / SCREEN_SIZE), screenSize(zoom) / size / zoom);
+      const scale = Math.max(
+        MIN_SCALE * (screenSize(zoom) / SCREEN_SIZE),
+        screenSize(zoom) / size / zoom,
+      );
       particle.scaleX = scale;
       particle.scaleY = scale;
       particle.x = spots[index].x / zoom;
