@@ -2,6 +2,10 @@ import * as THREE from 'three';
 
 // 低多边形网格的累积器。所有几何都写在一个世界里：x、z 是格子方向，y 向上。
 // 每个面只有一种颜色，非索引顶点保证硬边，这就是低多边形的外观。
+// 地台贴地的一圈矮边只有几个像素高。朝相机的 45° 斜边背着太阳，在屏幕上是一条笔直的水平深线，
+// 比地台本身显眼得多，所以这种边不画，地台和地面之间看不出缺了这一圈。
+
+const SKIRT_TOP = 0.021;
 
 export function rng(seed) {
   let s = seed >>> 0 || 1;
@@ -47,6 +51,12 @@ function dot(a, b) {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
+/** 贴地的矮边，朝着相机的 45° 方向。 */
+function diagonalSkirt(world, [dx, dy, dz]) {
+  if (dy !== 0 || Math.abs(dx - dz) > 1e-6 || dx <= 0) return false;
+  return world.every(([, y]) => y <= SKIRT_TOP);
+}
+
 export class Builder {
   constructor(seed = 1) {
     this.random = rng(seed);
@@ -87,8 +97,10 @@ export class Builder {
   /** 凸多边形。hint 是外法线的大致方向，用它决定绕序，省得每个面都想顺逆时针。 */
   poly(points, color, hint = [0, 1, 0], glow = false) {
     const world = points.map((p) => this.point(p));
+    const outward = this.direction(hint);
+    if (diagonalSkirt(world, outward)) return;
     const n = cross(sub(world[1], world[0]), sub(world[2], world[0]));
-    const flip = dot(n, this.direction(hint)) < 0;
+    const flip = dot(n, outward) < 0;
     const positions = glow ? this.glowPositions : this.positions;
     const colors = glow ? this.glowColors : this.colors;
     for (let i = 1; i < world.length - 1; i += 1) {
