@@ -1,6 +1,6 @@
 import { Builder, hashString, linear, shade } from './builder.js';
 import { drawMainFrames, drawPier, drawRampFrames, drawSurfaceFrames, framesOf } from './ribbon.js';
-import { linesOf, piecesOf } from '../sim/ixpieces.js';
+import { linesOf, paintedFrames, piecesOf } from '../sim/ixpieces.js';
 
 // 高架和立交的精灵。路面、侧面和桥墩都是多边形。
 // 立交切成小块，每块是一张精灵；高架一格一张，桥墩单独一张，车才能插到桥面和桥墩中间。
@@ -9,7 +9,6 @@ const RAMP_LIFT = 0.003;
 const LIFT_STEP = 0.002;
 const VIADUCT_STEPS = 4;
 const VIADUCT_REACH = 0.008;
-const SEAM_OVERLAP = 2;
 const CROSS_ANGLE = Math.PI / 12;
 
 /** 一格高架。h0、h1 是这一格两端的路面高度（层），可以是坡。 */
@@ -46,12 +45,12 @@ export function buildPiece(name, index, P) {
   const [ox, oz] = piece.cell;
   const build = () => {
     const b = new Builder(hashString(`piece${name}${String(index)}`));
-    for (const { line: lineIndex, from, to } of piece.spans) {
-      const line = lines[lineIndex];
-      const lift = RAMP_LIFT + LIFT_STEP * lineIndex;
-      const frames = framesOf(line.center, line.band, lift)
-        .slice(Math.max(0, from - SEAM_OVERLAP), to + 1 + SEAM_OVERLAP)
-        .map((frame) => ({ ...frame, x: frame.x - ox, z: frame.z - oz }));
+    for (const span of piece.spans) {
+      const line = lines[span.line];
+      const lift = RAMP_LIFT + LIFT_STEP * span.line;
+      const frames = paintedFrames(framesOf(line.center, line.band, lift), line, span).map(
+        (frame) => ({ ...frame, x: frame.x - ox, z: frame.z - oz }),
+      );
       if (line.kind === 'main') drawMainFrames(b, frames, P);
       else if (line.kind === 'pad') drawSurfaceFrames(b, frames, P);
       else drawRampFrames(b, frames, P);

@@ -6,6 +6,10 @@ import { compareDepth, eachBin, overlapBoxes, prepareItem, topological } from '.
 // 只排视野里的静态物体：视野外的既不画也不参与比较。没有车的时候直接用静态序列里视野内的那一段，
 // 一个拓扑序的子序列还是拓扑序。
 // 车和车按车身占地两两比，长车不会因为中心点靠前就盖住前面的短车；匝道上的车高度连续变化，比较结果自然跟着变。
+//
+// 车压着的桥面都要先画。这件事不交给视线比较：几条视线会漏掉只压住一角的情况，而立交的桥面块比占地多画一截，
+// 弯道上还一块叠一块，漏掉一块，车就被它切掉一角。所以车和桥面比的是车身和桥面画出来的范围 painted 有没有重叠。
+// 车身画出来比占地低一点（vehicles.js 的 BODY_DROP），朝观众挪了 SPRITE_DROP，挪过的车身也算。
 
 const BODY_HALF_WIDTH = 0.06;
 const BODY_HEIGHT = 0.3;
@@ -13,6 +17,8 @@ const CAR_TOP = 44;
 const CAR_BOTTOM = 18;
 const CAR_SIDE = 44;
 const LANE_LIFT = 0.02;
+const SPRITE_DROP = 0.047;
+const ON_DECK = 0.3;
 
 /** 车身的占地：沿车头方向的矩形。 */
 export function carItem(car, halfLength, screen) {
@@ -37,6 +43,42 @@ export function carItem(car, halfLength, screen) {
     top: sy - CAR_TOP,
     bottom: sy + CAR_BOTTOM,
   });
+}
+
+function separated(p, q, polygon) {
+  for (let i = 0; i < polygon.length; i += 1) {
+    const [ax, ay] = polygon[i];
+    const [bx, by] = polygon[(i + 1) % polygon.length];
+    const nx = by - ay;
+    const ny = ax - bx;
+    let lowP = Infinity;
+    let highP = -Infinity;
+    let lowQ = Infinity;
+    let highQ = -Infinity;
+    for (const [x, y] of p) {
+      const value = x * nx + y * ny;
+      lowP = Math.min(lowP, value);
+      highP = Math.max(highP, value);
+    }
+    for (const [x, y] of q) {
+      const value = x * nx + y * ny;
+      lowQ = Math.min(lowQ, value);
+      highQ = Math.max(highQ, value);
+    }
+    if (highP <= lowQ || highQ <= lowP) return true;
+  }
+  return false;
+}
+
+/** 分离轴：两个凸多边形在所有边的法线上都有重叠才算相交。 */
+const convexOverlap = (p, q) => !separated(p, q, p) && !separated(p, q, q);
+
+/** 车压着这块桥面：车不在桥面底下，车身或者挪过的车身碰到桥面画出来的范围。 */
+function carOnDeck(deck, car) {
+  if (!deck.deck || car.base < deck.base - ON_DECK) return false;
+  const shape = deck.painted ?? deck.footprint;
+  const dropped = car.footprint.map(([x, y]) => [x + SPRITE_DROP, y + SPRITE_DROP]);
+  return convexOverlap(shape, car.footprint) || convexOverlap(shape, dropped);
 }
 
 /** statics 是排好序的静态物体。order 返回这一帧要画的全部物体，车已经插在正确的位置上。 */
@@ -101,7 +143,7 @@ export function createDrawList(statics) {
           if (!visible[other] || seen[other] === tick) continue;
           seen[other] = tick;
           if (!overlapBoxes(item, statics[other])) continue;
-          const result = compareDepth(statics[other], item);
+          const result = carOnDeck(statics[other], item) ? -1 : compareDepth(statics[other], item);
           if (result < 0) link(local[other], self);
           else if (result > 0) link(self, local[other]);
         }

@@ -243,6 +243,7 @@ export function templateGreens(name, cx, cy, { roads, N, taken }) {
 export function templateParts(name, cx, cy) {
   const low = [];
   const high = [];
+  const place = (outline) => outline.map(([a, b]) => [a + cx + 0.5, b + cy + 0.5]);
   piecesOf(name).forEach((piece, index) => {
     const key = `ixp-${name}-${String(index)}`;
     const x = cx + piece.cell[0];
@@ -256,7 +257,8 @@ export function templateParts(name, cx, cy) {
         level: 0,
         base: piece.base,
         main: piece.main,
-        footprint: piece.outline.map(([a, b]) => [a + cx + 0.5, b + cy + 0.5]),
+        footprint: place(piece.outline),
+        painted: place(piece.painted),
       });
   });
   for (const pier of piersOf(name)) high.push(pierObject(pier, cx, cy));

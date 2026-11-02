@@ -92,6 +92,7 @@ export function createVehicles(atlas, city, scene, { cap, full = false }) {
       tint = nextTint;
       glow = nextGlow;
     },
+    cars: fleet.cars,
     count: fleet.count,
     wanted: fleet.wanted,
     signals: fleet.signals.length,
