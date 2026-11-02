@@ -1034,9 +1034,7 @@
         "people": 16,
         "cells": 4,
         "cost": 352,
-        "parcels": [
-          0
-        ]
+        "parcels": [0]
       },
       "wholeBlock": true,
       "halfwayRemaining": 8,
@@ -2610,9 +2608,7 @@
         "people": 12,
         "cells": 3,
         "cost": 264,
-        "parcels": [
-          0
-        ]
+        "parcels": [0]
       },
       "wholeBlock": true,
       "halfwayRemaining": 6,

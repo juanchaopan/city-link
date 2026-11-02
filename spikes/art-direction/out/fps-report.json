@@ -2,10 +2,7 @@
   "128，鸟瞰全图，不画车": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 1137,
@@ -24,10 +21,7 @@
   "128，半图缩小，不画车": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 1115,
@@ -46,10 +40,7 @@
   "128，游戏视角，上限 300 辆": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 445,
@@ -68,10 +59,7 @@
   "128，游戏视角，上限 150 辆": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 744,
@@ -90,10 +78,7 @@
   "128，游戏视角，上限 100 辆": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 852,
@@ -112,10 +97,7 @@
   "128，夜间车灯，上限 300 辆": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 450,
@@ -134,10 +116,7 @@
   "128，交通视图，游戏视角": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 8155,
     "icons": 0,
     "frames": 949,
@@ -149,10 +128,7 @@
   "64，游戏视角，上限 300 辆（对比）": {
     "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
     "sprites": 8830,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 19,
     "frames": 473,

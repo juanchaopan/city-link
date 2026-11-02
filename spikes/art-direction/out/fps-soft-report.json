@@ -2,10 +2,7 @@
   "128，鸟瞰全图，不画车": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 230,
@@ -24,10 +21,7 @@
   "128，半图缩小，不画车": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 93,
@@ -46,10 +40,7 @@
   "128，游戏视角，上限 300 辆": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 78,
@@ -68,10 +59,7 @@
   "128，游戏视角，上限 150 辆": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 77,
@@ -90,10 +78,7 @@
   "128，游戏视角，上限 100 辆": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 76,
@@ -112,10 +97,7 @@
   "128，夜间车灯，上限 300 辆": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 116,
     "frames": 77,
@@ -134,10 +116,7 @@
   "128，交通视图，游戏视角": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
     "sprites": 39391,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 8155,
     "icons": 0,
     "frames": 70,
@@ -149,10 +128,7 @@
   "64，游戏视角，上限 300 辆（对比）": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
     "sprites": 8830,
-    "atlas": [
-      4096,
-      7062
-    ],
+    "atlas": [4096, 7062],
     "arrows": 0,
     "icons": 19,
     "frames": 75,
