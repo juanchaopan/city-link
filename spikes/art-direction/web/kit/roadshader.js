@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { linear } from './builder.js';
 import { ROAD_SPEC } from '../sim/network.js';
-import { junctionRays } from '../sim/roadfield.js';
+import { junctionFillets, junctionRays } from '../sim/roadfield.js';
 
 // 路面用距离场在片元里画。一格路的精灵会盖到邻格，所以拼接要靠下面四条规则，而不是靠相邻格碰巧对齐：
 // 1. 路面分三层绘制，全图的人行道、路缘、车道各画一遍。后画的层永远盖住先画的层，
 //    人行道和路缘因此不可能出现在车道上，不管相邻格怎么排列。
 // 2. 裁剪按整条路做，不按线段做。否则弯道折线中间的端点会带着圆头越过格子边界。
-// 3. 路口的圆角来自各方向沿直线延长后的平滑并集，只取比直路多出来的部分，垫在夹角里。
-//    对向的两个方向算一条直线，直通的一侧不会鼓包。延长线到邻格中心为止，见 junctionRays。
+// 3. 路口的圆角来自小于 180° 的夹角里相邻两条腿的平滑并集，只取比直路多出来的部分，垫在夹角里。
+//    直通一侧和路口背面的大扇区没有圆角，路缘就是路本身的边。延长线到邻格中心为止，见 junctionRays。
 // 4. 夹角里的这块垫片在路口这一格的精灵里，它旁边的直路在邻格的精灵里，两张精灵的边缘都是半透明的。
 //    如果垫片刚好停在直路边上，两层半透明叠起来还是漏，下面一层的颜色会透出一条细线。
 //    所以垫片往直路里多铺 PAD_OVERLAP，直路的抗锯齿边落在垫片的实色上。
@@ -17,6 +17,7 @@ import { junctionRays } from '../sim/roadfield.js';
 
 export const MAX_SEGMENTS = 32;
 const MAX_RAYS = 8;
+const MAX_FILLETS = 8;
 const CLIP_OVERLAP = 0.016;
 const PAD_OVERLAP = 0.03;
 const RING_ROUND = 0.3;
@@ -30,6 +31,7 @@ const MARKING = { road: 0, arterial: 1, ramp: 2 };
 const HEADER = `
   #define MAX_SEGMENTS ${String(MAX_SEGMENTS)}
   #define MAX_RAYS ${String(MAX_RAYS)}
+  #define MAX_FILLETS ${String(MAX_FILLETS)}
   uniform vec4 uSegment[MAX_SEGMENTS];
   uniform vec4 uWidths[MAX_SEGMENTS];
   uniform vec4 uPath[MAX_SEGMENTS];
@@ -39,9 +41,13 @@ const HEADER = `
   uniform vec4 uRay[MAX_RAYS];
   uniform float uRayBack[MAX_RAYS];
   uniform float uRayReach[MAX_RAYS];
+  uniform vec4 uFilletA[MAX_FILLETS];
+  uniform vec4 uFilletB[MAX_FILLETS];
+  uniform vec2 uFilletReach[MAX_FILLETS];
   uniform vec3 uRing;
   uniform int uCount;
   uniform int uRayCount;
+  uniform int uFilletCount;
   uniform int uLayer;
   uniform vec3 uAsphalt, uHighway, uWalk, uShoulder, uCurb, uLine, uMedian;
   varying vec2 vXZ;
@@ -96,8 +102,15 @@ const BODY = `
     float d = length(p - dir * t);
     rawWalk = min(rawWalk, d - uRay[i].z);
     rawDeck = min(rawDeck, d - uRay[i].w);
-    roundWalk = smin(roundWalk, d - uRay[i].z, 0.24);
-    roundDeck = smin(roundDeck, d - uRay[i].w, 0.36);
+  }
+  for (int i = 0; i < uFilletCount; i++) {
+    vec4 armA = uFilletA[i];
+    vec4 armB = uFilletB[i];
+    if (armA.x * p.y - armA.y * p.x < 0.0 || p.x * armB.y - p.y * armB.x < 0.0) continue;
+    float da = length(p - armA.xy * clamp(dot(p, armA.xy), 0.0, uFilletReach[i].x));
+    float db = length(p - armB.xy * clamp(dot(p, armB.xy), 0.0, uFilletReach[i].y));
+    roundWalk = min(roundWalk, smin(da - armA.z, db - armB.z, 0.24));
+    roundDeck = min(roundDeck, smin(da - armA.w, db - armB.w, 0.36));
   }
   bool ringed = uRing.x > 0.0;
   if (ringed) {
@@ -157,7 +170,7 @@ const unit = (a, b) => {
 
 const blank = () => new THREE.Vector4(0, 0, 0, 0);
 
-function uniformsFor(paths, P, layer, ring) {
+function segmentUniforms(paths) {
   const segment = [];
   const widths = [];
   const path = [];
@@ -215,6 +228,18 @@ function uniformsFor(paths, P, layer, ring) {
     clipA.push(blank());
     clipB.push(blank());
   }
+  return {
+    uSegment: { value: segment },
+    uWidths: { value: widths },
+    uPath: { value: path },
+    uFlags: { value: flags },
+    uClipA: { value: clipA },
+    uClipB: { value: clipB },
+    uCount: { value: count },
+  };
+}
+
+function junctionUniforms(paths) {
   const rays = junctionRays(paths);
   const rayData = rays.map((ray) => new THREE.Vector4(ray.dx, ray.dz, ray.walk, ray.deck));
   const rayBack = rays.map((ray) => ray.back);
@@ -224,22 +249,36 @@ function uniformsFor(paths, P, layer, ring) {
     rayBack.push(0);
     rayReach.push(0);
   }
-  const vec3 = (hex) => new THREE.Vector3(...linear(hex));
+  const fillets = junctionFillets(rays);
+  const armOf = (arm) => new THREE.Vector4(arm.dx, arm.dz, arm.walk, arm.deck);
+  const filletA = fillets.map(({ a }) => armOf(a));
+  const filletB = fillets.map(({ b }) => armOf(b));
+  const filletReach = fillets.map(({ a, b }) => new THREE.Vector2(a.reach, b.reach));
+  while (filletA.length < MAX_FILLETS) {
+    filletA.push(blank());
+    filletB.push(blank());
+    filletReach.push(new THREE.Vector2());
+  }
   return {
-    uSegment: { value: segment },
-    uWidths: { value: widths },
-    uPath: { value: path },
-    uFlags: { value: flags },
-    uClipA: { value: clipA },
-    uClipB: { value: clipB },
     uRay: { value: rayData },
     uRayBack: { value: rayBack },
     uRayReach: { value: rayReach },
+    uRayCount: { value: rays.length },
+    uFilletA: { value: filletA },
+    uFilletB: { value: filletB },
+    uFilletReach: { value: filletReach },
+    uFilletCount: { value: fillets.length },
+  };
+}
+
+function uniformsFor(paths, P, layer, ring) {
+  const vec3 = (hex) => new THREE.Vector3(...linear(hex));
+  return {
+    ...segmentUniforms(paths),
+    ...junctionUniforms(paths),
     uRing: {
       value: ring ? new THREE.Vector3(ring.radius, ring.walk, ring.deck) : new THREE.Vector3(),
     },
-    uCount: { value: count },
-    uRayCount: { value: rays.length },
     uLayer: { value: layer },
     uAsphalt: { value: vec3(P.road.asphalt) },
     uHighway: { value: vec3(P.road.highway) },

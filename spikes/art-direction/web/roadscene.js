@@ -45,10 +45,13 @@ export const CLASS = { empty: 0, deck: 1, walk: 2, curb: 3, other: 4 };
 export const REGION_TILE = 64;
 const REGION_MARGIN = 3;
 
-/** 标线是红加绿，混在车道上还是车道；只有蓝色分量明显或者绿色压过红色才算别的层。路缘和人行道的混色算路缘。 */
+/**
+ * 标线是红加绿，混在车道上还是车道；只有蓝色分量明显或者绿色压过红色才算别的层。
+ * 路面边上一个像素是两层的混色：车道和路缘的混色算车道，路缘和人行道的混色算路缘，都还在路上。
+ */
 export function classify(r, g, b, a) {
   if (a < 128) return CLASS.empty;
-  if (r > 60 && b < r * 0.35 && g < r * 1.25) return CLASS.deck;
+  if (r > 60 && b < r * 0.55 && g < r * 1.25) return CLASS.deck;
   if (g > 60 && r < g * 0.35 && b < g * 0.35) return CLASS.walk;
   if (b > 60 && r < b * 0.35 && g < b * 0.35) return CLASS.curb;
   if (b > 60 && g > 60 && r < Math.min(g, b) * 0.35) return CLASS.curb;

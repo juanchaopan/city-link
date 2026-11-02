@@ -12,7 +12,8 @@ import { CLASS, readPoints, worldOf } from './roadscene.js';
 import { hasAcuteAngle, shapeCases, shapeClass, spacingCases } from './shapecases.js';
 import { BUS_LENGTH, createFleet } from './sim/fleet.js';
 import { movementsConflict, unitOf } from './sim/junctions.js';
-import { LANE_OFFSET } from './sim/lanes.js';
+import { laneKind, LANE_OFFSET } from './sim/lanes.js';
+import { ROAD_SPEC, spokesOf } from './sim/network.js';
 import { computeTraffic } from './sim/traffic.js';
 import { pasteCrop, pngData, randomFrom, renderTown } from './townrender.js';
 
@@ -20,6 +21,8 @@ import { pasteCrop, pngData, randomFrom, renderTown } from './townrender.js';
 // 灯杆、斑马线端点、停车线和车线都换算到真实烘焙的遮罩上读像素，车线相交、相位分组和连线表只看规划数据。
 // 车线走的是车真实走的线：线的中心和两侧各半个车宽都要在车道上，所以急转弯切出路面时查得出来。
 // 停车线读的是进口车道的中线：路中间可能是环岛腿上的分隔岛。
+// 路缘外鼓：相邻两条腿夹角不小于 180° 的大扇区是直通一侧和路口背面，那里路缘就是路本身的边，
+// 超出每条腿人行道宽度 BULGE_MARGIN 的地方不能有路面像素。
 // 间距试验用同一组检查，再跑车流量排队：全公交和混合车流各一遍。
 
 const CAR_HALF = 0.05;
@@ -27,6 +30,11 @@ const MAX_JOINT_TURN = 0.7;
 const CURB_TOLERANCE = 0.012;
 const END_OUTSIDE = 0.05;
 const STOP_GAP_LIMIT = 0.07;
+const BULGE_MARGIN = 0.03;
+const BULGE_REACH = 1;
+const BULGE_RADIUS_STEP = 0.02;
+const BULGE_ANGLE_STEP = Math.PI / 90;
+const LEG_LENGTH = 3;
 const SHAPE_STEPS = 500;
 const SPACING_STEPS = 2400;
 const SPACING_CARS = 40;
@@ -53,6 +61,7 @@ export const SHAPE_FAILURES = [
   'linesOffRoad',
   'carsOffRoad',
   'stoppedInJunction',
+  'curbBulge',
 ];
 
 function townOf(entry) {
@@ -191,6 +200,62 @@ function stopLinesCheck({ junctions }) {
   };
 }
 
+/** 这一点超出了所有腿的人行道，多出多少。腿按直线算，长度够盖住读的范围。 */
+function outsideLegs(x, y, arms) {
+  let best = Infinity;
+  for (const { ux, uy, half } of arms) {
+    const t = Math.max(0, Math.min(LEG_LENGTH, x * ux + y * uy));
+    best = Math.min(best, Math.hypot(x - ux * t, y - uy * t) - half);
+  }
+  return best;
+}
+
+/** 单个路口的大扇区里，超出路本身人行道的采样点。 */
+function bulgeCheck({ junctions, roads, N, surface }, entry) {
+  const points = [];
+  const nodes = entry.legs ? junctions.clusters.flatMap((cluster) => cluster.nodes) : [];
+  for (const node of nodes) {
+    const road = roads.get(node);
+    const spokes = spokesOf(road.road);
+    const arms = spokes.map((dir) => {
+      const [ux, uy] = unitOf(dir);
+      return { ux, uy, half: ROAD_SPEC[laneKind(road, dir)].walk / 2 };
+    });
+    const cx = (node % N) + 0.5;
+    const cy = Math.floor(node / N) + 0.5;
+    spokes.forEach((dir, index) => {
+      const next = spokes[(index + 1) % spokes.length];
+      const gap = (next - dir + 8) % 8 || 8;
+      if (gap < 4) return;
+      const from = (dir * Math.PI) / 4;
+      const to = ((dir + gap) * Math.PI) / 4;
+      for (let angle = from; angle <= to; angle += BULGE_ANGLE_STEP) {
+        for (let r = BULGE_RADIUS_STEP; r <= BULGE_REACH; r += BULGE_RADIUS_STEP) {
+          const x = Math.cos(angle) * r;
+          const y = Math.sin(angle) * r;
+          if (outsideLegs(x, y, arms) < BULGE_MARGIN) continue;
+          points.push({ px: cx + x, py: cy + y, level: surface(cx, cy) });
+        }
+      }
+    });
+  }
+  return {
+    points,
+    tally(found) {
+      const result = { bulgeSamples: points.length, curbBulge: 0, worstBulge: 0, examples: [] };
+      found.forEach((value, index) => {
+        if (value === CLASS.empty) return;
+        result.curbBulge += 1;
+        if (result.examples.length < 4) {
+          const { px, py } = points[index];
+          result.examples.push(['外鼓', px, py, value]);
+        }
+      });
+      return result;
+    },
+  };
+}
+
 function inspect(entry, town, carOptions) {
   const fleet = createFleet(town, { cap: 1, random: randomFrom(3) });
   const readers = [
@@ -198,6 +263,7 @@ function inspect(entry, town, carOptions) {
     crossingsCheck(town),
     stopLinesCheck(town),
     linesCheck(town),
+    bulgeCheck(town, entry),
     carsCheck(town, carOptions),
   ];
   const found = readPoints(

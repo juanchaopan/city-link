@@ -2,7 +2,7 @@
 // shapes：219 种摆法加四车道代表组合，写 out/shape-report.json。不通过时退出码是 1。
 // spacing：相邻路口隔 1、2、3 格的样例，写 out/spacing-report.json，SPACING_NAME 换报告名。
 // sheets：out/r9-junction-shapes.png 和 out/r9-spacing.png，要先有两份报告。
-// LIMIT=30 只跑前 30 个场景。REPLACE="文件|原文|替换" 在页面加载时改一处源码，分号隔开多处：
+// LIMIT=30 只跑前 30 个场景。REPLACE="文件@原文@替换" 在页面加载时改一处源码，换行隔开多处：
 // 证明检查能失败、试不同的合并间距都用它，不动仓库里的代码。
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
@@ -15,9 +15,9 @@ const limit = Number(process.env.LIMIT ?? Infinity);
 const reportName = process.env.REPORT ?? 'shape-report';
 const spacingName = process.env.SPACING_NAME ?? 'spacing-report';
 const replacements = (process.env.REPLACE ?? '')
-  .split(';')
+  .split('\n')
   .filter(Boolean)
-  .map((item) => item.split('|'));
+  .map((item) => item.split('@'));
 
 mkdirSync('out', { recursive: true });
 const server = await startServer(PORT);
@@ -31,12 +31,16 @@ page.on('pageerror', (error) => console.error('页面错误', error));
 page.on('console', (message) => {
   if (message.type() === 'error' && !message.text().includes('404')) console.error(message.text());
 });
-for (const [file, from, to] of replacements) {
+for (const file of new Set(replacements.map(([name]) => name))) {
   await page.route(`**/web/${file}`, async (route) => {
     const response = await route.fetch();
-    const source = await response.text();
-    if (!source.includes(from)) throw new Error(`${file} 里没有 ${from}`);
-    await route.fulfill({ response, body: source.split(from).join(to) });
+    let body = await response.text();
+    for (const [name, from, to] of replacements) {
+      if (name !== file) continue;
+      if (!body.includes(from)) throw new Error(`${file} 里没有 ${from}`);
+      body = body.split(from).join(to);
+    }
+    await route.fulfill({ response, body });
   });
 }
 await page.goto(`http://localhost:${String(PORT)}/web/shapecheck.html`);
