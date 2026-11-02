@@ -30,6 +30,7 @@ import { cornersOfShape } from '../sim/surface.js';
 // pr-高度-方向-横梁宽度 是一根桥墩，横梁宽度是百分之一格。
 // 这三种用同一块画布，渲染目标不用反复换尺寸，烘焙时显存不会一阵一阵涨。
 // 信号灯：pole-方向 是灯杆和灯箱，lamp-方向 是灯面。公共设施：si 图标牌，bs 公交站，ms 地铁站厅。
+// 树林：forest-种类-棵数，影子烘在水平面上；坡上的树林名字后面带 bare，不烘影子。
 
 const flags = (text) => [...text].map((c) => c === '1');
 const STRUCTURE_BOX = { w: 480, h: 420, anchorY: 280 };
@@ -325,7 +326,7 @@ export function specFor(key, P) {
       w: 340,
       h: 330,
       anchorY: 220,
-      shadow: true,
+      shadow: parts[3] !== 'bare',
       reach: 2,
       build: () => buildObject(key, P),
     };

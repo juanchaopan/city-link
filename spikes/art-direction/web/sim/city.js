@@ -24,6 +24,7 @@ import { viaductWorld } from './viaduct.js';
 // 示例城市的生成流程：布局来自 citymap.js，地块和建筑规格全部由地块生成器长出来。
 // 这里只输出规格，不知道风格。规格到素材的映射在风格包里。
 // 地图边界上的连接点只画收尾精灵：地图外没有真实数据，不画邻城。
+// 树林的影子烘在水平面上，放到坡上或坡边，影子会悬空离开树脚，贴不到坡面，所以这些格子用不带影子的树林。
 
 export { traceRoads };
 
@@ -275,8 +276,9 @@ export function generateCity(N, seed = 11, publicLayout = 'spread') {
       const wooded = noise(x / 4 + 9, y / 4 + 3);
       if ((wooded > 0.5 || (level > 0 && wooded > 0.32)) && !nearRoad) {
         const lift = flat ? level : cornersOf(x, y).reduce((a, b) => a + b, 0) / 4;
+        const bySlope = !flat || DIRECTIONS.some(([dx, dy]) => slopes.has((y + dy) * N + x + dx));
         addObject(
-          `forest-${String((x + y) % 4)}-${String(3 + Math.floor(wooded * 6))}`,
+          `forest-${String((x + y) % 4)}-${String(3 + Math.floor(wooded * 6))}${bySlope ? '-bare' : ''}`,
           x + 0.5,
           y + 0.5,
           lift,
