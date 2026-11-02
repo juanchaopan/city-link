@@ -151,8 +151,12 @@ if (trafficView) {
   camera.addChild(trafficView.root);
   app.ticker.add((ticker) => trafficView.step(Math.min(0.05, ticker.deltaMS / 1000)));
 }
-if (view === 'coverage') camera.addChild(coverageView(city, ground));
-if (view === 'metro') camera.addChild(metroView(city));
+const OVERLAYS = {
+  coverage: () => coverageView(city, ground),
+  metro: () => metroView(city),
+};
+const overlay = OVERLAYS[view]?.() ?? null;
+if (overlay) camera.addChild(overlay.root);
 if (SCENE_ALPHA[view]) scene.world.alpha = SCENE_ALPHA[view];
 const icons =
   iconsOn && !seam && city.icons?.length > 0 && view !== 'traffic' && view !== 'metro'
@@ -196,6 +200,7 @@ function applyCamera() {
   vehicles?.setView(zoom >= CAR_MIN_ZOOM ? box : null);
   icons?.setZoom(zoom);
   trafficView?.setZoom(zoom);
+  overlay?.setZoom(zoom);
   if (!vehicles) scene.compose([]);
 }
 applyCamera();
@@ -368,14 +373,18 @@ window.sceneStats = {
   arrows: trafficView?.arrowCount ?? 0,
   icons: icons?.count ?? 0,
 };
-window.viewStats = () => ({
-  zoom,
-  arrowsShown: trafficView?.arrowsShown() ?? 0,
-  iconGap: icons ? icons.nearest(zoom) : null,
-  iconSize: icons?.size ?? null,
-  iconsVisible: icons ? icons.layer.visible : false,
-  staticsInView: scene.inView(),
-});
+window.viewStats = () => {
+  const measured = icons?.measure();
+  return {
+    zoom,
+    arrowsShown: trafficView?.arrowsShown() ?? 0,
+    iconGap: measured?.gap ?? null,
+    iconSize: measured?.size ?? null,
+    iconOverlaps: measured?.overlaps ?? null,
+    iconsVisible: icons ? icons.layer.visible : false,
+    staticsInView: scene.inView(),
+  };
+};
 window.trafficStats = () =>
   vehicles
     ? {
@@ -395,6 +404,7 @@ window.panBy = (dx, dy) => {
   offset.y += dy;
   applyCamera();
 };
+window.playParts = { app, atlas, scene, vehicles };
 
 window.measureFps = (seconds, cycleDay) =>
   new Promise((resolve) => {
