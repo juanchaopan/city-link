@@ -65,6 +65,7 @@ export const SHAPE_FAILURES = [
   'stoppedInJunction',
   'falseYields',
   'crossedOnRed',
+  'passedYielder',
   'lampMismatch',
   'curbBulge',
 ];

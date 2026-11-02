@@ -24,7 +24,9 @@ import { distanceToEnd, inStretch, sharedStretches } from './sharedlanes.js';
 // 过路口：车按车身长度停在停车线后面。车选好走向后等这条线的相位，放行要同时满足绿灯和出口放得下自己，
 // 否则绿灯也不进，所以不会堵在路口里。过了停车线的车一路开走，全红时间按最长的通过路线算好，够它们清空。
 // 两车道的进口只有一条车道，排头的车等自己的相位时后面的车跟着等。
-// 四车道的进口有左转专用道：车在停车线前一格就选好走向，左转的车横移到内侧车道，在路口里也单独排一队
+// 车在停车线前一格就选好走向，停车线离格口太近停不下时就在前一格停：绿灯时才开进停车格，排头的车开进路口
+// 让行还没过让行点时，后面的车不管直行还是右转都在停车线后等，不跟进路口、不穿过它；stopOrder 记下到停车线的先后。
+// 四车道的进口有左转专用道：左转的车横移到内侧车道，在路口里也单独排一队
 // （队名多一个 :L），直行的车从旁边过；专用道的灯是保护左转相。横移的那一格前半段两条队还并着，互相跟车。
 // 让行：两车道的左转和直行同相放行，左转车开进路口，在和对向直行相交之前停下来等空档，
 // 对向的车还在路口里、或者在停车线前亮着绿灯，就等；没有了才通过。让谁、在哪让，连线表（junctions.js）里写好。
@@ -236,6 +238,7 @@ export function createFleet(
   let wanted = 0;
   let refreshIn = 0;
   let groups = new Map();
+  let stopCounter = 0;
   const cars = [];
   const removed = [];
   const countHigh = () => cars.reduce((sum, car) => sum + (car.high ? 1 : 0), 0);
@@ -364,13 +367,15 @@ export function createFleet(
     );
   };
 
-  /** 到了停车线那一格：记下走向、相位和车道，左转专用道的车从这里起单独排队。 */
+  /** 到了停车线那一格：记下走向、相位和车道，左转专用道的车从这里起单独排队。前一格绿灯放进来的车直接放行。 */
   const takeStop = (car, stop) => {
     const pick = car.pending ?? pickRoute(stop);
     car.pending = null;
     car.stop = stop;
-    car.cleared = false;
-    car.clearedOn = null;
+    car.stopOrder = stopCounter += 1;
+    car.cleared = car.released === true && !yielderAhead(car, stop);
+    car.clearedOn = car.cleared ? 'green' : null;
+    car.released = false;
     car.route = pick ? [...pick.dirs] : null;
     car.exit = pick?.exit ?? null;
     car.phases = pick ? [pick.phase] : stop.phases;
@@ -381,14 +386,15 @@ export function createFleet(
     car.committed = false;
   };
 
-  /** 下一格是有左转专用道的停车格时，在这一格就选好走向，左转的车横移到内侧车道。 */
+  /** 下一格是停车格时，在这一格就选好走向；有左转专用道的路上左转的车横移到内侧车道。 */
   const planAhead = (car, cell, from, to) => {
     const [dx, dy] = DIRECTIONS[to];
     const next = (Math.floor(cell / N) + dy) * N + (cell % N) + dx;
     const ahead = stops.get(`${String(next)}:${String((to + 4) % 8)}`);
-    if (!ahead || !hasInnerLane(ahead.leg.kind) || clusterCells.has(cell)) return null;
+    car.ahead = ahead ?? null;
+    if (!ahead || clusterCells.has(cell)) return null;
     car.pending = pickRoute(ahead);
-    return car.pending?.lane === 'left' ? 'left' : null;
+    return hasInnerLane(ahead.leg.kind) && car.pending?.lane === 'left' ? 'left' : null;
   };
 
   const enterCell = (car, cell, from) => {
@@ -486,6 +492,8 @@ export function createFleet(
     turnLane: 'through',
     inJunction: false,
     onInner: false,
+    ahead: null,
+    released: false,
   });
 
   /** 车只生成在路段中间：路口、环岛和停车线那一格不生成，也不生成在别的车身上，路段放不下时不生成。 */
@@ -573,8 +581,7 @@ export function createFleet(
   };
 
   /** 出口放得下自己吗：到下一个路口的路段要放得下，出口斑马线外面要留出一个车身，那里有慢车就不进。 */
-  const exitFree = (car) => {
-    const { exit } = car;
+  const exitFree = (car, exit = car.exit) => {
     if (!exit?.crossing) return true;
     if (!linkFree(car, exit)) return false;
     const step = Math.hypot(...DIRECTIONS[exit.dir]);
@@ -626,14 +633,51 @@ export function createFleet(
     return Infinity;
   };
 
+  /**
+   * 这个进口排在前面的车要在路口里让行、还没过让行点：后面的车不跟进去。
+   * 先到停车线的排在前面；都还没到停车线时，同一格里里程大的在前面，选好的走向在 pending 里。
+   */
+  const yielderAhead = (car, stop) =>
+    cars.some((other) => {
+      if (other === car) return false;
+      if (other.stop === stop) {
+        const ahead = car.stop !== stop || other.stopOrder < car.stopOrder;
+        return ahead && !other.committed && (other.movement?.yields?.length ?? 0) > 0;
+      }
+      if (car.stop === stop || other.ahead !== stop || other.key !== car.key) return false;
+      return other.s > car.s && (other.pending?.yields.length ?? 0) > 0;
+    });
+
+  /** 停车格在下一格：绿灯、出口放得下、前车不在路口里让行，才开进去；否则在停车线后等，哪怕停车线在下一格。 */
+  const roomBeforeStop = (car) => {
+    const { ahead, pending } = car;
+    if (!ahead || !pending || car.released) return Infinity;
+    const phases = [pending.phase];
+    const go =
+      lightAt(ahead.signal, phases, time) === 'green' &&
+      exitFree(car, pending.exit) &&
+      !yielderAhead(car, ahead);
+    if (go) {
+      car.released = true;
+      return Infinity;
+    }
+    car.waiting = true;
+    return car.path.length - car.s + ahead.distance - lengthOf(car) / 2 - STOP_MARGIN;
+  };
+
   /** 停车线前的判断。返回还能往前走多远，没有停车线或者已经放行时是无穷。 */
   const roomToStop = (car) => {
     car.waiting = false;
     if (car.mode === 'ring') return roomToYield(car);
-    if (car.mode !== 'cell' || !car.stop || car.cleared || car.stop.cell !== car.cell)
-      return Infinity;
+    if (car.mode !== 'cell') return Infinity;
+    if (!car.stop || car.stop.cell !== car.cell) return roomBeforeStop(car);
+    if (car.cleared) return Infinity;
     const limit = car.stop.distance - lengthOf(car) / 2 - STOP_MARGIN;
-    if (lightAt(car.stop.signal, car.phases, time) === 'green' && exitFree(car)) {
+    const go =
+      lightAt(car.stop.signal, car.phases, time) === 'green' &&
+      exitFree(car) &&
+      !yielderAhead(car, car.stop);
+    if (go) {
       car.cleared = true;
       car.clearedOn = 'green';
       return Infinity;
@@ -873,9 +917,9 @@ export function createFleet(
     for (const group of groups.values()) {
       group.forEach((car, index) => {
         car.yielding = false;
+        const leader = index > 0 ? group[index - 1] : null;
         let room = roomToNextQueue(car);
-        if (index > 0) {
-          const leader = group[index - 1];
+        if (leader !== null) {
           room = Math.min(
             room,
             leader.s - car.s - (lengthOf(leader) + lengthOf(car)) / 2 - CLEARANCE,

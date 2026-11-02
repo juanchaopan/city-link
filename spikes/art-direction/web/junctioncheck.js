@@ -4,7 +4,9 @@ import { JUNCTION_CASES } from './junctioncases.js';
 import { CLASS, readPoints, worldOf, worldOfCity } from './roadscene.js';
 import { generateCity, specKey } from './sim/city.js';
 import { createFleet, roadAngle, spriteAngle, wrapAngle } from './sim/fleet.js';
+import { convexOverlap } from './sim/geometry.js';
 import { lightAt, unitOf } from './sim/junctions.js';
+import { hasInnerLane } from './sim/lanes.js';
 import { clearLots } from './sim/lotclear.js';
 import { cellPaths, DIRECTIONS, ROAD_SPEC } from './sim/network.js';
 import { generateParcels, ZONE } from './sim/parcels.js';
@@ -19,6 +21,7 @@ import { pngData, randomFrom, renderTown } from './townrender.js';
 // 停车检查量的是车身：停够 IDLE 秒的车，车头、车中、车尾三点都不能落在斑马线、路口或大路口的连接段里。
 // 路口里让行的左转车除外：它要让的线上确实有车在路口里或者在停车线前亮着绿灯，这里重新查一遍，
 // 查不到理由的让行算 falseYields。停车线前的车只在绿灯时放行，不靠绿灯过线的算 crossedOnRed。
+// 单车道进口上左转车在路口里让行时，比它晚到停车线的车不能进路口，也不能叠在它身上，越过或叠上的算 passedYielder。
 // 灯和车道一致：每条线的相位要在它所在车道的灯的相位表里（外侧车道一面灯，左转专用道一面灯）。
 // 斑马线的端点落在人行道和路面的分界上，那一个像素是两层的混色，所以读它周围一圈，有一个像素在人行道上就算到了。
 // 坡路的边缘高差：角点按四分之一层存，一层 32 像素，地形最多有 8 像素的取整误差，上限定 6 像素，
@@ -40,6 +43,7 @@ const CORE_MARGIN = 0.05;
 const IDLE = 1;
 const OLD_LAMP_DIRECTION = 4;
 const FACING_MATCH = 0.99;
+const CAR_HALF_WIDTH = 0.06;
 
 function caseParcels(world) {
   const { N, roads } = world;
@@ -220,6 +224,33 @@ export function yieldReason(fleet, car) {
   );
 }
 
+/** 车身矩形，按车头方向。 */
+function bodyRectangle(fleet, car) {
+  const half = fleet.lengthOf(car) / 2;
+  const [nx, ny] = [-car.dy * CAR_HALF_WIDTH, car.dx * CAR_HALF_WIDTH];
+  const [ax, ay] = [car.dx * half, car.dy * half];
+  return [
+    [car.x - ax - nx, car.y - ay - ny],
+    [car.x + ax - nx, car.y + ay - ny],
+    [car.x + ax + nx, car.y + ay + ny],
+    [car.x - ax + nx, car.y - ay + ny],
+  ];
+}
+
+/** 单车道进口上，比正在让行的左转车晚到停车线、却进了路口或叠在它身上的车。 */
+export function passersOf(fleet, car) {
+  if (!car.yielding || !car.stop || hasInnerLane(car.stop.leg.kind)) return 0;
+  const body = bodyRectangle(fleet, car);
+  return fleet.cars.filter(
+    (other) =>
+      other !== car &&
+      other.stop === car.stop &&
+      other.stopOrder > car.stopOrder &&
+      other.x !== undefined &&
+      (other.inJunction || convexOverlap(body, bodyRectangle(fleet, other))),
+  ).length;
+}
+
 /** 每条线的相位都在它所在车道的灯的相位表里。 */
 export function signalCheck({ junctions }) {
   const result = { lampMismatch: 0 };
@@ -247,6 +278,7 @@ export function carsCheck(town, { cap = 80, steps = RUN_STEPS, busShare } = {}) 
     yieldingInJunction: 0,
     falseYields: 0,
     crossedOnRed: 0,
+    passedYielder: 0,
     examples: [],
   };
   for (let i = 0; i < steps; i += 1) {
@@ -270,6 +302,10 @@ export function carsCheck(town, { cap = 80, steps = RUN_STEPS, busShare } = {}) 
           base.falseYields += 1;
           if (base.examples.length < 4) base.examples.push(['空让行', car.x, car.y]);
         }
+        const passers = passersOf(fleet, car);
+        base.passedYielder += passers;
+        if (passers > 0 && base.examples.length < 4)
+          base.examples.push(['越过让行车', car.x, car.y]);
         continue;
       }
       base.stoppedInJunction += 1;
@@ -442,6 +478,7 @@ const FAILURES = [
   'stoppedInJunction',
   'falseYields',
   'crossedOnRed',
+  'passedYielder',
   'lampMismatch',
   'lotsOnRoad',
   'hangingEdges',
