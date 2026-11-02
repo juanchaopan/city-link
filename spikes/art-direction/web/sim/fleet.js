@@ -16,6 +16,9 @@ import { signalPoles } from './sceneitems.js';
 // 过路口：车按车身长度停在停车线后面。车选好走向后等这条线的相位，放行要同时满足绿灯和出口放得下自己，
 // 否则绿灯也不进，所以不会堵在路口里。过了停车线的车一路开走，全红时间按最长的通过路线算好，够它们清空。
 // 一条进路只有一条车道，排头的车等自己的相位时后面的车跟着等。
+// 出口放不放得下要数整段路：下一个路口的停车线之前的路段长度，减去这段路上所有的车和已经放行、正开往这个出口的车。
+// 只看出口附近有没有慢车不够，同一个绿灯里先走的车还在跑，等它们排上去，路口就堵了。
+// 路段中间生成的车也算数：路段放不下时不在这一段生成。
 //
 // 环岛：车在斑马线外的让行线前看环上有没有车过来，没有才进；进环后逆时针绕到选定的出口。
 //
@@ -49,6 +52,7 @@ const BUS_SHARE = 0.06;
 const BUS_DWELL = 2.5;
 const BAY_MARGIN = 0.03;
 const ARRIVAL_CHORD = 0.05;
+const MAX_LINK_CELLS = 6;
 
 function screenAt(px, py, level) {
   return { sx: (px - py) * TILE_HALF_W, sy: (px + py - 1) * TILE_HALF_H - level * LEVEL_PIXELS };
@@ -213,7 +217,54 @@ export function createFleet(
   const countHigh = () => cars.reduce((sum, car) => sum + (car.high ? 1 : 0), 0);
 
   const lengthOf = (car) => (car.bus ? BUS_LENGTH : CAR_LENGTH);
+  const bodyRoom = (car) => lengthOf(car) + CLEARANCE;
   const rampChance = (lane) => lane.chance ?? RAMP_CHANCE;
+
+  /** 出口外面到下一个路口停车线的这段路：有哪几队，多长。直着走几格没遇到停车线时是 null。 */
+  const linkAfter = (exit) => {
+    const [dx, dy] = DIRECTIONS[exit.dir];
+    const step = Math.hypot(dx, dy);
+    const back = (exit.dir + 4) % 8;
+    const keys = new Set();
+    for (let k = 1; k <= MAX_LINK_CELLS; k += 1) {
+      const cell = (Math.floor(exit.node / N) + dy * k) * N + (exit.node % N) + dx * k;
+      if (!roads.has(cell)) return null;
+      const key = `${String(cell)}:${String(back)}`;
+      keys.add(key);
+      const stop = stops.get(key);
+      if (stop) {
+        const room = (k - 0.5) * step + stop.distance - exit.crossing.far - CLEARANCE;
+        return { keys, room };
+      }
+    }
+    return null;
+  };
+
+  const exitLinks = new Map();
+  const exitOfKey = new Map();
+  for (const { legs } of clusters) {
+    for (const leg of legs) {
+      const link = leg.crossing ? linkAfter(leg) : null;
+      if (!link) continue;
+      exitLinks.set(leg, link);
+      for (const key of link.keys) exitOfKey.set(key, leg);
+    }
+  }
+
+  /** 出口这段路连同已经放行、还没开上这段路的车，还放得下这辆车吗。 */
+  const linkFree = (car, exit) => {
+    const link = exitLinks.get(exit);
+    if (!link) return true;
+    let taken = bodyRoom(car);
+    for (const key of link.keys) {
+      for (const other of groups.get(key) ?? []) if (other !== car) taken += bodyRoom(other);
+    }
+    for (const other of cars) {
+      if (other === car || other.exit !== exit || !other.cleared) continue;
+      if (!link.keys.has(other.key)) taken += bodyRoom(other);
+    }
+    return taken <= link.room;
+  };
 
   const weighted = (items, weightOf) => {
     const weights = items.map(weightOf);
@@ -348,7 +399,7 @@ export function createFleet(
     bay: null,
   });
 
-  /** 车只生成在路段中间：路口、环岛和停车线那一格不生成，也不生成在别的车身上。 */
+  /** 车只生成在路段中间：路口、环岛和停车线那一格不生成，也不生成在别的车身上，路段放不下时不生成。 */
   const spawnOnEdge = (edge) => {
     const forward = random() < 0.5;
     const cell = forward ? edge.from : edge.to;
@@ -358,6 +409,8 @@ export function createFleet(
     if (ringOfCell.has(cell) || clusterCells.has(cell) || stopCells.has(cell)) return;
     const car = newCar(random() < busShare);
     if (!enterCell(car, cell, from)) return;
+    const exit = exitOfKey.get(car.key);
+    if (exit && !linkFree(car, exit)) return;
     car.s = random() * car.path.length;
     const crowded = groups.get(car.key)?.some((other) => Math.abs(other.s - car.s) < SPAWN_GAP);
     if (!crowded) cars.push(car);
@@ -421,10 +474,11 @@ export function createFleet(
     cars.splice(index, 1);
   };
 
-  /** 出口放得下自己吗：出口斑马线外面要留出一个车身，那里有慢车就不进。 */
+  /** 出口放得下自己吗：到下一个路口的路段要放得下，出口斑马线外面要留出一个车身，那里有慢车就不进。 */
   const exitFree = (car) => {
     const { exit } = car;
     if (!exit?.crossing) return true;
+    if (!linkFree(car, exit)) return false;
     const step = Math.hypot(...DIRECTIONS[exit.dir]);
     const need = exit.crossing.far + lengthOf(car) + CLEARANCE;
     const [dx, dy] = DIRECTIONS[exit.dir];
