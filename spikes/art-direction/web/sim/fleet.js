@@ -1,5 +1,12 @@
-import { lightAt } from './junctions.js';
-import { cellLane, laneKind, LANE_OFFSET, unitDirection } from './lanes.js';
+import { entryOffset, lightAt } from './junctions.js';
+import {
+  cellLane,
+  hasInnerLane,
+  INNER_OFFSET,
+  laneKind,
+  LANE_OFFSET,
+  unitDirection,
+} from './lanes.js';
 import { DIRECTIONS, spokesOf } from './network.js';
 import { RING } from './roundabout.js';
 import { signalPoles } from './sceneitems.js';
@@ -16,18 +23,30 @@ import { distanceToEnd, inStretch, sharedStretches } from './sharedlanes.js';
 //
 // 过路口：车按车身长度停在停车线后面。车选好走向后等这条线的相位，放行要同时满足绿灯和出口放得下自己，
 // 否则绿灯也不进，所以不会堵在路口里。过了停车线的车一路开走，全红时间按最长的通过路线算好，够它们清空。
-// 一条进路只有一条车道，排头的车等自己的相位时后面的车跟着等。
+// 两车道的进口只有一条车道，排头的车等自己的相位时后面的车跟着等。
+// 四车道的进口有左转专用道：车在停车线前一格就选好走向，左转的车横移到内侧车道，在路口里也单独排一队
+// （队名多一个 :L），直行的车从旁边过；专用道的灯是保护左转相。横移的那一格前半段两条队还并着，互相跟车。
+// 让行：两车道的左转和直行同相放行，左转车开进路口，在和对向直行相交之前停下来等空档，
+// 对向的车还在路口里、或者在停车线前亮着绿灯，就等；没有了才通过。让谁、在哪让，连线表（junctions.js）里写好。
 // 出口放不放得下要数整段路：下一个路口的停车线之前的路段长度，减去这段路上所有的车和已经放行、正开往这个出口的车。
 // 只看出口附近有没有慢车不够，同一个绿灯里先走的车还在跑，等它们排上去，路口就堵了。
-// 路段中间生成的车也算数：路段放不下时不在这一段生成。
+// 路段中间生成的车也算数：路段放不下时不在这一段生成。新车的落点按平面距离避开所有车，前一格的队尾也算。
 //
 // 环岛：车在斑马线外的让行线前看环上有没有车过来，没有才进；进环后逆时针绕到选定的出口。
+// 环上跟车按角度量，刚切进来、刚切出去的车车身还有一截在环上，也算在前车里。
+// 环岛的车从 5×5 的边上开始算一条通过路线，按进口分队；驶向这个进口的车看的是这支队的队尾，不是格子的队。
+// 出环的车从 5×5 的边进外面那一格，进格的方向是出口臂的反方向：臂的方向是从环心向外指的。
 //
 // 匝道：每条 lane 带一组限速系数，弯急坡陡的地方车慢下来。上下匝道的概率跟着分配到这条匝道的流量走。
 // 两条 lane 共用一段路面时这一段算一支队，见 sharedlanes.js。
+// 匝道落到地面路上的那一格只有一条路从这里出去，进来的方向没有路，车道偏移按出去的那条路算，车从匝道
+// 开到格子里不会横着跳一下。
 //
 // 排队：车在每一段的尽头都看下一段的队尾，格子接格子、匝道接地面路、匝道并主线、环岛接出口都一样。
-// 下一段排满时车在这一段的头上等，不会叠在下一段的起点上。入口匝道的头上排满时，路过的车不上匝道，接着往前开。
+// 下一段排满时车在这一段的头上等，不会叠在下一段的起点上。
+// 上匝道要看匝道头上共用路面的那一段：分岔口的出口匝道头上和主线贴在一起，匝道排满时队尾退到这一段，
+// 主线上的直行车就跟在队尾后面等。所以匝道上的车要排得下、并且排在共用段之外，路过的车才上匝道；
+// 排不下就接着往前开。共用段上也不生成车。
 //
 // 公交：经过站台的车停在格子中央，车门对着人行道上的站台，停够时间再走。后面的车在它后面等。
 
@@ -55,6 +74,8 @@ const BUS_DWELL = 2.5;
 const BAY_MARGIN = 0.03;
 const ARRIVAL_CHORD = 0.05;
 const MAX_LINK_CELLS = 6;
+const LEFT_LANE = ':L';
+const LANE_CHANGE_REACH = 0.6;
 
 function screenAt(px, py, level) {
   return { sx: (px - py) * TILE_HALF_W, sy: (px + py - 1) * TILE_HALF_H - level * LEVEL_PIXELS };
@@ -222,6 +243,7 @@ export function createFleet(
   const lengthOf = (car) => (car.bus ? BUS_LENGTH : CAR_LENGTH);
   const bodyRoom = (car) => lengthOf(car) + CLEARANCE;
   const rampChance = (lane) => lane.chance ?? RAMP_CHANCE;
+  const queued = (key) => [...(groups.get(key) ?? []), ...(groups.get(key + LEFT_LANE) ?? [])];
 
   /** 出口外面到下一个路口停车线的这段路：有哪几队，多长。直着走几格没遇到停车线时是 null。 */
   const linkAfter = (exit) => {
@@ -260,7 +282,7 @@ export function createFleet(
     if (!link) return true;
     let taken = bodyRoom(car);
     for (const key of link.keys) {
-      for (const other of groups.get(key) ?? []) if (other !== car) taken += bodyRoom(other);
+      for (const other of queued(key)) if (other !== car) taken += bodyRoom(other);
     }
     for (const other of cars) {
       if (other === car || other.exit !== exit || !other.cleared) continue;
@@ -281,6 +303,16 @@ export function createFleet(
     return items[items.length - 1];
   };
 
+  const ringQueueKey = (ring, arm) => `${String(ring.id)}:${String(arm.dir)}`;
+
+  /** 从 from 方向进这一格的车排哪一队：环岛的门口格按进口臂分队，别的格按格子和方向。 */
+  const queueKeyOf = (cell, from) => {
+    const ring = ringOfCell.get(cell);
+    if (!ring) return `${String(cell)}:${String(from)}`;
+    const arm = ring.arms.find(({ gate }) => gate === cell);
+    return arm ? ringQueueKey(ring, arm) : null;
+  };
+
   const enterRing = (car, ring, arm) => {
     const exit = weighted(
       ring.arms.filter((other) => other !== arm && roads.has(other.outside)),
@@ -296,7 +328,7 @@ export function createFleet(
     car.stop = null;
     car.s = 0;
     car.kind = 'road';
-    car.key = `${String(ring.id)}:${String(arm.dir)}`;
+    car.key = ringQueueKey(ring, arm);
     return true;
   };
 
@@ -310,13 +342,53 @@ export function createFleet(
     car.passed = null;
   };
 
-  /** 匝道的头上放得下这辆车：共用路面时另一条匝道上的车也算。 */
+  /** 匝道的头上放得下这辆车，并且它能排到共用路面之外：共用路面时另一条 lane 上的车也算。 */
   const laneOpen = (car, lane) => {
     const stretch = stretches.find(({ fromTail, reach }) => !fromTail && reach.has(lane));
-    const queue = stretch
-      ? cars.filter((other) => inStretch(stretch, other))
-      : (groups.get(lane.id) ?? []);
-    return queue.every((other) => other.s - (lengthOf(car) + lengthOf(other)) / 2 >= CLEARANCE);
+    const need = stretch?.reach.get(lane) ?? 0;
+    const onLane = (other) => other.mode === 'lane' && other.lane === lane;
+    const queue = cars.filter(
+      (other) => onLane(other) || (stretch !== undefined && inStretch(stretch, other)),
+    );
+    const ahead = (other) => (onLane(other) ? other.s : distanceToEnd(stretch, other));
+    return queue.every(
+      (other) => ahead(other) - (lengthOf(car) + lengthOf(other)) / 2 - CLEARANCE >= need,
+    );
+  };
+
+  /** 在这个进口选一条通过路线，直行的机会大一些。 */
+  const pickRoute = (stop) => {
+    const straight = (stop.leg.dir + 4) % 8;
+    return weighted(stop.routes, ({ dirs }) =>
+      dirs.length === 1 && dirs[0] === straight ? STRAIGHT_WEIGHT : 1,
+    );
+  };
+
+  /** 到了停车线那一格：记下走向、相位和车道，左转专用道的车从这里起单独排队。 */
+  const takeStop = (car, stop) => {
+    const pick = car.pending ?? pickRoute(stop);
+    car.pending = null;
+    car.stop = stop;
+    car.cleared = false;
+    car.clearedOn = null;
+    car.route = pick ? [...pick.dirs] : null;
+    car.exit = pick?.exit ?? null;
+    car.phases = pick ? [pick.phase] : stop.phases;
+    car.movement = pick ?? null;
+    car.turnLane = pick?.lane ?? 'through';
+    car.inJunction = false;
+    car.progress = 0;
+    car.committed = false;
+  };
+
+  /** 下一格是有左转专用道的停车格时，在这一格就选好走向，左转的车横移到内侧车道。 */
+  const planAhead = (car, cell, from, to) => {
+    const [dx, dy] = DIRECTIONS[to];
+    const next = (Math.floor(cell / N) + dy) * N + (cell % N) + dx;
+    const ahead = stops.get(`${String(next)}:${String((to + 4) % 8)}`);
+    if (!ahead || !hasInnerLane(ahead.leg.kind) || clusterCells.has(cell)) return null;
+    car.pending = pickRoute(ahead);
+    return car.pending?.lane === 'left' ? 'left' : null;
   };
 
   const enterCell = (car, cell, from) => {
@@ -328,7 +400,8 @@ export function createFleet(
     const entry = roads.get(cell);
     const x = cell % N;
     const y = Math.floor(cell / N);
-    const spokes = spokesOf(entry.road | entry.highway).filter((dir) => dir !== from);
+    const own = spokesOf(entry.road | entry.highway);
+    const spokes = own.filter((dir) => dir !== from);
     const heading = unitDirection((from + 4) % 8);
     const ramps = lanesFrom.get(cell)?.filter((lane) => {
       const { x: ax, y: ay } = pointAt(lane.path, 0);
@@ -346,19 +419,19 @@ export function createFleet(
     }
     if (spokes.length === 0) return false;
     const stop = stops.get(`${String(cell)}:${String(from)}`) ?? null;
-    if (stop) {
-      car.stop = stop;
-      car.cleared = false;
-      const straight = (stop.leg.dir + 4) % 8;
-      const pick = weighted(stop.routes, ({ dirs }) =>
-        dirs.length === 1 && dirs[0] === straight ? STRAIGHT_WEIGHT : 1,
-      );
-      car.route = pick ? [...pick.dirs] : null;
-      car.exit = pick?.exit ?? null;
-      car.phases = pick ? [pick.phase] : stop.phases;
+    if (stop) takeStop(car, stop);
+    else if (car.movement && !clusterCells.has(cell)) {
+      car.movement = null;
+      car.turnLane = 'through';
+      car.inJunction = false;
+    }
+    const inJunction = car.movement !== null && clusterCells.has(cell);
+    if (inJunction) {
+      car.progress = car.inJunction ? car.progress + car.path.length : 0;
+      car.inJunction = true;
     }
     let to = null;
-    if (clusterCells.has(cell) && car.route?.length > 0) to = car.route.shift();
+    if (inJunction && car.route?.length > 0) to = car.route.shift();
     if (to === null || !spokes.includes(to)) {
       to = weighted(spokes, (dir) => {
         const [dx, dy] = DIRECTIONS[dir];
@@ -370,21 +443,27 @@ export function createFleet(
     }
     if (to === null) return false;
     const kind = laneKind(entry, to);
+    const fromKind = own.includes(from) ? laneKind(entry, from) : kind;
+    const inner = car.onInner === true && hasInnerLane(fromKind);
+    const offsetFrom = inner ? INNER_OFFSET[fromKind] : LANE_OFFSET[fromKind];
+    let offsetTo = LANE_OFFSET[kind];
+    let leftLane = car.movement !== null && car.turnLane === 'left';
+    if (!car.movement && planAhead(car, cell, from, to) === 'left') {
+      offsetTo = INNER_OFFSET[kind];
+      leftLane = true;
+    } else if (leftLane && !inJunction && hasInnerLane(kind)) offsetTo = INNER_OFFSET[kind];
+    car.onInner = offsetTo !== LANE_OFFSET[kind];
     car.mode = 'cell';
     car.cell = cell;
     car.from = from;
     car.to = to;
     car.kind = kind;
     car.path = measured(
-      cellLane(x, y, from, to, laneKind(entry, from), kind).map(([px, py]) => [
-        px,
-        py,
-        surface(px, py),
-      ]),
+      cellLane(x, y, from, to, offsetFrom, offsetTo).map(([px, py]) => [px, py, surface(px, py)]),
     );
     car.s = 0;
-    car.key = `${String(cell)}:${String(from)}`;
-    car.bay = car.bus ? (busStopAt.get(car.key) ?? null) : null;
+    car.key = `${String(cell)}:${String(from)}${leftLane ? LEFT_LANE : ''}`;
+    car.bay = car.bus ? (busStopAt.get(`${String(cell)}:${String(from)}`) ?? null) : null;
     car.dwell = car.bay ? BUS_DWELL : 0;
     return true;
   };
@@ -399,8 +478,14 @@ export function createFleet(
     tilt: 0,
     idle: 0,
     waiting: false,
+    yielding: false,
     dwell: 0,
     bay: null,
+    movement: null,
+    pending: null,
+    turnLane: 'through',
+    inJunction: false,
+    onInner: false,
   });
 
   /** 车只生成在路段中间：路口、环岛和停车线那一格不生成，也不生成在别的车身上，路段放不下时不生成。 */
@@ -416,28 +501,25 @@ export function createFleet(
     const exit = exitOfKey.get(car.key);
     if (exit && !linkFree(car, exit)) return;
     car.s = random() * car.path.length;
-    const crowded = groups.get(car.key)?.some((other) => Math.abs(other.s - car.s) < SPAWN_GAP);
-    if (!crowded) cars.push(car);
+    if (!crowdedAt(car)) cars.push(car);
   };
 
-  /** 新车落在共用路面上，另一条匝道上的车也不能离得太近。 */
-  const crowdedStretch = (car) =>
-    stretches.some(
-      (stretch) =>
-        inStretch(stretch, car) &&
-        cars.some(
-          (other) =>
-            inStretch(stretch, other) &&
-            Math.abs(distanceToEnd(stretch, other) - distanceToEnd(stretch, car)) < SPAWN_GAP,
-        ),
-    );
+  /** 新车的落点周围 SPAWN_GAP 以内不能有别的车：平面上量，前一格队尾、下一格排头和同一帧刚生成的车都算。 */
+  const crowdedAt = (car) => {
+    const spot = (other) =>
+      other.x === undefined ? pointAt(other.path, Math.min(other.s, other.path.length)) : other;
+    const { x, y, h } = spot(car);
+    return cars.some((other) => {
+      const { x: ox, y: oy, h: oh } = spot(other);
+      return Math.abs(oh - h) < SPAWN_GAP && Math.hypot(ox - x, oy - y) < SPAWN_GAP;
+    });
+  };
 
   const spawnOnLane = (lane) => {
     if (countHigh() >= highCap) return;
     const car = newCar(false);
     boardLane(car, lane, random() * lane.path.length);
-    const crowded = groups.get(lane.id)?.some((other) => Math.abs(other.s - car.s) < SPAWN_GAP);
-    if (crowded || crowdedStretch(car)) return;
+    if (crowdedAt(car) || stretches.some((stretch) => inStretch(stretch, car))) return;
     car.high = true;
     cars.push(car);
   };
@@ -464,7 +546,7 @@ export function createFleet(
     if (car.mode === 'ring') {
       car.ring = null;
       const { outside, dir } = car.exit;
-      return enterCell(car, outside, dir);
+      return enterCell(car, outside, (dir + 4) % 8);
     }
     if (car.mode === 'lane') {
       const { lane } = car;
@@ -501,7 +583,7 @@ export function createFleet(
     const back = (exit.dir + 4) % 8;
     for (let k = 1; (k - 0.5) * step < need; k += 1) {
       const cell = (Math.floor(exit.node / N) + dy * k) * N + (exit.node % N) + dx * k;
-      for (const other of groups.get(`${String(cell)}:${String(back)}`) ?? []) {
+      for (const other of queued(`${String(cell)}:${String(back)}`)) {
         if (other.speed >= SLOW) continue;
         if ((k - 0.5) * step + other.s - lengthOf(other) / 2 < need) return false;
       }
@@ -514,6 +596,12 @@ export function createFleet(
     return start + ((end - start) * (car.s - enter)) / (leave - enter);
   };
   const onRing = (car) => car.mode === 'ring' && car.s >= car.trip.enter && car.s <= car.trip.leave;
+  /** 车身还有一部分在环上：刚切进来和刚切出去的车都算，环上的后车要给它们留车身。 */
+  const touchingRing = (car) => {
+    if (car.mode !== 'ring') return false;
+    const reach = lengthOf(car) + CLEARANCE;
+    return car.s >= car.trip.enter - reach && car.s <= car.trip.leave + reach;
+  };
 
   /** 环岛让行：环上有车快到进环点时在让行线后等。 */
   const roomToYield = (car) => {
@@ -547,14 +635,48 @@ export function createFleet(
     const limit = car.stop.distance - lengthOf(car) / 2 - STOP_MARGIN;
     if (lightAt(car.stop.signal, car.phases, time) === 'green' && exitFree(car)) {
       car.cleared = true;
+      car.clearedOn = 'green';
       return Infinity;
     }
     if (car.s > limit + 0.02) {
       car.cleared = true;
+      car.clearedOn = 'forced';
       return Infinity;
     }
     car.waiting = true;
     return limit - car.s;
+  };
+
+  /** 对方线上的这辆车还没过冲突点：在路口里没开过去，或者在停车线前已经放行、灯还是绿的。 */
+  const approaching = (other, otherAt) => {
+    if (other.inJunction) {
+      return other.progress + other.s < otherAt + lengthOf(other) / 2 + CLEARANCE;
+    }
+    if (!other.stop || other.cell !== other.stop.cell) return false;
+    return other.cleared || lightAt(other.stop.signal, other.phases, time) === 'green';
+  };
+
+  /** 路口里的让行：让行点之前看该让的线上有没有车要来，有就在让行点等，没有就过。 */
+  const roomToGap = (car) => {
+    const yields = car.movement?.yields;
+    if (!car.inJunction || car.committed || !yields?.length) return Infinity;
+    const station = car.progress + car.s;
+    const limit = Math.min(...yields.map(({ at }) => at)) - lengthOf(car) / 2 - STOP_MARGIN;
+    if (station > limit + 0.02) {
+      car.committed = true;
+      return Infinity;
+    }
+    const blocked = yields.some(({ movement, otherAt }) =>
+      cars.some(
+        (other) => other !== car && other.movement === movement && approaching(other, otherAt),
+      ),
+    );
+    if (!blocked) {
+      if (station > limit - 0.06) car.committed = true;
+      return Infinity;
+    }
+    car.yielding = true;
+    return limit - station;
   };
 
   /** 公交到站：开到格子中央停下，停够时间再走。 */
@@ -566,13 +688,13 @@ export function createFleet(
     return room;
   };
 
-  /** 环上前车的距离，按角度量。 */
+  /** 环上前车的距离，按角度量。刚出环的车按它离开的方向接着量，车身还在环上时后车不会追尾。 */
   const roomOnRing = (car) => {
-    if (!onRing(car)) return Infinity;
+    if (!touchingRing(car) || car.s > car.trip.leave) return Infinity;
     const own = ringAngleOf(car);
     let room = Infinity;
     for (const other of cars) {
-      if (other === car || other.ring !== car.ring || !onRing(other)) continue;
+      if (other === car || other.ring !== car.ring || !touchingRing(other)) continue;
       const gap = wrapAngle(own - ringAngleOf(other));
       if (gap <= 0) continue;
       room = Math.min(room, gap * RING - (lengthOf(car) + lengthOf(other)) / 2 - CLEARANCE);
@@ -618,31 +740,68 @@ export function createFleet(
   const nextQueue = (car) => {
     if (car.mode === 'ring') {
       const { outside, dir } = car.exit;
-      return { key: `${String(outside)}:${String(dir)}`, start: 0 };
+      const key = queueKeyOf(outside, (dir + 4) % 8);
+      return key === null ? null : { key, start: 0 };
     }
     if (car.mode === 'cell') {
       const [dx, dy] = DIRECTIONS[car.to];
       const next = (Math.floor(car.cell / N) + dy) * N + (car.cell % N) + dx;
-      return { key: `${String(next)}:${String((car.to + 4) % 8)}`, start: 0 };
+      const key = queueKeyOf(next, (car.to + 4) % 8);
+      if (key === null) return null;
+      const left =
+        !ringOfCell.has(next) &&
+        car.key.endsWith(LEFT_LANE) &&
+        (car.route?.length > 0 || !car.inJunction);
+      return { key: `${key}${left ? LEFT_LANE : ''}`, start: 0 };
     }
     const { merge, toCell, arrival } = car.lane;
     if (merge) {
       const main = laneById.get(merge.lane);
       return { key: main.id, start: main.path.along[merge.at] };
     }
-    return toCell === undefined ? null : { key: `${String(toCell)}:${String(arrival)}`, start: 0 };
+    if (toCell === undefined) return null;
+    const key = queueKeyOf(toCell, arrival);
+    return key === null ? null : { key, start: 0 };
   };
 
-  /** 下一段排尾的车，跨段时也不能撞上去。队伍按里程从大到小排，起点之后的最后一辆就是队尾。 */
+  /** 横移那一格的前半段：左转道的车和外侧车道的车还并在一起，谁在前就跟谁。 */
+  const roomInLaneChange = (car) => {
+    if (car.mode !== 'cell' || car.inJunction || car.s >= LANE_CHANGE_REACH) return Infinity;
+    const left = car.key.endsWith(LEFT_LANE);
+    const other = left ? car.key.slice(0, -LEFT_LANE.length) : car.key + LEFT_LANE;
+    let room = Infinity;
+    for (const mate of groups.get(other) ?? []) {
+      if (mate.s <= car.s || mate.s >= LANE_CHANGE_REACH + lengthOf(mate)) continue;
+      room = Math.min(room, mate.s - car.s - (lengthOf(car) + lengthOf(mate)) / 2 - CLEARANCE);
+    }
+    return room;
+  };
+
+  /** 队伍按里程从大到小排，起点之后最靠后的一辆就是队尾；found 为真的才算。 */
+  const tailOf = (key, start, found) => {
+    let last = null;
+    for (const other of groups.get(key) ?? []) if (other.s >= start && found(other)) last = other;
+    return last;
+  };
+
+  /** 下一段排尾的车，跨段时也不能撞上去。下一格是横移那一格时，另一条队前半段的车也算队尾。 */
   const roomToNextQueue = (car) => {
     const next = nextQueue(car);
-    const queue = next && groups.get(next.key);
-    if (!queue) return Infinity;
-    let last = null;
-    for (const other of queue) if (other.s >= next.start) last = other;
-    if (!last) return Infinity;
-    const ahead = car.path.length - car.s + last.s - next.start;
-    return ahead - (lengthOf(car) + lengthOf(last)) / 2 - CLEARANCE;
+    if (!next) return Infinity;
+    const sibling = next.key.endsWith(LEFT_LANE)
+      ? next.key.slice(0, -LEFT_LANE.length)
+      : next.key + LEFT_LANE;
+    const tails = [
+      tailOf(next.key, next.start, () => true),
+      tailOf(sibling, next.start, (other) => !other.inJunction && other.s < LANE_CHANGE_REACH),
+    ];
+    let room = Infinity;
+    for (const last of tails) {
+      if (!last) continue;
+      const ahead = car.path.length - car.s + last.s - next.start;
+      room = Math.min(room, ahead - (lengthOf(car) + lengthOf(last)) / 2 - CLEARANCE);
+    }
+    return room;
   };
 
   const speedLimit = (car) => {
@@ -713,6 +872,7 @@ export function createFleet(
     const shared = roomsInStretches();
     for (const group of groups.values()) {
       group.forEach((car, index) => {
+        car.yielding = false;
         let room = roomToNextQueue(car);
         if (index > 0) {
           const leader = group[index - 1];
@@ -724,7 +884,9 @@ export function createFleet(
         room = Math.min(
           room,
           shared.get(car) ?? Infinity,
+          roomInLaneChange(car),
           roomToStop(car),
+          roomToGap(car),
           roomOnRing(car),
           roomOnExit(car),
           roomToBay(car, dt),
@@ -756,6 +918,7 @@ export function createFleet(
     removed,
     signals,
     lengthOf,
+    time: () => time,
     lightOf: ({ signal, phase }) => lightAt(signal, phase, time),
     setView(box) {
       viewBox = box;

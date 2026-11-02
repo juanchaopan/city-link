@@ -1,13 +1,15 @@
 import { DIRECTIONS } from './network.js';
 
 // 一格里的车道中线。车流和路口的进出连线表用同一份，表里写的线就是车走的线。
-// 进来的一头按进来那条路的车道偏移，出去的一头按出去那条路的车道偏移：
+// 进来的一头按进来那条车道的偏移，出去的一头按出去那条车道的偏移：
 // 两车道转进四车道时进来的一头还在两车道的车道上，不会因为出口宽就挪到进口路的路缘上。
+// 四车道一个方向有两条车道：LANE_OFFSET 是外侧车道，INNER_OFFSET 是靠中线的内侧车道，左转专用道用它。
 // 转弯的控制点是两条车道线的交点，45° 的弯里车道才和路面中线平行。
 // 夹角 45° 的急弯里交点可能贴着起点，甚至落到起点后面，二次曲线会一下拐死或者先倒退。
 // 这时用三次曲线，先开到路口中间再绕回来，两头的切线照样对齐车道，点也取得更密。
 
 export const LANE_OFFSET = { road: 0.115, arterial: 0.25, highway: 0.29, express: 0.29, ramp: 0 };
+export const INNER_OFFSET = { arterial: 0.085 };
 const TURNS = 10;
 const TIGHT_TURNS = 32;
 const LANE_STEPS = 6;
@@ -26,6 +28,9 @@ export function laneKind(entry, dir) {
   if (entry.highway & bit) return 'highway';
   return (entry.arterial ?? 0) & bit ? 'arterial' : 'road';
 }
+
+/** 这一级的路有没有左转专用道。 */
+export const hasInnerLane = (kind) => kind in INNER_OFFSET;
 
 /** 两条车道线的交点，相对格子中心。normalA、normalB 是单位法向，掉头时两条线平行，取两个偏移的和。 */
 function laneCorner(normalA, offsetA, normalB, offsetB) {
@@ -72,13 +77,11 @@ function cubicLane(start, first, second, end) {
 
 /**
  * 一格里从 from 方向进来、往 to 方向出去的车道中线。靠右行驶，所以进出都偏向各自行进方向的右侧，
- * 偏移量各按进来那条路和出去那条路算。
+ * offsetFrom、offsetTo 是进来和出去那一头的车道偏移。直行时两头偏移不同就是一段匀速的横移。
  */
-export function cellLane(x, y, from, to, fromKind, toKind) {
+export function cellLane(x, y, from, to, offsetFrom, offsetTo) {
   const [fx, fy] = unitDirection(from);
   const [tx, ty] = unitDirection(to);
-  const offsetFrom = LANE_OFFSET[fromKind];
-  const offsetTo = LANE_OFFSET[toKind];
   const cx = x + 0.5;
   const cy = y + 0.5;
   const reachFrom = Math.hypot(...DIRECTIONS[from]) / 2;

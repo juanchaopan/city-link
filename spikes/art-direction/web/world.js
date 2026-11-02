@@ -8,6 +8,7 @@ import {
   Texture,
 } from 'pixi.js';
 import { createDrawList } from './sim/drawlist.js';
+import { DIRECTIONS } from './sim/network.js';
 import { sceneItems } from './sim/sceneitems.js';
 
 // 把图集和城市数据拼成 Pixi 场景。
@@ -17,11 +18,15 @@ import { sceneItems } from './sim/sceneitems.js';
 // 每帧只处理视野和周边一圈的物体：视野外的既不排序也不进粒子串。视野在周边一圈以内移动时不换物体，
 // 滑出去了才重新挑一批。全部粒子共用一张图集，只有一次绘制调用。
 // 亮窗紧跟在所属建筑后面。模块拼装的物业由几张精灵叠成，从下往上画，每张抬高整数像素。
+// 信号灯的灯面跟在灯杆后面：外侧车道一面，有左转专用道的进口在悬臂上靠杆的一侧再挂一面左转灯，
+// 两面各按自己车道的相位染色。
 
 const CHUNK = 16;
 const VIEW_PADDING = 300;
 const VIEW_SLACK = 150;
 const MODULE_FLOOR_LEVELS = 0.5;
+const LEFT_LAMP_INBOARD = 0.4;
+const LAMP_ARM = 0.16;
 export const TILE_HALF_W = 64;
 export const TILE_HALF_H = 32;
 export const LEVEL_PIXELS = 32;
@@ -179,14 +184,20 @@ function sceneLayerOf(atlas, city, options) {
   const { sorted, cycles } = sceneItems(city, (key) => atlas.frames[key]);
   const particlesByItem = new Map(sorted.map((item) => [item, particlesOf(atlas, item, options)]));
   const lamps = [];
+  const addLamp = (item, key, inboard, phase) => {
+    const [dx, dy] = DIRECTIONS[item.dir];
+    const shift = (LAMP_ARM * inboard) / Math.hypot(dx, dy);
+    const { sx, sy } = screenOf(item.px + dy * shift, item.py - dx * shift, item.level);
+    const particle = particleFor(atlas, key, sx, sy);
+    particlesByItem.get(item).push(particle);
+    lamps.push({ signal: item.signal, phase, particle });
+  };
   for (const item of sorted) {
     if (item.signal === undefined) continue;
     const key = `lamp-${String(item.dir)}`;
     if (!atlas.frames[key]) continue;
-    const { sx, sy } = screenOf(item.px, item.py, item.level);
-    const particle = particleFor(atlas, key, sx, sy);
-    particlesByItem.get(item).push(particle);
-    lamps.push({ signal: item.signal, phase: item.phase, particle });
+    addLamp(item, key, 0, item.phase);
+    if (item.leftPhase.length > 0) addLamp(item, key, LEFT_LAMP_INBOARD, item.leftPhase);
   }
   const texture = atlas.textures[Object.keys(atlas.textures)[0]];
   const layer = new ParticleContainer({
@@ -199,9 +210,13 @@ function sceneLayerOf(atlas, city, options) {
   let kept = null;
   let inView = 0;
 
+  let frameCycles = 0;
+
   const compose = (cars) => {
+    const { sequence, cycles: broken } = drawList.order(cars, visible);
+    frameCycles = broken;
     const list = [];
-    for (const item of drawList.order(cars, visible)) {
+    for (const item of sequence) {
       list.push(...(item.car ? item.particles : particlesByItem.get(item)));
     }
     layer.particleChildren = list;
@@ -229,7 +244,15 @@ function sceneLayerOf(atlas, city, options) {
     });
   };
 
-  return { layer, compose, setView, lamps, cycles, inView: () => inView };
+  return {
+    layer,
+    compose,
+    setView,
+    lamps,
+    cycles,
+    inView: () => inView,
+    frameCycles: () => frameCycles,
+  };
 }
 
 /**
@@ -285,6 +308,7 @@ export function buildWorld(
       compose: idle,
       setView: idle,
       inView: () => 0,
+      frameCycles: () => 0,
     };
   }
   const scene = sceneLayerOf(atlas, city, { dynamicTint, stress, area, bodies, lit });
@@ -301,6 +325,7 @@ export function buildWorld(
     setView: scene.setView,
     inView: scene.inView,
     cycles: scene.cycles,
+    frameCycles: scene.frameCycles,
   };
 }
 

@@ -4,7 +4,7 @@ import { JUNCTION_CASES } from './junctioncases.js';
 import { CLASS, readPoints, worldOf, worldOfCity } from './roadscene.js';
 import { generateCity, specKey } from './sim/city.js';
 import { createFleet, roadAngle, spriteAngle, wrapAngle } from './sim/fleet.js';
-import { unitOf } from './sim/junctions.js';
+import { lightAt, unitOf } from './sim/junctions.js';
 import { clearLots } from './sim/lotclear.js';
 import { cellPaths, DIRECTIONS, ROAD_SPEC } from './sim/network.js';
 import { generateParcels, ZONE } from './sim/parcels.js';
@@ -17,6 +17,9 @@ import { pngData, randomFrom, renderTown } from './townrender.js';
 // 要读的点先收齐，再由 readPoints 分块拼遮罩逐块读：128 城整张拼不下，这样每次只拼一块。
 // 地块的地面轮廓是建筑模型里贴地的三角形（地台和铺装），楼身不算，高楼挡住后面的路是正常的。
 // 停车检查量的是车身：停够 IDLE 秒的车，车头、车中、车尾三点都不能落在斑马线、路口或大路口的连接段里。
+// 路口里让行的左转车除外：它要让的线上确实有车在路口里或者在停车线前亮着绿灯，这里重新查一遍，
+// 查不到理由的让行算 falseYields。停车线前的车只在绿灯时放行，不靠绿灯过线的算 crossedOnRed。
+// 灯和车道一致：每条线的相位要在它所在车道的灯的相位表里（外侧车道一面灯，左转专用道一面灯）。
 // 斑马线的端点落在人行道和路面的分界上，那一个像素是两层的混色，所以读它周围一圈，有一个像素在人行道上就算到了。
 // 坡路的边缘高差：角点按四分之一层存，一层 32 像素，地形最多有 8 像素的取整误差，上限定 6 像素，
 // 超过这个数才是看得见的竖面；腾空的路是几十像素，分得开。
@@ -204,6 +207,31 @@ export function bodyOf(fleet, car) {
   return [-1, 0, 1].map((d) => [car.x + dx * scale * d, car.y + dy * scale * d]);
 }
 
+/** 这辆让行的车确实有要让的车：对方在路口里还没过冲突点，或者在停车线前已经放行、灯还是绿的。 */
+export function yieldReason(fleet, car) {
+  const time = fleet.time();
+  return (car.movement?.yields ?? []).some(({ movement, otherAt }) =>
+    fleet.cars.some((other) => {
+      if (other === car || other.movement !== movement) return false;
+      if (other.inJunction) return other.progress + other.s < otherAt + fleet.lengthOf(other);
+      if (!other.stop || other.cell !== other.stop.cell) return false;
+      return other.cleared || lightAt(other.stop.signal, other.phases, time) === 'green';
+    }),
+  );
+}
+
+/** 每条线的相位都在它所在车道的灯的相位表里。 */
+export function signalCheck({ junctions }) {
+  const result = { lampMismatch: 0 };
+  for (const { movements } of junctions.clusters) {
+    for (const { leg, lane, phase } of movements) {
+      const lamp = lane === 'left' ? leg.leftPhases : leg.phases;
+      if (!lamp.includes(phase)) result.lampMismatch += 1;
+    }
+  }
+  return result;
+}
+
 /** 让车流跑一段时间，抽样记下车脚点，红灯时停着的车按车身查是不是停在路口里。 */
 export function carsCheck(town, { cap = 80, steps = RUN_STEPS, busShare } = {}) {
   const fleet = createFleet(town, { cap, full: true, random: randomFrom(7), busShare });
@@ -213,20 +241,39 @@ export function carsCheck(town, { cap = 80, steps = RUN_STEPS, busShare } = {}) 
   const links = linkCellsOf(junctions);
   const onLink = ([x, y]) => links.has(Math.floor(y) * N + Math.floor(x));
   const points = [];
-  const base = { stoppedSamples: 0, stoppedInJunction: 0, examples: [] };
+  const base = {
+    stoppedSamples: 0,
+    stoppedInJunction: 0,
+    yieldingInJunction: 0,
+    falseYields: 0,
+    crossedOnRed: 0,
+    examples: [],
+  };
   for (let i = 0; i < steps; i += 1) {
     fleet.step(DT);
     if (i % SAMPLE_EVERY !== SAMPLE_EVERY - 1) continue;
     for (const car of fleet.cars) {
       if (car.x === undefined || car.high) continue;
       points.push({ px: car.x, py: car.y, level: car.h });
+      if (car.clearedOn === 'forced') {
+        base.crossedOnRed += 1;
+        if (base.examples.length < 4) base.examples.push(['闯红灯', car.x, car.y]);
+      }
       if (car.idle < IDLE) continue;
       base.stoppedSamples += 1;
       const body = bodyOf(fleet, car);
-      if (body.some((point) => onLink(point) || inJunction(point[0], point[1], legs, core))) {
-        base.stoppedInJunction += 1;
-        if (base.examples.length < 4) base.examples.push(['停车', car.x, car.y, car.bus]);
+      if (!body.some((point) => onLink(point) || inJunction(point[0], point[1], legs, core)))
+        continue;
+      if (car.yielding) {
+        base.yieldingInJunction += 1;
+        if (!yieldReason(fleet, car)) {
+          base.falseYields += 1;
+          if (base.examples.length < 4) base.examples.push(['空让行', car.x, car.y]);
+        }
+        continue;
       }
+      base.stoppedInJunction += 1;
+      if (base.examples.length < 4) base.examples.push(['停车', car.x, car.y, car.bus]);
     }
   }
   return {
@@ -377,7 +424,7 @@ function inspect(town) {
     offset += reader.points.length;
     return reader.tally(slice);
   });
-  parts.push(checkFacing(town, fleet), checkHang(town), checkHeading(town));
+  parts.push(checkFacing(town, fleet), checkHang(town), checkHeading(town), signalCheck(town));
   const row = Object.assign({}, ...parts);
   row.rings = town.rings.length;
   row.examples = parts.flatMap((part) => part.examples ?? []).slice(0, 8);
@@ -393,6 +440,9 @@ const FAILURES = [
   'interiorCrossings',
   'carsOffRoad',
   'stoppedInJunction',
+  'falseYields',
+  'crossedOnRed',
+  'lampMismatch',
   'lotsOnRoad',
   'hangingEdges',
   'headingOff',

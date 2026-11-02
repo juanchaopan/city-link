@@ -7,6 +7,7 @@ import {
   inJunction,
   linkCellsOf,
   polesCheck,
+  signalCheck,
 } from './junctioncheck.js';
 import { CLASS, readPoints, worldOf } from './roadscene.js';
 import { hasAcuteAngle, shapeCases, shapeClass, spacingCases } from './shapecases.js';
@@ -20,6 +21,7 @@ import { pasteCrop, pngData, randomFrom, renderTown } from './townrender.js';
 // 路口穷举验收：219 种摆法加四车道的代表组合，每个都按游戏流程生成，逐项查。
 // 灯杆、斑马线端点、停车线和车线都换算到真实烘焙的遮罩上读像素，车线相交、相位分组和连线表只看规划数据。
 // 车线走的是车真实走的线：线的中心和两侧各半个车宽都要在车道上，所以急转弯切出路面时查得出来。
+// 同一相里相交的线只允许让行的一对：两车道的左转和对向直行同相放行，左转让行；没有让行关系的相交才算错。
 // 停车线读的是进口车道的中线：路中间可能是环岛腿上的分隔岛。
 // 路缘外鼓：相邻两条腿夹角不小于 180° 的大扇区是直通一侧和路口背面，那里路缘就是路本身的边，
 // 超出每条腿人行道宽度 BULGE_MARGIN 的地方不能有路面像素。
@@ -61,6 +63,9 @@ export const SHAPE_FAILURES = [
   'linesOffRoad',
   'carsOffRoad',
   'stoppedInJunction',
+  'falseYields',
+  'crossedOnRed',
+  'lampMismatch',
   'curbBulge',
 ];
 
@@ -125,9 +130,11 @@ function movementsCheck({ junctions }) {
     phases: 0,
     missingMovements: 0,
     laneConflicts: 0,
+    yieldPairs: 0,
     pairSplit: 0,
     turnJumps: 0,
   };
+  const yieldsTo = (a, b) => a.yields?.some(({ movement }) => movement === b) ?? false;
   for (const { legs, movements, phaseCount } of junctions.clusters) {
     result.movements += movements.length;
     result.phases = Math.max(result.phases, phaseCount);
@@ -143,7 +150,9 @@ function movementsCheck({ junctions }) {
     for (let i = 0; i < movements.length; i += 1) {
       for (let j = i + 1; j < movements.length; j += 1) {
         const [a, b] = [movements[i], movements[j]];
-        if (a.phase === b.phase && movementsConflict(a, b)) result.laneConflicts += 1;
+        if (a.phase !== b.phase || !movementsConflict(a, b)) continue;
+        if (yieldsTo(a, b) || yieldsTo(b, a)) result.yieldPairs += 1;
+        else result.laneConflicts += 1;
       }
     }
     for (const { points } of movements) result.turnJumps += jointTurns(points);
@@ -276,7 +285,12 @@ function inspect(entry, town, carOptions) {
     offset += reader.points.length;
     return reader.tally(slice);
   });
-  parts.push(checkFacing(town, fleet), geometryCheck(town), movementsCheck(town));
+  parts.push(
+    checkFacing(town, fleet),
+    geometryCheck(town),
+    movementsCheck(town),
+    signalCheck(town),
+  );
   const row = Object.assign({}, ...parts);
   row.wrongControl = controlCheck(town, entry);
   row.examples = parts.flatMap((part) => part.examples ?? []).slice(0, 6);
@@ -311,7 +325,7 @@ function queueRun(town, busShare) {
   const { N, junctions } = town;
   const core = coreOf(junctions.legs);
   const links = linkCellsOf(junctions);
-  const result = { samples: 0, blocked: 0, stopped: 0, speed: 0, inLink: 0 };
+  const result = { samples: 0, blocked: 0, yielding: 0, stopped: 0, speed: 0, inLink: 0 };
   for (let i = 0; i < SPACING_STEPS; i += 1) {
     fleet.step(DT);
     if (i % SAMPLE_EVERY !== SAMPLE_EVERY - 1) continue;
@@ -322,7 +336,10 @@ function queueRun(town, busShare) {
       if (car.idle < 1) continue;
       result.stopped += 1;
       const body = bodyOf(fleet, car);
-      if (body.some(([x, y]) => inJunction(x, y, junctions.legs, core))) result.blocked += 1;
+      if (body.some(([x, y]) => inJunction(x, y, junctions.legs, core))) {
+        if (car.yielding) result.yielding += 1;
+        else result.blocked += 1;
+      }
       if (body.some(([x, y]) => links.has(Math.floor(y) * N + Math.floor(x)))) result.inLink += 1;
     }
   }

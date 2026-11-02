@@ -12,7 +12,10 @@ function screenOf(px, py, level) {
   return { sx: (px - py) * 64, sy: (px + py - 1) * 32 - level * 32 };
 }
 
-/** 全部信号灯。dir 是所管进口的方向，灯面朝这个方向，迎着驶来的车。占地是杆子本身，悬臂在车的头顶上。phase 是这根灯放行的相位表。 */
+/**
+ * 全部信号灯。dir 是所管进口的方向，灯面朝这个方向，迎着驶来的车。占地是杆子本身，悬臂在车的头顶上。
+ * phase 是外侧车道（直行和右转）放行的相位表，leftPhase 是左转专用道的，没有专用道时为空。
+ */
 export function signalPoles(clusters) {
   return clusters.flatMap(({ legs, signal }) =>
     legs
@@ -28,6 +31,7 @@ export function signalPoles(clusters) {
           base: level,
           signal,
           phase: leg.phases,
+          leftPhase: leg.leftPhases ?? [],
           footprint: [
             [px - POLE_HALF, py - POLE_HALF],
             [px + POLE_HALF, py - POLE_HALF],
@@ -51,10 +55,13 @@ export function boxOf(object, frameOf) {
   };
 }
 
-/** 物体的顶有多高，单位是层。精灵顶到锚点的距离减去地块最靠后一角的距离，算出来只会偏高，偏高时只是少用一条规则。 */
+/**
+ * 物体的顶有多高，单位是层。精灵顶到锚点的距离减去画出来的范围最靠后一角的距离，算出来只会偏高，
+ * 偏高时只是少用一条规则。桥面块按画出来的范围算：接缝处多画的那一截比占地靠后，按占地算会把桥面的顶高估小半层。
+ */
 function peakOf(object, frameOf) {
   const center = object.px + object.py;
-  const back = Math.min(...object.footprint.map(([x, y]) => x + y));
+  const back = Math.min(...(object.painted ?? object.footprint).map(([x, y]) => x + y));
   const rise = frameOf(object.key).ay - (center - back) * LEVEL_PIXELS;
   return object.level + Math.max(0, rise) / LEVEL_PIXELS;
 }
