@@ -1,9 +1,9 @@
 // 成品样张：play.html 的真实画面截下来拼成一张。node scripts/sheets.js [样张名...]，不写名字时全出；SIZE=64 出 64 城的。
 // r8-viaduct-city：高架全景、上下匝道、高架跨路口、引道过渡、落地接干道，白天一排，夜里一排。
 // r8-occlusion：匝道和灯杆、桥下的车、路口里的车和公交、车和建筑。
-// r8-public：公共服务默认缩放和放大。r8-metro：地铁线路图和城市。r8-stations：地铁站厅和公交站。
+// r8-public：公共服务默认缩放和放大。r8-metro：地铁线路图和环线转弯。r8-stations：地铁站厅和公交站。
 // r8-traffic：交通视图全城、高架和选中一个物业。要先有 out/atlas-sunny.png。
-// 市中心几处固定的取景位置按地图边长等比缩放，64 城和 128 城的布局是同一套比例。
+// 市中心几处固定的取景位置按地图边长等比缩放，64 城和 128 城的布局是同一套比例。环线转弯跟着线路走。
 // 每张样张单独开一次浏览器，截图一页一关，出完就退出，所以峰值内存只看一页游戏，和样张数量无关。
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
@@ -28,6 +28,7 @@ const { cx: teeX, cy: teeY } = city.plan.interchange;
 const service = city.parcels.parcels.find(({ shape }) => shape === 'service');
 const hall = city.metro.halls[Math.floor(city.metro.halls.length / 2)];
 const stop = city.busStops[Math.floor(city.busStops.length / 2)];
+const [ringX, ringY] = city.metro.lines.find(({ loop }) => loop).points[1];
 const neighbor = city.parcels.parcels.find(
   ({ capacity, px, py }) => capacity > 0 && Math.hypot(px - hall.x, py - hall.y) < 4,
 );
@@ -78,8 +79,11 @@ const SHEETS = {
   'r8-metro': {
     columns: 2,
     shots: [
-      { label: '线路图', query: `${CITY}&cars=0&view=metro&zoom=${wide(0.16)}&${at(31, 26)}` },
-      { label: '环线转弯', query: `${CITY}&cars=0&view=metro&zoom=0.4&${at(34, 14)}` },
+      { label: '线路图', query: `${CITY}&cars=0&view=metro` },
+      {
+        label: '环线转弯',
+        query: `${CITY}&cars=0&view=metro&zoom=0.4&x=${String(ringX)}&y=${String(ringY)}`,
+      },
     ],
   },
   'r8-stations': {
