@@ -5,10 +5,12 @@ import { filleted, stationsOf } from './rampline.js';
 // 隧道有最小转弯半径，这是物理限制：线路图和实际走线是同一条线，玩家画的折线自动倒成这个半径的圆弧；
 // 折线太短放不下圆弧时记下来提示玩家，不能悄悄画一个急弯。
 // 车站在地下，地面有一个占一格的站厅，放在线路旁边的路边，入口朝向人行道。
+// 线路按城区的街取，从最靠近市中心的街往两边数，所以环线总是围着市中心，街多的大地图环线和站距跟着放大。
 
 export const MIN_RADIUS = 2;
 
 const COLORS = ['#d9413a', '#2f7fd1', '#e0a100'];
+const BLOCKS_PER_SPAN = 8;
 const HALL_SPOTS = [
   [0, -1],
   [0, 1],
@@ -100,16 +102,39 @@ function snapToLine(path, [x, y]) {
   return best;
 }
 
+/** 这组街里最靠近 value 的一条，两边都留得下 span 条街。 */
+function streetNear(list, value, span) {
+  let best = span;
+  for (let i = span; i < list.length - span; i += 1) {
+    if (Math.abs(list[i] - value) < Math.abs(list[best] - value)) best = i;
+  }
+  return best;
+}
+
+const spanOf = (list) => Math.max(1, Math.round(list.length / BLOCKS_PER_SPAN));
+
+/** 从 first 开始每隔 step 条取一条街，站距随地图放大。 */
+const everyStreet = (list, first, step) => list.filter((_, i) => (i - first) % (step * 2) === 0);
+
 export function metroPlan(plan) {
   const { columns, rows } = plan;
-  const c = (i) => columns[Math.min(i, columns.length - 1)];
-  const r = (i) => rows[Math.min(i, rows.length - 1)];
+  const center = (columns[0] + columns[columns.length - 1]) / 2;
+  const spanX = spanOf(columns);
+  const spanY = spanOf(rows);
+  const middleColumn = streetNear(columns, center, spanX);
+  const middleRow = streetNear(rows, center, spanY);
   const west = columns[0] - 1;
   const east = columns[columns.length - 1] + 1;
-  const ringWest = c(2) + 1;
-  const ringEast = c(4);
-  const ringNorth = r(0);
-  const ringSouth = r(2);
+  const north = rows[0] - 1;
+  const south = rows[rows.length - 1] + 1;
+  const ringWest = columns[middleColumn - spanX] + 1;
+  const ringEast = columns[middleColumn + spanX];
+  const ringNorth = rows[middleRow - spanY];
+  const ringSouth = rows[middleRow + spanY];
+  const ringMiddle = Math.round((ringWest + ringEast) / 2);
+  const lineRow = rows[middleRow];
+  const lineColumnIndex = Math.max(0, middleColumn - 2 * spanX);
+  const lineColumn = columns[lineColumnIndex];
 
   const lines = [
     {
@@ -118,14 +143,14 @@ export function metroPlan(plan) {
       color: COLORS[0],
       loop: false,
       points: [
-        [west, r(1)],
-        [east, r(1)],
+        [west, lineRow],
+        [east, lineRow],
       ],
       stations: [
-        [west, r(1)],
-        [c(1), r(1)],
-        [ringWest, r(1)],
-        [east, r(1)],
+        [west, lineRow],
+        ...everyStreet(columns, lineColumnIndex, spanX).map((x) => [x, lineRow]),
+        [ringWest, lineRow],
+        [east, lineRow],
       ],
     },
     {
@@ -141,11 +166,10 @@ export function metroPlan(plan) {
         [ringWest, ringNorth],
       ],
       stations: [
-        [ringWest + 3, ringNorth],
+        [ringMiddle, ringNorth],
         [ringEast, ringNorth + 3],
-        [ringEast - 3, ringSouth],
-        [ringWest, ringNorth + 7],
-        [ringWest, r(1)],
+        [ringMiddle, ringSouth],
+        [ringWest, lineRow],
       ],
     },
     {
@@ -154,13 +178,13 @@ export function metroPlan(plan) {
       color: COLORS[2],
       loop: false,
       points: [
-        [c(1), r(0) - 1],
-        [c(1), r(rows.length - 1) + 1],
+        [lineColumn, north],
+        [lineColumn, south],
       ],
       stations: [
-        [c(1), r(0) - 1],
-        [c(1), r(1)],
-        [c(1), r(rows.length - 1) + 1],
+        [lineColumn, north],
+        ...everyStreet(rows, middleRow, spanY).map((y) => [lineColumn, y]),
+        [lineColumn, south],
       ],
     },
   ].map((line) => {
