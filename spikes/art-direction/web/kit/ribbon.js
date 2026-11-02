@@ -204,15 +204,17 @@ function drawSide(b, frames, side, P) {
   }
 }
 
-function drawSolid(b, frames, P) {
+/** 两侧的侧面。 */
+export function drawSolid(b, frames, P) {
   drawSide(b, frames, 1, P);
   drawSide(b, frames, -1, P);
 }
 
-export function drawRampFrames(b, frames, P) {
+/** 匝道的一段。solid 为假时只画路面和标线，挡墙由别的块画。 */
+export function drawRampFrames(b, frames, P, solid = true) {
   drawSurfaceFrames(b, frames, P);
   drawRampLines(b, frames, P);
-  drawSolid(b, frames, P);
+  if (solid) drawSolid(b, frames, P);
 }
 
 export function drawMainFrames(b, frames, P) {

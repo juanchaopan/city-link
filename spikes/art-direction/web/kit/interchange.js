@@ -1,9 +1,17 @@
 import { Builder, hashString, linear, shade } from './builder.js';
-import { drawMainFrames, drawPier, drawRampFrames, drawSurfaceFrames, framesOf } from './ribbon.js';
+import {
+  drawMainFrames,
+  drawPier,
+  drawRampFrames,
+  drawSolid,
+  drawSurfaceFrames,
+  framesOf,
+} from './ribbon.js';
 import { linesOf, paintedFrames, piecesOf } from '../sim/ixpieces.js';
 
 // 高架和立交的精灵。路面、侧面和桥墩都是多边形。
 // 立交切成小块，每块是一张精灵；高架一格一张，桥墩单独一张，车才能插到桥面和桥墩中间。
+// 贴地的块只画路面，它的挡墙由挨着它的离地块一起画，墙才不会在两层之间断开。
 
 const RAMP_LIFT = 0.003;
 const LIFT_STEP = 0.002;
@@ -45,16 +53,23 @@ export function buildPiece(name, index, P) {
   const [ox, oz] = piece.cell;
   const build = () => {
     const b = new Builder(hashString(`piece${name}${String(index)}`));
-    for (const span of piece.spans) {
+    const framesIn = (span) => {
       const line = lines[span.line];
       const lift = RAMP_LIFT + LIFT_STEP * span.line;
-      const frames = paintedFrames(framesOf(line.center, line.band, lift), line, span).map(
-        (frame) => ({ ...frame, x: frame.x - ox, z: frame.z - oz }),
-      );
+      return framesOf(line.center, line.band, lift).map((frame) => ({
+        ...frame,
+        x: frame.x - ox,
+        z: frame.z - oz,
+      }));
+    };
+    for (const span of piece.spans) {
+      const line = lines[span.line];
+      const frames = paintedFrames(framesIn(span), line, span);
       if (line.kind === 'main') drawMainFrames(b, frames, P);
       else if (line.kind === 'pad') drawSurfaceFrames(b, frames, P);
-      else drawRampFrames(b, frames, P);
+      else drawRampFrames(b, frames, P, !piece.low);
     }
+    for (const wall of piece.walls) drawSolid(b, framesIn(wall).slice(wall.from, wall.to + 1), P);
     return b;
   };
   return { build, low: piece.low };

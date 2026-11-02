@@ -11,11 +11,16 @@ import { ELEVATED } from './rampline.js';
 // 车开到接缝附近时脚下已经是隔壁那块画出来的路面，只看占地，车会排在那一块前面，被多画的部分切掉半个车身。
 // 主线的节点要密：节点稀了多画的部分太长，主线的路肩会盖到隔壁格的匝道上。
 // 平行车道的路面盖在主线的路肩上，所以同高时匝道排在主线后面画，main 标出主线的块。
+//
+// 匝道落地的一头，路面从 LOW 以下算贴地，归到路面层；挡墙不跟着分层：贴地那一段的挡墙由挨着它的离地块画，
+// 一直画到路面贴平地面为止（walls）。挡墙分在两层里时，离地块的墙在物体层、贴地块的墙在路面层，两截在屏幕上
+// 对不齐，墙在离地块的尽头竖直断开，楼的屋顶再从断口旁边盖过去，看起来就是匝道末端被屋顶切断了。
 
 const LOW = 0.2;
 const RAMP_ABOVE = 0.01;
 const MAIN_STEP = 0.1;
 const SEAM_OVERLAP = 2;
+const WALL_END = 0.006;
 
 function mainlinePoints(name) {
   const { mainline } = TEMPLATES[name];
@@ -92,6 +97,34 @@ function runsOf(line, index) {
   return runs;
 }
 
+/** 从离地段的一端沿贴地段走到路面贴平地面为止，连同贴平的那一个节点，这一段的挡墙归离地块画。 */
+function wallBeyond(line, index, from, direction) {
+  const { center } = line;
+  const inside = (i) => i >= 0 && i < center.length;
+  let end = from;
+  while (inside(end + direction) && center[end + direction][2] >= WALL_END) end += direction;
+  if (inside(end + direction)) end += direction;
+  if (end === from) return null;
+  return { line: index, from: Math.min(from, end), to: Math.max(from, end) };
+}
+
+/** 离地的匝道段两头接着贴地段时，把贴地段的挡墙接过来。 */
+function wallsOf(lines, runs, run) {
+  const line = lines[run.line];
+  if (line.kind !== 'ramp') return [];
+  const neighbours = runs.filter((other) => other.line === run.line && other.low);
+  const walls = [];
+  if (neighbours.some((other) => other.from === run.to)) {
+    const wall = wallBeyond(line, run.line, run.to, 1);
+    if (wall) walls.push(wall);
+  }
+  if (neighbours.some((other) => other.to === run.from)) {
+    const wall = wallBeyond(line, run.line, run.from, -1);
+    if (wall) walls.push(wall);
+  }
+  return walls;
+}
+
 const pieceCache = new Map();
 
 /** 一段线实际画出来的节点范围，两头各多 SEAM_OVERLAP 个节点。 */
@@ -99,7 +132,7 @@ function paintedRange(line, { from, to }) {
   return [Math.max(0, from - SEAM_OVERLAP), Math.min(line.center.length - 1, to + SEAM_OVERLAP)];
 }
 
-/** 模板切成的全部小块。low 的块同一格合成一块，spans 是这一块包含的线段。 */
+/** 模板切成的全部小块。low 的块同一格合成一块，spans 是这一块包含的线段，walls 是替贴地段画的挡墙。 */
 export function piecesOf(name) {
   if (pieceCache.has(name)) return pieceCache.get(name);
   const lines = linesOf(name);
@@ -112,8 +145,9 @@ export function piecesOf(name) {
       lowCells.get(id).spans.push(run);
       continue;
     }
-    const piece = { cell: run.cell, low: run.low, spans: [run] };
+    const piece = { cell: run.cell, low: run.low, spans: [run], walls: [] };
     if (run.low) lowCells.set(id, piece);
+    else piece.walls = wallsOf(lines, runs, run);
     pieces.push(piece);
   }
   for (const piece of pieces) {
@@ -144,3 +178,26 @@ export const paintedFrames = (frames, line, span) => {
   const [first, last] = paintedRange(line, span);
   return frames.slice(first, last + 1);
 };
+
+/** 一条匝道线上该有挡墙的线段里，没有离地块画墙的线段数。withWalls 为假时只算离地块自己的线段，就是分层画墙的做法。 */
+export function unwalledSegments(name, withWalls = true) {
+  const lines = linesOf(name);
+  const pieces = piecesOf(name);
+  let missing = 0;
+  lines.forEach((line, index) => {
+    if (line.kind !== 'ramp') return;
+    const covered = new Set();
+    for (const piece of pieces) {
+      if (piece.low) continue;
+      for (const span of [...piece.spans, ...(withWalls ? piece.walls : [])]) {
+        if (span.line !== index) continue;
+        for (let i = span.from; i < span.to; i += 1) covered.add(i);
+      }
+    }
+    for (let i = 0; i < line.center.length - 1; i += 1) {
+      const tall = Math.max(line.center[i][2], line.center[i + 1][2]) >= WALL_END;
+      if (tall && !covered.has(i)) missing += 1;
+    }
+  });
+  return missing;
+}

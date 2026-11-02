@@ -61,13 +61,39 @@
       "pass": true
     },
     {
-      "name": "主线·vs21",
+      "name": "主线·vs24",
       "percent": 19.8,
       "pass": true
     },
     {
-      "name": "主线·vn21",
+      "name": "主线·vn24",
       "percent": 19.8,
+      "pass": true
+    }
+  ],
+  "walls": [
+    {
+      "name": "tee",
+      "unwalled": 0,
+      "layered": 27,
+      "pass": true
+    },
+    {
+      "name": "diamond",
+      "unwalled": 0,
+      "layered": 28,
+      "pass": true
+    },
+    {
+      "name": "spur",
+      "unwalled": 0,
+      "layered": 12,
+      "pass": true
+    },
+    {
+      "name": "sidediamond",
+      "unwalled": 0,
+      "layered": 13,
       "pass": true
     }
   ],
@@ -76,8 +102,8 @@
       "parking": 2,
       "parkingCells": 8,
       "shopCells": 22,
-      "parcels": 7,
-      "capacity": 54,
+      "parcels": 6,
+      "capacity": 52,
       "parkingBadAccess": 0,
       "parcelsBadAccess": 0,
       "lotsOnLanes": 0,
@@ -128,7 +154,8 @@
   "proof": {
     "steepGradePercent": 22.8,
     "steepCaught": true,
-    "lotOnRampCaught": true
+    "lotOnRampCaught": true,
+    "layeredWallsCaught": true
   },
   "pass": true
 }
