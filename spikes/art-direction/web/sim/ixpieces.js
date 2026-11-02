@@ -1,3 +1,4 @@
+import { convexHull } from './geometry.js';
 import { ROAD_SPEC } from './network.js';
 import { TEMPLATES } from './ramptemplates.js';
 import { ELEVATED } from './rampline.js';
@@ -54,23 +55,6 @@ export function linesOf(name) {
   );
   lines.push(...ramps);
   return lines;
-}
-
-/** 平面上的凸包，单调链法。 */
-function convexHull(points) {
-  const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  const turn = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const half = (list) => {
-    const out = [];
-    for (const point of list) {
-      while (out.length >= 2 && turn(out[out.length - 2], out[out.length - 1], point) <= 0)
-        out.pop();
-      out.push(point);
-    }
-    out.pop();
-    return out;
-  };
-  return [...half(sorted), ...half([...sorted].reverse())];
 }
 
 function edgePoints(line, i) {

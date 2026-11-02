@@ -16,7 +16,10 @@
 // base 是物体的底，peak 是物体的顶，单位都是层；视线坐标 u 一格 32 像素，和一层一样高，所以两者能直接相减。
 // left、right、top、bottom 是屏幕范围。
 // 这些关系基本没有环，两两比较后做一次拓扑排序就是绘制顺序；同时可以画的物体，先画最靠后的边更靠后的。
-// 立交里挤在一起的几块桥面和桥墩偶尔成环，这时放行最靠后的一个再接着排，不会有一整串物体乱序；环的个数照常报告。
+// 立交里挤在一起的几块桥面、桥墩和车偶尔成环，这时只放行环上的一个再接着排。
+// 不在环上、只是排在环后面的物体不放行：桥上的车排在一块成环的桥面后面，先放行它，车就画在桥面底下了。
+// 环上先放行只被别的车挡着的车：车和车的先后错了，最多是两辆车互相压住一角；放行一块桥面或者压在桥面上的车，
+// 就是整块路面或整辆车画错层。没有这样的车时放行环上最靠后的。环的个数照常报告。
 
 const EPS = 1e-6;
 const CELL = 256;
@@ -191,9 +194,32 @@ export function constraintsOf(items) {
   return { after, blockers };
 }
 
+/** 卡住时环上的一个物体：从没画的物体出发，一直往还没画的前驱走，走回走过的物体就进了环。 */
+function cycleMember(items, after, placed) {
+  const before = items.map(() => []);
+  after.forEach((list, index) => {
+    if (placed[index]) return;
+    for (const next of list) if (!placed[next]) before[next].push(index);
+  });
+  let current = placed.indexOf(0);
+  const visited = new Map();
+  const path = [];
+  while (!visited.has(current)) {
+    visited.set(current, path.length);
+    path.push(current);
+    current = before[current][0];
+  }
+  const ring = path.slice(visited.get(current));
+  const blockedByCarsOnly = (index) =>
+    items[index].car && before[index].every((other) => items[other].car);
+  const weak = ring.filter(blockedByCarsOnly);
+  const pool = weak.length > 0 ? weak : ring;
+  return pool.reduce((best, index) => (items[index].depth < items[best].depth ? index : best));
+}
+
 /**
  * 拓扑排序。同时可以画的先画靠后的。
- * 没有物体可画而还有物体没画时就是环，放行最靠后的一个，cycles 数放行了几次。
+ * 没有物体可画而还有物体没画时就是环，放行环上的一个，cycles 数放行了几次。
  */
 export function topological(items, after, blockers) {
   const size = items.length;
@@ -213,13 +239,6 @@ export function topological(items, after, blockers) {
     }
     ready.splice(low, 0, index);
   };
-  const stuck = () => {
-    let best = -1;
-    for (let i = 0; i < size; i += 1) {
-      if (!placed[i] && (best < 0 || items[i].depth < items[best].depth)) best = i;
-    }
-    return best;
-  };
   blockers.forEach((count, index) => {
     if (count === 0) insert(index);
   });
@@ -228,7 +247,7 @@ export function topological(items, after, blockers) {
   while (order.length < size) {
     if (ready.length === 0) {
       cycles += 1;
-      insert(stuck());
+      insert(cycleMember(items, after, placed));
     }
     const index = ready.shift();
     placed[index] = 1;

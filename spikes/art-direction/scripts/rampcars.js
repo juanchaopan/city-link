@@ -5,6 +5,7 @@
 import { writeFileSync } from 'node:fs';
 import { generateCity } from '../web/sim/city.js';
 import { createFleet } from '../web/sim/fleet.js';
+import { convexOverlap } from '../web/sim/geometry.js';
 
 const size = Number(process.argv[2] ?? 128);
 const CARS = 300;
@@ -42,23 +43,6 @@ function bodyOf(car, length) {
   ];
 }
 
-/** 分离轴：两个凸四边形在所有边的法线上都有重叠才算相交。 */
-function bodiesOverlap(p, q) {
-  for (const polygon of [p, q]) {
-    for (let i = 0; i < polygon.length; i += 1) {
-      const [ax, ay] = polygon[i];
-      const [bx, by] = polygon[(i + 1) % polygon.length];
-      const nx = by - ay;
-      const ny = ax - bx;
-      const project = (list) => list.map(([x, y]) => x * nx + y * ny);
-      const a = project(p);
-      const b = project(q);
-      if (Math.max(...a) <= Math.min(...b) || Math.max(...b) <= Math.min(...a)) return false;
-    }
-  }
-  return true;
-}
-
 function audit(city, name, x, y) {
   const fleet = createFleet(city, { cap: CARS, full: true, highCap: 120, random: seeded() });
   const sx = (x - y) * 64;
@@ -83,7 +67,7 @@ function audit(city, name, x, y) {
       for (let j = i + 1; j < cars.length; j += 1) {
         const [a, b] = [cars[i], cars[j]];
         if (Math.hypot(a.x - b.x, a.y - b.y) > NEAR || Math.abs(a.h - b.h) > SAME_LEVEL) continue;
-        if (!bodiesOverlap(bodyOf(a, fleet.lengthOf(a)), bodyOf(b, fleet.lengthOf(b)))) continue;
+        if (!convexOverlap(bodyOf(a, fleet.lengthOf(a)), bodyOf(b, fleet.lengthOf(b)))) continue;
         overlaps += 1;
         const key = [a.lane.id, b.lane.id].sort().join(' 和 ');
         pairs[key] = (pairs[key] ?? 0) + 1;

@@ -1,3 +1,4 @@
+import { convexHull, convexOverlap } from './geometry.js';
 import { compareDepth, eachBin, overlapBoxes, prepareItem, topological } from './order.js';
 
 // 每帧的绘制顺序。静态物体（建筑、灯杆、桥墩、桥面）两两之间的先后只算一次；车是动的，每帧和视野里的静态物体
@@ -7,9 +8,10 @@ import { compareDepth, eachBin, overlapBoxes, prepareItem, topological } from '.
 // 一个拓扑序的子序列还是拓扑序。
 // 车和车按车身占地两两比，长车不会因为中心点靠前就盖住前面的短车；匝道上的车高度连续变化，比较结果自然跟着变。
 //
-// 车压着的桥面都要先画。这件事不交给视线比较：几条视线会漏掉只压住一角的情况，而立交的桥面块比占地多画一截，
-// 弯道上还一块叠一块，漏掉一块，车就被它切掉一角。所以车和桥面比的是车身和桥面画出来的范围 painted 有没有重叠。
-// 车身画出来比占地低一点（vehicles.js 的 BODY_DROP），朝观众挪了 SPRITE_DROP，挪过的车身也算。
+// 车和桥面按画出来的样子比：立交的桥面块在接缝处比占地多画一截，用画出来的范围 painted；
+// 车身画出来比占地低一点（vehicles.js 的 BODY_DROP），朝观众挪了 SPRITE_DROP，车身连同挪过的车身一起算。
+// 车压着的桥面都要先画。这件事不交给视线比较：几条视线会漏掉只压住一角的情况，弯道上桥面一块叠一块，
+// 漏掉一块，车就被它切掉一角。所以先看两个凸多边形有没有重叠，重叠就是桥面先画，不重叠再按视线比。
 
 const BODY_HALF_WIDTH = 0.06;
 const BODY_HEIGHT = 0.3;
@@ -20,7 +22,7 @@ const LANE_LIFT = 0.02;
 const SPRITE_DROP = 0.047;
 const ON_DECK = 0.3;
 
-/** 车身的占地：沿车头方向的矩形。 */
+/** 车身的占地：沿车头方向的矩形。drawn 是画出来的车身，比较桥面时用。 */
 export function carItem(car, halfLength, screen) {
   const { x, y, h, dx, dy } = car;
   const nx = -dy * BODY_HALF_WIDTH;
@@ -28,57 +30,36 @@ export function carItem(car, halfLength, screen) {
   const ax = dx * halfLength;
   const ay = dy * halfLength;
   const { sx, sy } = screen(x, y, h);
-  return prepareItem({
+  const footprint = [
+    [x - ax - nx, y - ay - ny],
+    [x + ax - nx, y + ay - ny],
+    [x + ax + nx, y + ay + ny],
+    [x - ax + nx, y - ay + ny],
+  ];
+  const box = {
     car,
-    footprint: [
-      [x - ax - nx, y - ay - ny],
-      [x + ax - nx, y + ay - ny],
-      [x + ax + nx, y + ay + ny],
-      [x - ax + nx, y - ay + ny],
-    ],
     base: h + LANE_LIFT,
     peak: h + BODY_HEIGHT,
     left: sx - CAR_SIDE,
     right: sx + CAR_SIDE,
     top: sy - CAR_TOP,
     bottom: sy + CAR_BOTTOM,
-  });
+  };
+  const dropped = footprint.map(([px, py]) => [px + SPRITE_DROP, py + SPRITE_DROP]);
+  return {
+    ...prepareItem({ ...box, footprint }),
+    drawn: prepareItem({ ...box, footprint: convexHull([...footprint, ...dropped]) }),
+  };
 }
 
-function separated(p, q, polygon) {
-  for (let i = 0; i < polygon.length; i += 1) {
-    const [ax, ay] = polygon[i];
-    const [bx, by] = polygon[(i + 1) % polygon.length];
-    const nx = by - ay;
-    const ny = ax - bx;
-    let lowP = Infinity;
-    let highP = -Infinity;
-    let lowQ = Infinity;
-    let highQ = -Infinity;
-    for (const [x, y] of p) {
-      const value = x * nx + y * ny;
-      lowP = Math.min(lowP, value);
-      highP = Math.max(highP, value);
-    }
-    for (const [x, y] of q) {
-      const value = x * nx + y * ny;
-      lowQ = Math.min(lowQ, value);
-      highQ = Math.max(highQ, value);
-    }
-    if (highP <= lowQ || highQ <= lowP) return true;
-  }
-  return false;
-}
-
-/** 分离轴：两个凸多边形在所有边的法线上都有重叠才算相交。 */
-const convexOverlap = (p, q) => !separated(p, q, p) && !separated(p, q, q);
-
-/** 车压着这块桥面：车不在桥面底下，车身或者挪过的车身碰到桥面画出来的范围。 */
-function carOnDeck(deck, car) {
-  if (!deck.deck || car.base < deck.base - ON_DECK) return false;
-  const shape = deck.painted ?? deck.footprint;
-  const dropped = car.footprint.map(([x, y]) => [x + SPRITE_DROP, y + SPRITE_DROP]);
-  return convexOverlap(shape, car.footprint) || convexOverlap(shape, dropped);
+/** 车和一块静态物体谁先画。桥面先看车有没有压着它画出来的范围。 */
+function carAgainst(statics, drawnDecks, other, item) {
+  const deck = drawnDecks[other];
+  if (!deck) return compareDepth(statics[other], item);
+  const { drawn } = item;
+  if (drawn.base >= deck.base - ON_DECK && convexOverlap(deck.footprint, drawn.footprint))
+    return -1;
+  return compareDepth(deck, drawn);
 }
 
 /** statics 是排好序的静态物体。order 返回这一帧要画的全部物体，车已经插在正确的位置上。 */
@@ -106,6 +87,10 @@ export function createDrawList(statics) {
         else if (order > 0) staticAfter[other].push(index);
       }
     });
+  });
+  const drawnDecks = statics.map((item) => {
+    if (!item.deck) return null;
+    return item.painted ? prepareItem({ ...item, footprint: item.painted }) : item;
   });
 
   const everything = new Uint8Array(size).fill(1);
@@ -143,7 +128,7 @@ export function createDrawList(statics) {
           if (!visible[other] || seen[other] === tick) continue;
           seen[other] = tick;
           if (!overlapBoxes(item, statics[other])) continue;
-          const result = carOnDeck(statics[other], item) ? -1 : compareDepth(statics[other], item);
+          const result = carAgainst(statics, drawnDecks, other, item);
           if (result < 0) link(local[other], self);
           else if (result > 0) link(self, local[other]);
         }

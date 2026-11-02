@@ -4,7 +4,10 @@
 // 平面上重叠时，一边是桥面就是上下两层，低的在后面；都不是桥面时，高差不到一层只是车身探进了路边物体的占地一角，
 // 按这条视线上的前后算。靠后物体最低的像素在靠前物体最高的像素上方时，投影碰不到，这条视线不投票，
 // 只叠着两个像素也算碰不到。
-// 车和桥面在平面上重叠、车比桥面的最低点只低一点时，车压在接缝上，这一对两种画法都对，不计入。
+// 车和桥面比较时按画出来的样子算：桥面用画出来的范围（立交桥面块在接缝处多画一截），
+// 车身连同往下挪了 BODY_DROP 像素的精灵一起算。
+// 车和桥面在平面上碰到（哪怕只碰一角）、车比桥面的最低点只低一点时，车压在接缝上或贴着桥面边，
+// 这一对两种画法都对，不计入。
 // 车脚下的桥面和另一块桥面在同一层并且在平面上重叠（匝道盖住主线的路肩）时，车跟着自己脚下的桥面走，
 // 它和另一块桥面的先后由两块桥面的先后决定，不单独判。
 // 同一批车再按第 7 轮的分层规则排一遍（地面的车、灯杆、物体、匝道上的车各画一层，层内不排序），证明检查抓得到错序。
@@ -14,6 +17,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { generateCity } from '../web/sim/city.js';
 import { carItem, createDrawList } from '../web/sim/drawlist.js';
 import { createFleet } from '../web/sim/fleet.js';
+import { convexHull, convexOverlap } from '../web/sim/geometry.js';
 import { overlapBoxes } from '../web/sim/order.js';
 import { sceneItems } from '../web/sim/sceneitems.js';
 
@@ -30,6 +34,8 @@ const SAME_LEVEL = 0.6;
 const TWO_PIXELS = 0.06;
 const SEED = 7;
 const MODULUS = 2147483647;
+const BODY_DROP_PIXELS = 3;
+const DROP = BODY_DROP_PIXELS / 64;
 
 const frames = JSON.parse(readFileSync('out/atlas-sunny.json', 'utf8'));
 const city = generateCity(size);
@@ -51,6 +57,16 @@ function kindOf(item) {
   if (item.key.startsWith('pr-')) return '桥墩';
   if (/^(B|Q|S|P|t|farmhouse|ms|bs|forest)/.test(item.key)) return '建筑';
   return '其他';
+}
+
+/** 车和桥面比较时用的平面形状：画出来的桥面，车身连同下挪的精灵。 */
+function shapeOf(item, other) {
+  if (item.car && other.deck) {
+    const dropped = item.footprint.map(([x, y]) => [x + DROP, y + DROP]);
+    return convexHull([...item.footprint, ...dropped]);
+  }
+  if (item.deck && other.car) return item.painted ?? item.footprint;
+  return item.footprint;
 }
 
 /** 多边形在一条视线上的区间。视线是 x - y = v 这条线，沿线的坐标是 x + y。 */
@@ -75,15 +91,15 @@ const floorOf = (item) => item.base ?? 0;
 
 /** 两个多边形在平面上有没有重叠：沿几条视线看区间。 */
 function overlapInPlan(a, b) {
-  const va = a.footprint.map(([x, y]) => x - y);
-  const vb = b.footprint.map(([x, y]) => x - y);
+  const va = a.map(([x, y]) => x - y);
+  const vb = b.map(([x, y]) => x - y);
   const low = Math.max(Math.min(...va), Math.min(...vb));
   const high = Math.min(Math.max(...va), Math.max(...vb));
   if (high - low < 1e-3) return false;
   for (let i = 1; i <= RAYS; i += 1) {
     const v = low + ((high - low) * i) / (RAYS + 1);
-    const [a0, a1] = rangeOn(a.footprint, v);
-    const [b0, b1] = rangeOn(b.footprint, v);
+    const [a0, a1] = rangeOn(a, v);
+    const [b0, b1] = rangeOn(b, v);
     if (a1 > b0 + EPS && b1 > a0 + EPS) return true;
   }
   return false;
@@ -99,7 +115,9 @@ function onSeam(a, b) {
 function deckUnder(car) {
   return sorted.find(
     (item) =>
-      item.deck && Math.abs(floorOf(item) - floorOf(car)) < SEAM_GAP && overlapInPlan(item, car),
+      item.deck &&
+      Math.abs(floorOf(item) - floorOf(car)) < SEAM_GAP &&
+      overlapInPlan(item.footprint, car.footprint),
   );
 }
 
@@ -112,7 +130,7 @@ function followsOwnDeck(a, b) {
     own &&
     own !== deck &&
     Math.abs(floorOf(own) - floorOf(deck)) < SAME_LEVEL &&
-    overlapInPlan(own, deck),
+    overlapInPlan(own.footprint, deck.footprint),
   );
 }
 
@@ -130,8 +148,10 @@ function stackedVote(a, b, [a0, a1], [b0, b1]) {
 
 /** 谁应该先画：a 先返回 -1，b 先返回 1，平面上没有重叠的视线时返回 0。 */
 function truth(a, b) {
-  const va = a.footprint.map(([x, y]) => x - y);
-  const vb = b.footprint.map(([x, y]) => x - y);
+  const shapeA = shapeOf(a, b);
+  const shapeB = shapeOf(b, a);
+  const va = shapeA.map(([x, y]) => x - y);
+  const vb = shapeB.map(([x, y]) => x - y);
   const low = Math.max(Math.min(...va), Math.min(...vb));
   const high = Math.min(Math.max(...va), Math.max(...vb));
   if (high - low < 1e-3) return 0;
@@ -139,8 +159,8 @@ function truth(a, b) {
   let stacked = false;
   for (let i = 1; i <= RAYS; i += 1) {
     const v = low + ((high - low) * i) / (RAYS + 1);
-    const [a0, a1] = rangeOn(a.footprint, v);
-    const [b0, b1] = rangeOn(b.footprint, v);
+    const [a0, a1] = rangeOn(shapeA, v);
+    const [b0, b1] = rangeOn(shapeB, v);
     if (a1 <= b0 + EPS) vote -= apart(a, a1, b, b0) ? 0 : 1;
     else if (b1 <= a0 + EPS) vote += apart(b, b1, a, a0) ? 0 : 1;
     else {
@@ -148,7 +168,7 @@ function truth(a, b) {
       vote += stackedVote(a, b, [a0, a1], [b0, b1]);
     }
   }
-  if (stacked && onSeam(a, b)) return 0;
+  if (onSeam(a, b) && (stacked || convexOverlap(shapeA, shapeB))) return 0;
   if (followsOwnDeck(a, b)) return 0;
   return Math.sign(vote);
 }
