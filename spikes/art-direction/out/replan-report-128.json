@@ -2,34 +2,34 @@
   "N": 128,
   "budgetMs": 8,
   "cold": {
-    "totalMs": 67123,
-    "partitionMs": 63444,
-    "blocks": 371,
+    "totalMs": 37155,
+    "partitionMs": 33641,
+    "blocks": 368,
     "cachedBlocks": 0,
-    "solvedBlocks": 371,
-    "worstBlockMs": 527.5,
+    "solvedBlocks": 368,
+    "worstBlockMs": 274.1,
     "batches": 1,
-    "parcels": 1288
+    "parcels": 1312
   },
   "replan": {
-    "totalMs": 8676,
-    "partitionMs": 4960,
-    "blocks": 380,
-    "cachedBlocks": 327,
-    "solvedBlocks": 53,
-    "worstBlockMs": 458.6,
-    "batches": 38,
-    "parcels": 1289
+    "totalMs": 4332,
+    "partitionMs": 989,
+    "blocks": 381,
+    "cachedBlocks": 335,
+    "solvedBlocks": 46,
+    "worstBlockMs": 102,
+    "batches": 27,
+    "parcels": 1324
   },
   "replanWithoutCache": {
-    "totalMs": 63821,
-    "partitionMs": 60097,
-    "blocks": 380,
+    "totalMs": 35564,
+    "partitionMs": 32271,
+    "blocks": 381,
     "cachedBlocks": 0,
-    "solvedBlocks": 380,
-    "worstBlockMs": 437.2,
+    "solvedBlocks": 381,
+    "worstBlockMs": 270.2,
     "batches": 1,
-    "parcels": 1289
+    "parcels": 1324
   },
   "samePartition": true
 }

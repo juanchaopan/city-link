@@ -90,19 +90,19 @@
       "merged": false
     },
     "errors": {
-      "buses": 1,
+      "buses": 0,
       "mixed": 0
     },
-    "examples": [["停车", 14.020044071407465, 12.385, true]],
+    "examples": [],
     "stoppedInJunction": {
-      "buses": 1,
+      "buses": 0,
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4787,
+      "samples": 4788,
       "blocked": 0,
-      "stopped": 2059,
-      "speed": 0.56,
+      "stopped": 2109,
+      "speed": 0.54,
       "inLink": 0
     },
     "runMixed": {
@@ -205,30 +205,25 @@
     },
     "errors": {
       "buses": 0,
-      "mixed": 7
+      "mixed": 0
     },
-    "examples": [
-      ["停车", 13.820000160731176, 12.385, false],
-      ["停车", 13.820000000117433, 12.385, false],
-      ["停车", 13.820000000000066, 12.385, false],
-      ["停车", 13.82, 12.385, false]
-    ],
+    "examples": [],
     "stoppedInJunction": {
       "buses": 0,
-      "mixed": 7
+      "mixed": 0
     },
     "runBuses": {
-      "samples": 4789,
-      "blocked": 35,
-      "stopped": 2308,
-      "speed": 0.47,
+      "samples": 4790,
+      "blocked": 0,
+      "stopped": 2392,
+      "speed": 0.46,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4793,
-      "blocked": 78,
-      "stopped": 2150,
-      "speed": 0.53,
+      "samples": 4792,
+      "blocked": 0,
+      "stopped": 2082,
+      "speed": 0.54,
       "inLink": 0
     }
   },
@@ -323,31 +318,26 @@
       "merged": false
     },
     "errors": {
-      "buses": 17,
+      "buses": 0,
       "mixed": 0
     },
-    "examples": [
-      ["停车", 14.615, 15.140000044485607, true],
-      ["停车", 14.615, 15.140000000019601, true],
-      ["停车", 14.615, 15.140000000000008, true],
-      ["停车", 14.615, 15.14, true]
-    ],
+    "examples": [],
     "stoppedInJunction": {
-      "buses": 17,
+      "buses": 0,
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4793,
-      "blocked": 113,
-      "stopped": 2997,
-      "speed": 0.33,
+      "samples": 4796,
+      "blocked": 0,
+      "stopped": 3297,
+      "speed": 0.27,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4792,
-      "blocked": 58,
-      "stopped": 3158,
-      "speed": 0.28,
+      "samples": 4794,
+      "blocked": 0,
+      "stopped": 3167,
+      "speed": 0.29,
       "inLink": 0
     }
   },
@@ -375,10 +365,10 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4796,
+      "samples": 4795,
       "blocked": 0,
-      "stopped": 2278,
-      "speed": 0.45,
+      "stopped": 2137,
+      "speed": 0.48,
       "inLink": 0
     },
     "runMixed": {

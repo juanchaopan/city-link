@@ -1,20 +1,20 @@
 {
   "64": {
-    "generateMs": 5622,
-    "partitionMs": 4999,
-    "enumerated": 61877,
-    "heapMb": 80,
-    "parcels": 210,
+    "generateMs": 4361,
+    "partitionMs": 3833,
+    "enumerated": 61594,
+    "heapMb": 94,
+    "parcels": 216,
     "roads": 646,
-    "objects": 1272,
-    "junctions": 50,
+    "objects": 1282,
+    "junctions": 48,
     "rings": 5,
     "blockedRings": 0,
-    "distinctSprites": 612,
+    "distinctSprites": 606,
     "view": {
-      "ground": 6315,
-      "objects": 1046,
-      "total": 7361
+      "ground": 6307,
+      "objects": 1056,
+      "total": 7363
     },
     "save": {
       "rawKb": 20,
@@ -22,24 +22,24 @@
     }
   },
   "128": {
-    "generateMs": 67566,
-    "partitionMs": 61121,
-    "enumerated": 571370,
-    "heapMb": -25,
-    "parcels": 1288,
+    "generateMs": 39534,
+    "partitionMs": 34289,
+    "enumerated": 577408,
+    "heapMb": -15,
+    "parcels": 1312,
     "roads": 3645,
-    "objects": 3913,
-    "junctions": 354,
+    "objects": 3938,
+    "junctions": 346,
     "rings": 20,
     "blockedRings": 0,
-    "distinctSprites": 792,
+    "distinctSprites": 796,
     "view": {
-      "ground": 28582,
-      "objects": 3327,
-      "total": 31909
+      "ground": 28542,
+      "objects": 3352,
+      "total": 31894
     },
     "save": {
-      "rawKb": 110,
+      "rawKb": 111,
       "gzipKb": 17
     }
   }

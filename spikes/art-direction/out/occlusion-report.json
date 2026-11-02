@@ -1,14 +1,14 @@
 {
   "cars": 300,
   "size": 128,
-  "statics": 5261,
+  "statics": 5288,
   "cycles": 0,
   "samples": 20,
-  "sortMsPerFrame": 14.82,
-  "sortMsWorst": 50.76,
+  "sortMsPerFrame": 9.35,
+  "sortMsWorst": 28.74,
   "current": {
     "建筑-车": {
-      "pairs": 598,
+      "pairs": 635,
       "wrong": 0
     },
     "桥面-灯杆": {
@@ -16,23 +16,23 @@
       "wrong": 0
     },
     "灯杆-车": {
-      "pairs": 1088,
+      "pairs": 1077,
       "wrong": 0
     },
     "桥墩-车": {
-      "pairs": 62,
+      "pairs": 74,
       "wrong": 0
     },
     "桥面-车": {
-      "pairs": 407,
+      "pairs": 418,
       "wrong": 0
     },
     "公交-建筑": {
-      "pairs": 66,
+      "pairs": 62,
       "wrong": 0
     },
     "车-车": {
-      "pairs": 948,
+      "pairs": 987,
       "wrong": 0
     },
     "公交-桥面": {
@@ -40,41 +40,41 @@
       "wrong": 0
     },
     "公交-灯杆": {
-      "pairs": 64,
+      "pairs": 52,
       "wrong": 0
     },
     "公交-车": {
-      "pairs": 11,
+      "pairs": 6,
       "wrong": 0
     },
     "其他-车": {
-      "pairs": 7,
+      "pairs": 6,
       "wrong": 0
     }
   },
   "legacy": {
     "建筑-车": {
-      "pairs": 598,
-      "wrong": 87
+      "pairs": 635,
+      "wrong": 90
     },
     "灯杆-车": {
-      "pairs": 1088,
-      "wrong": 498
+      "pairs": 1077,
+      "wrong": 500
     },
     "公交-建筑": {
-      "pairs": 66,
-      "wrong": 12
+      "pairs": 62,
+      "wrong": 14
     },
     "车-车": {
-      "pairs": 948,
-      "wrong": 509
+      "pairs": 987,
+      "wrong": 493
     },
     "桥面-车": {
-      "pairs": 407,
-      "wrong": 126
+      "pairs": 418,
+      "wrong": 133
     },
     "桥墩-车": {
-      "pairs": 62,
+      "pairs": 74,
       "wrong": 0
     },
     "公交-桥面": {
@@ -86,19 +86,19 @@
       "wrong": 0
     },
     "公交-灯杆": {
-      "pairs": 64,
-      "wrong": 29
+      "pairs": 52,
+      "wrong": 30
     },
     "公交-车": {
-      "pairs": 11,
-      "wrong": 7
+      "pairs": 6,
+      "wrong": 3
     },
     "其他-车": {
-      "pairs": 7,
+      "pairs": 6,
       "wrong": 0
     }
   },
   "wrong": 0,
-  "legacyWrong": 1268,
+  "legacyWrong": 1263,
   "examples": []
 }
