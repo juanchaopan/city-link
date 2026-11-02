@@ -42,14 +42,14 @@
     "shape": "十字接十字",
     "gap": 2,
     "N": 24,
-    "clusters": 1,
+    "clusters": 2,
     "rings": 0,
-    "phases": 8,
-    "cycle": 72.3,
+    "phases": 4,
+    "cycle": 25.2,
     "room": {
-      "room": 0,
-      "buses": 0,
-      "merged": true
+      "room": 1.69,
+      "buses": 4,
+      "merged": false
     },
     "errors": {
       "buses": 0,
@@ -61,17 +61,17 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4795,
+      "samples": 4788,
       "blocked": 0,
-      "stopped": 3838,
-      "speed": 0.18,
+      "stopped": 2126,
+      "speed": 0.54,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4794,
+      "samples": 4790,
       "blocked": 0,
-      "stopped": 3623,
-      "speed": 0.23,
+      "stopped": 2009,
+      "speed": 0.56,
       "inLink": 0
     }
   },
@@ -156,14 +156,14 @@
     "shape": "十字接丁字",
     "gap": 2,
     "N": 24,
-    "clusters": 1,
+    "clusters": 2,
     "rings": 0,
-    "phases": 6,
-    "cycle": 54.2,
+    "phases": 4,
+    "cycle": 25.2,
     "room": {
-      "room": 0,
-      "buses": 0,
-      "merged": true
+      "room": 1.69,
+      "buses": 4,
+      "merged": false
     },
     "errors": {
       "buses": 0,
@@ -175,17 +175,17 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4787,
+      "samples": 4788,
       "blocked": 0,
-      "stopped": 3226,
-      "speed": 0.31,
+      "stopped": 2366,
+      "speed": 0.47,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4792,
+      "samples": 4791,
       "blocked": 0,
-      "stopped": 3101,
-      "speed": 0.33,
+      "stopped": 2328,
+      "speed": 0.48,
       "inLink": 0
     }
   },
@@ -270,14 +270,14 @@
     "shape": "斜路路口",
     "gap": 2,
     "N": 24,
-    "clusters": 1,
+    "clusters": 3,
     "rings": 0,
-    "phases": 9,
-    "cycle": 94.9,
+    "phases": 5,
+    "cycle": 33.4,
     "room": {
-      "room": 0,
-      "buses": 0,
-      "merged": true
+      "room": 1.19,
+      "buses": 2,
+      "merged": false
     },
     "errors": {
       "buses": 0,
@@ -291,14 +291,14 @@
     "runBuses": {
       "samples": 4793,
       "blocked": 0,
-      "stopped": 3803,
-      "speed": 0.2,
+      "stopped": 3126,
+      "speed": 0.3,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4791,
+      "samples": 4794,
       "blocked": 0,
-      "stopped": 3582,
+      "stopped": 3349,
       "speed": 0.25,
       "inLink": 0
     }

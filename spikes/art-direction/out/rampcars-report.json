@@ -1,0 +1,20 @@
+{
+  "size": 128,
+  "sites": [
+    {
+      "name": "丁字立交",
+      "samples": 105,
+      "laneCars": 11725,
+      "overlaps": 0,
+      "pairs": {}
+    },
+    {
+      "name": "高架",
+      "samples": 105,
+      "laneCars": 7146,
+      "overlaps": 0,
+      "pairs": {}
+    }
+  ],
+  "overlaps": 0
+}

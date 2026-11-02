@@ -1,6 +1,6 @@
 {
   "64": {
-    "generateMs": 4107,
+    "generateMs": 4063,
     "parcels": 216,
     "hash": "5518f2a13bc2f2b2",
     "sameOnSecondRun": true,
@@ -920,9 +920,9 @@
       "wholeBlocks": 14,
       "cachedBlocks": 0,
       "solvedBlocks": 68,
-      "worstBlockMs": 209.8336999999883,
+      "worstBlockMs": 225.00500000000466,
       "batches": 1,
-      "millis": 3764.7215999999607,
+      "millis": 3738.4764999999898,
       "blockAtoms": 2206,
       "residualAtoms": 44,
       "fallbackShare": 0.019945602901178604,
@@ -1034,7 +1034,9 @@
         "people": 16,
         "cells": 4,
         "cost": 352,
-        "parcels": [0]
+        "parcels": [
+          0
+        ]
       },
       "wholeBlock": true,
       "halfwayRemaining": 8,
@@ -1090,7 +1092,7 @@
     }
   },
   "128": {
-    "generateMs": 39733,
+    "generateMs": 41188,
     "parcels": 1312,
     "hash": "e593700a7290d5cb",
     "sameOnSecondRun": true,
@@ -2494,9 +2496,9 @@
       "wholeBlocks": 27,
       "cachedBlocks": 0,
       "solvedBlocks": 368,
-      "worstBlockMs": 299.3007,
+      "worstBlockMs": 329.7973999999999,
       "batches": 1,
-      "millis": 34273.74140000004,
+      "millis": 35556.68629999998,
       "blockAtoms": 16094,
       "residualAtoms": 58,
       "fallbackShare": 0.003603827513359016,
@@ -2608,7 +2610,9 @@
         "people": 12,
         "cells": 3,
         "cost": 264,
-        "parcels": [0]
+        "parcels": [
+          0
+        ]
       },
       "wholeBlock": true,
       "halfwayRemaining": 6,

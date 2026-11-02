@@ -1,147 +1,171 @@
 {
   "128，鸟瞰全图，不画车": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
-    "sprites": 39331,
-    "atlas": [4096, 7042],
+    "sprites": 39391,
+    "atlas": [
+      4096,
+      7062
+    ],
     "arrows": 0,
     "icons": 116,
-    "frames": 229,
-    "p50fps": 46.94835691261371,
-    "p95fps": 41.322313968165226,
-    "worstFps": 31.84713390304997,
+    "frames": 230,
+    "p50fps": 46.72897227498286,
+    "p95fps": 41.493776097807256,
+    "worstFps": 32.67973866394061,
     "cars": {
       "cars": 0,
       "wanted": 0,
       "stopped": 0,
-      "signals": 1350,
+      "signals": 1370,
       "sortMs": 0,
-      "staticsInView": 5284
+      "staticsInView": 5306
     }
   },
   "128，半图缩小，不画车": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
-    "sprites": 39331,
-    "atlas": [4096, 7042],
+    "sprites": 39391,
+    "atlas": [
+      4096,
+      7062
+    ],
     "arrows": 0,
     "icons": 116,
-    "frames": 94,
-    "p50fps": 19.41747572815534,
-    "p95fps": 18.248175118967826,
-    "worstFps": 18.050541485172676,
+    "frames": 93,
+    "p50fps": 19.569471569482673,
+    "p95fps": 18.01801801801802,
+    "worstFps": 17.636684288518826,
     "cars": {
       "cars": 0,
       "wanted": 0,
       "stopped": 0,
-      "signals": 1350,
+      "signals": 1370,
       "sortMs": 0,
-      "staticsInView": 3052
+      "staticsInView": 3177
     }
   },
   "128，游戏视角，上限 300 辆": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
-    "sprites": 39331,
-    "atlas": [4096, 7042],
+    "sprites": 39391,
+    "atlas": [
+      4096,
+      7062
+    ],
     "arrows": 0,
     "icons": 116,
-    "frames": 77,
-    "p50fps": 15.974440858064503,
-    "p95fps": 15.10574017038825,
-    "worstFps": 13.96648046552999,
+    "frames": 78,
+    "p50fps": 16.260162601626018,
+    "p95fps": 14.903129678409437,
+    "worstFps": 14.492753623188406,
     "cars": {
       "cars": 300,
       "wanted": 300,
-      "stopped": 201,
-      "signals": 1350,
-      "sortMs": 6.299999952316284,
+      "stopped": 209,
+      "signals": 1370,
+      "sortMs": 9.200000047683716,
       "staticsInView": 545
     }
   },
   "128，游戏视角，上限 150 辆": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
-    "sprites": 39331,
-    "atlas": [4096, 7042],
+    "sprites": 39391,
+    "atlas": [
+      4096,
+      7062
+    ],
     "arrows": 0,
     "icons": 116,
-    "frames": 76,
-    "p50fps": 16.207455416971932,
-    "p95fps": 15.151515151515152,
-    "worstFps": 14.947683087809834,
+    "frames": 77,
+    "p50fps": 16.129032258064516,
+    "p95fps": 14.992503737407821,
+    "worstFps": 14.245014235338244,
     "cars": {
       "cars": 150,
       "wanted": 150,
-      "stopped": 97,
-      "signals": 1350,
-      "sortMs": 3.5999999046325684,
+      "stopped": 102,
+      "signals": 1370,
+      "sortMs": 3.3000001907348633,
       "staticsInView": 545
     }
   },
   "128，游戏视角，上限 100 辆": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
-    "sprites": 39331,
-    "atlas": [4096, 7042],
+    "sprites": 39391,
+    "atlas": [
+      4096,
+      7062
+    ],
     "arrows": 0,
     "icons": 116,
-    "frames": 77,
-    "p50fps": 16.260162601626018,
-    "p95fps": 15.10574022479141,
-    "worstFps": 14.285714285714286,
+    "frames": 76,
+    "p50fps": 16.10305960605004,
+    "p95fps": 15.060240942225052,
+    "worstFps": 13.550135510110039,
     "cars": {
       "cars": 100,
       "wanted": 100,
-      "stopped": 63,
-      "signals": 1350,
-      "sortMs": 2.799999952316284,
+      "stopped": 64,
+      "signals": 1370,
+      "sortMs": 2.3999998569488525,
       "staticsInView": 545
     }
   },
   "128，夜间车灯，上限 300 辆": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
-    "sprites": 39331,
-    "atlas": [4096, 7042],
+    "sprites": 39391,
+    "atlas": [
+      4096,
+      7062
+    ],
     "arrows": 0,
     "icons": 116,
-    "frames": 76,
-    "p50fps": 15.873015873015873,
-    "p95fps": 14.792899429153266,
-    "worstFps": 13.586956539344472,
+    "frames": 77,
+    "p50fps": 16.129032258064516,
+    "p95fps": 14.925373134328359,
+    "worstFps": 13.157894736842104,
     "cars": {
       "cars": 300,
       "wanted": 300,
-      "stopped": 205,
-      "signals": 1350,
-      "sortMs": 6.400000095367432,
+      "stopped": 200,
+      "signals": 1370,
+      "sortMs": 7.5,
       "staticsInView": 545
     }
   },
   "128，交通视图，游戏视角": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
-    "sprites": 39331,
-    "atlas": [4096, 7042],
+    "sprites": 39391,
+    "atlas": [
+      4096,
+      7062
+    ],
     "arrows": 8155,
     "icons": 0,
-    "frames": 71,
-    "p50fps": 14.970059837495324,
-    "p95fps": 13.550135510110039,
-    "worstFps": 12.771392089514526,
+    "frames": 70,
+    "p50fps": 14.858840968289762,
+    "p95fps": 13.88888888888889,
+    "worstFps": 13.210039621797836,
     "cars": null
   },
   "64，游戏视角，上限 300 辆（对比）": {
     "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
-    "sprites": 8818,
-    "atlas": [4096, 7042],
+    "sprites": 8830,
+    "atlas": [
+      4096,
+      7062
+    ],
     "arrows": 0,
     "icons": 19,
-    "frames": 76,
-    "p50fps": 16.103059544226067,
-    "p95fps": 13.986013986013987,
-    "worstFps": 13.568521066322795,
+    "frames": 75,
+    "p50fps": 15.873015873015873,
+    "p95fps": 13.36898392312926,
+    "worstFps": 12.970168588127141,
     "cars": {
       "cars": 300,
       "wanted": 300,
-      "stopped": 241,
-      "signals": 187,
-      "sortMs": 6.3999998569488525,
-      "staticsInView": 489
+      "stopped": 200,
+      "signals": 191,
+      "sortMs": 7.3999998569488525,
+      "staticsInView": 491
     }
   }
 }

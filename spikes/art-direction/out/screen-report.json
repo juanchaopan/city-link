@@ -1,0 +1,42 @@
+{
+  "coverage": {
+    "zoom": 0.0208740234375,
+    "arrowsShown": 0,
+    "iconGap": 6.499996829427625,
+    "iconSize": 5.5,
+    "iconOverlaps": 0,
+    "iconsVisible": true,
+    "staticsInView": 5308,
+    "coverageKept": 0.8280918564972793,
+    "coloredPixels": 10843
+  },
+  "metro": [
+    {
+      "id": 1,
+      "width": 3
+    },
+    {
+      "id": 2,
+      "width": 3
+    },
+    {
+      "id": 3,
+      "width": 3
+    }
+  ],
+  "cars": [
+    {
+      "name": "高架",
+      "cars": 331,
+      "cut": 0,
+      "examples": []
+    },
+    {
+      "name": "丁字立交",
+      "cars": 384,
+      "cut": 0,
+      "examples": []
+    }
+  ],
+  "failures": []
+}

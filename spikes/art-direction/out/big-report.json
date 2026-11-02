@@ -1,20 +1,20 @@
 {
   "64": {
-    "generateMs": 4361,
-    "partitionMs": 3833,
+    "generateMs": 4326,
+    "partitionMs": 3797,
     "enumerated": 61594,
-    "heapMb": 94,
+    "heapMb": 108,
     "parcels": 216,
     "roads": 646,
     "objects": 1282,
-    "junctions": 48,
+    "junctions": 50,
     "rings": 5,
     "blockedRings": 0,
-    "distinctSprites": 606,
+    "distinctSprites": 622,
     "view": {
-      "ground": 6307,
+      "ground": 6315,
       "objects": 1056,
-      "total": 7363
+      "total": 7371
     },
     "save": {
       "rawKb": 20,
@@ -22,21 +22,21 @@
     }
   },
   "128": {
-    "generateMs": 39534,
-    "partitionMs": 34289,
+    "generateMs": 39699,
+    "partitionMs": 34355,
     "enumerated": 577408,
-    "heapMb": -15,
+    "heapMb": -1,
     "parcels": 1312,
     "roads": 3645,
     "objects": 3938,
-    "junctions": 346,
+    "junctions": 354,
     "rings": 20,
     "blockedRings": 0,
-    "distinctSprites": 796,
+    "distinctSprites": 812,
     "view": {
-      "ground": 28542,
+      "ground": 28582,
       "objects": 3352,
-      "total": 31894
+      "total": 31934
     },
     "save": {
       "rawKb": 111,
