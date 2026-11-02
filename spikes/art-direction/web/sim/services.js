@@ -5,6 +5,7 @@ import { ZONE } from './zones.js';
 // 选址：每次找出当前覆盖最差的住宅，选离它道路距离最近、能放下的位置。
 // 位置的优先级：先用公共用地，没有时用连着道路且未划分的空地；永远不占已划分区和已有建筑的地。
 // 两处都没有时记一条"缺少用地"，由界面提示玩家。
+// 每种服务的数量上限跟着地图面积走，半径是走路的距离，城区变大服务就要变多。
 
 export const SERVICES = [
   {
@@ -70,7 +71,10 @@ export const SERVICES = [
   },
 ];
 
-const MAX_INSTANCES = 8;
+const BASE_INSTANCES = 8;
+const BASE_SIZE = 64;
+
+const instanceLimit = (N) => Math.max(BASE_INSTANCES, BASE_INSTANCES * (N / BASE_SIZE) ** 2);
 
 function sitesFor(service, { N, zones, cellOpen, nearRoad }, wantedZone) {
   const sites = [];
@@ -140,10 +144,11 @@ export function placeServices(input, tools, parcels) {
   const context = { ...tools, N, zones: input.zones };
   const placed = [];
   const shortages = [];
+  const limit = instanceLimit(N);
 
   for (const service of SERVICES) {
     const sources = [];
-    for (let round = 0; round < MAX_INSTANCES; round += 1) {
+    for (let round = 0; round < limit; round += 1) {
       const reach = sources.length > 0 ? shortestPaths(graph, sources, true).distance : null;
       let worst = -1;
       let worstScore = -1;
