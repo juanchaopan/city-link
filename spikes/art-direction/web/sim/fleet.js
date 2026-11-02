@@ -3,6 +3,7 @@ import { cellLane, laneKind, LANE_OFFSET, unitDirection } from './lanes.js';
 import { DIRECTIONS, spokesOf } from './network.js';
 import { RING } from './roundabout.js';
 import { signalPoles } from './sceneitems.js';
+import { distanceToEnd, inStretch, sharedStretches } from './sharedlanes.js';
 
 // 车流和红绿灯的模拟。这是纯视觉层：只读路段的负载比，不写任何东西，经济和拥堵的结算完全不知道它的存在。
 // 这里不依赖图形库，所以检查脚本可以不开画面直接跑；画车是 web/vehicles.js 的事。
@@ -23,6 +24,7 @@ import { signalPoles } from './sceneitems.js';
 // 环岛：车在斑马线外的让行线前看环上有没有车过来，没有才进；进环后逆时针绕到选定的出口。
 //
 // 匝道：每条 lane 带一组限速系数，弯急坡陡的地方车慢下来。上下匝道的概率跟着分配到这条匝道的流量走。
+// 两条 lane 共用一段路面时这一段算一支队，见 sharedlanes.js。
 //
 // 排队：车在每一段的尽头都看下一段的队尾，格子接格子、匝道接地面路、匝道并主线、环岛接出口都一样。
 // 下一段排满时车在这一段的头上等，不会叠在下一段的起点上。入口匝道的头上排满时，路过的车不上匝道，接着往前开。
@@ -195,6 +197,7 @@ export function createFleet(
     if (!lanesFrom.has(lane.fromCell)) lanesFrom.set(lane.fromCell, []);
     lanesFrom.get(lane.fromCell).push(lane);
   }
+  const stretches = sharedStretches([...laneById.values()], pointAt);
   const clusterCells = new Set(clusters.flatMap(({ cells }) => [...cells]));
   const stopCells = new Set([...stops.values()].map(({ cell }) => cell));
   const ringOfCell = new Map();
@@ -307,12 +310,13 @@ export function createFleet(
     car.passed = null;
   };
 
-  /** 匝道的头上放得下这辆车。 */
+  /** 匝道的头上放得下这辆车：共用路面时另一条匝道上的车也算。 */
   const laneOpen = (car, lane) => {
-    const queue = groups.get(lane.id);
-    if (!queue || queue.length === 0) return true;
-    const last = queue[queue.length - 1];
-    return last.s - (lengthOf(car) + lengthOf(last)) / 2 >= CLEARANCE;
+    const stretch = stretches.find(({ fromTail, reach }) => !fromTail && reach.has(lane));
+    const queue = stretch
+      ? cars.filter((other) => inStretch(stretch, other))
+      : (groups.get(lane.id) ?? []);
+    return queue.every((other) => other.s - (lengthOf(car) + lengthOf(other)) / 2 >= CLEARANCE);
   };
 
   const enterCell = (car, cell, from) => {
@@ -416,12 +420,24 @@ export function createFleet(
     if (!crowded) cars.push(car);
   };
 
+  /** 新车落在共用路面上，另一条匝道上的车也不能离得太近。 */
+  const crowdedStretch = (car) =>
+    stretches.some(
+      (stretch) =>
+        inStretch(stretch, car) &&
+        cars.some(
+          (other) =>
+            inStretch(stretch, other) &&
+            Math.abs(distanceToEnd(stretch, other) - distanceToEnd(stretch, car)) < SPAWN_GAP,
+        ),
+    );
+
   const spawnOnLane = (lane) => {
     if (countHigh() >= highCap) return;
     const car = newCar(false);
     boardLane(car, lane, random() * lane.path.length);
     const crowded = groups.get(lane.id)?.some((other) => Math.abs(other.s - car.s) < SPAWN_GAP);
-    if (crowded) return;
+    if (crowded || crowdedStretch(car)) return;
     car.high = true;
     cars.push(car);
   };
@@ -579,6 +595,25 @@ export function createFleet(
     return room;
   };
 
+  /** 共用路面上的每支队：按到共用端点的距离排好，每辆车看排在它前面的那辆。 */
+  const roomsInStretches = () => {
+    const rooms = new Map();
+    for (const stretch of stretches) {
+      const ahead = stretch.fromTail ? 1 : -1;
+      const queue = cars
+        .filter((car) => inStretch(stretch, car))
+        .sort((a, b) => ahead * (distanceToEnd(stretch, a) - distanceToEnd(stretch, b)));
+      queue.forEach((car, index) => {
+        if (index === 0) return;
+        const leader = queue[index - 1];
+        const gap = Math.abs(distanceToEnd(stretch, leader) - distanceToEnd(stretch, car));
+        const room = gap - (lengthOf(car) + lengthOf(leader)) / 2 - CLEARANCE;
+        rooms.set(car, Math.min(rooms.get(car) ?? Infinity, room));
+      });
+    }
+    return rooms;
+  };
+
   /** 走完这一段接的是哪一队：key 是队的名字，start 是接上这一队的里程。 */
   const nextQueue = (car) => {
     if (car.mode === 'ring') {
@@ -675,6 +710,7 @@ export function createFleet(
       groups.get(car.key).push(car);
     }
     for (const group of groups.values()) group.sort((a, b) => b.s - a.s);
+    const shared = roomsInStretches();
     for (const group of groups.values()) {
       group.forEach((car, index) => {
         let room = roomToNextQueue(car);
@@ -687,6 +723,7 @@ export function createFleet(
         }
         room = Math.min(
           room,
+          shared.get(car) ?? Infinity,
           roomToStop(car),
           roomOnRing(car),
           roomOnExit(car),
