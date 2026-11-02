@@ -19,8 +19,9 @@ import { palettes } from './kit/palettes.js';
 
 // 可以操作的样张：拖动、双指或滚轮缩放、时间滑块、交通、公共服务和地铁三个视图，
 // 以及四级道路的立交场景。车流和红绿灯是纯视觉层，不改变任何结算结果。
-// 默认是 128×128 的城市，默认缩放正好把整张地图放进竖屏；n=64 是对比用的小城。
+// 默认是 128×128 的城市，默认缩放按视口算，整张地图完整放进竖屏；n=64 是对比用的小城。
 // 缩小到 CAR_MIN_ZOOM 以下是鸟瞰，车只有几个像素大，这时不画车也不模拟车流；交通视图的箭头同理。
+// 城市视图鸟瞰时不显示公共服务图标，公共服务视图一直显示。
 
 const params = new URLSearchParams(location.search);
 const sceneName = params.get('scene') ?? 'city';
@@ -36,9 +37,12 @@ const carCap = Number(params.get('cars') ?? 300);
 const carsFull = params.get('full') === '1';
 const stress = Number(params.get('stress') ?? 1);
 const DEFAULT_SIZE = 128;
-const OVERVIEW_ZOOM_AT_64 = 0.078;
+const FIT_MARGIN = 24;
+const MIN_ZOOM = 0.03;
+const MAX_ZOOM = 1.4;
 const TAP_DISTANCE = 6;
 const CAR_MIN_ZOOM = 0.2;
+const ICON_MIN_ZOOM = 0.2;
 
 // 风格解析和存档无关：缺包时退回标准风格。样张里只装了标准风格。
 const installedStyles = { standard: { id: 'standard', atlas: 'sunny' } };
@@ -152,7 +156,7 @@ if (view === 'metro') camera.addChild(metroView(city));
 if (SCENE_ALPHA[view]) scene.world.alpha = SCENE_ALPHA[view];
 const icons =
   iconsOn && !seam && city.icons?.length > 0 && view !== 'traffic' && view !== 'metro'
-    ? createServiceIcons(atlas, city)
+    ? createServiceIcons(atlas, city, { minZoom: view === 'coverage' ? 0 : ICON_MIN_ZOOM })
     : null;
 if (icons) camera.addChild(icons.layer);
 app.stage.addChild(camera);
@@ -162,7 +166,15 @@ if (legend && LEGENDS[view]) {
   legend.textContent = LEGENDS[view];
 }
 
-let zoom = Number(params.get('zoom') ?? (OVERVIEW_ZOOM_AT_64 * 64) / N);
+/** 整张地图放进视口的缩放。菱形地图宽 N 格、高半格一层，左右上下各留一点边。 */
+function fitZoom() {
+  const width = window.innerWidth - FIT_MARGIN * 2;
+  const height = window.innerHeight - FIT_MARGIN * 2;
+  return Math.min(width / (N * TILE_HALF_W * 2), height / (N * TILE_HALF_H * 2));
+}
+
+const smallestZoom = Math.min(MIN_ZOOM, fitZoom());
+let zoom = Number(params.get('zoom') ?? fitZoom());
 const focusX = Number(params.get('x') ?? N / 2);
 const focusY = Number(params.get('y') ?? N / 2);
 const offset = { x: 0, y: 0 };
@@ -256,7 +268,7 @@ let pinch = null;
 let pressed = null;
 const canvas = app.canvas;
 const zoomAt = (factor, cx, cy) => {
-  const next = Math.max(0.03, Math.min(1.4, zoom * factor));
+  const next = Math.max(smallestZoom, Math.min(MAX_ZOOM, zoom * factor));
   const ratio = next / zoom;
   offset.x = cx - window.innerWidth / 2 - (cx - window.innerWidth / 2 - offset.x) * ratio;
   offset.y = cy - window.innerHeight / 2 - (cy - window.innerHeight / 2 - offset.y) * ratio;
@@ -361,6 +373,7 @@ window.viewStats = () => ({
   arrowsShown: trafficView?.arrowsShown() ?? 0,
   iconGap: icons ? icons.nearest(zoom) : null,
   iconSize: icons?.size ?? null,
+  iconsVisible: icons ? icons.layer.visible : false,
   staticsInView: scene.inView(),
 });
 window.trafficStats = () =>
