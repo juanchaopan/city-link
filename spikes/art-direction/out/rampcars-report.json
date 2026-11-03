@@ -4,14 +4,14 @@
     {
       "name": "丁字立交",
       "samples": 105,
-      "laneCars": 11725,
+      "laneCars": 7670,
       "overlaps": 0,
       "pairs": {}
     },
     {
       "name": "高架",
       "samples": 105,
-      "laneCars": 7146,
+      "laneCars": 9452,
       "overlaps": 0,
       "pairs": {}
     }

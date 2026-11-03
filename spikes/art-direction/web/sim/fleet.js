@@ -34,7 +34,8 @@ import { distanceToEnd, inStretch, sharedStretches } from './sharedlanes.js';
 // 只看出口附近有没有慢车不够，同一个绿灯里先走的车还在跑，等它们排上去，路口就堵了。
 // 路段中间生成的车也算数：路段放不下时不在这一段生成。新车的落点按平面距离避开所有车，前一格的队尾也算。
 //
-// 环岛：车在斑马线外的让行线前看环上有没有车过来，没有才进；进环后逆时针绕到选定的出口。
+// 环岛：车在斑马线外的让行线前看环上有没有车过来，没有才进；出口到下一个路口停车线的那段路也要放得下自己，
+// 放不下就在让行线前等，环上不会被堵死。进环后逆时针绕到选定的出口。
 // 环上跟车按角度量，刚切进来、刚切出去的车车身还有一截在环上，也算在前车里。
 // 环岛的车从 5×5 的边上开始算一条通过路线，按进口分队；驶向这个进口的车看的是这支队的队尾，不是格子的队。
 // 出环的车从 5×5 的边进外面那一格，进格的方向是出口臂的反方向：臂的方向是从环心向外指的。
@@ -270,16 +271,21 @@ export function createFleet(
 
   const exitLinks = new Map();
   const exitOfKey = new Map();
-  for (const { legs } of clusters) {
-    for (const leg of legs) {
-      const link = leg.crossing ? linkAfter(leg) : null;
-      if (!link) continue;
-      exitLinks.set(leg, link);
-      for (const key of link.keys) exitOfKey.set(key, leg);
-    }
+  const exitLegs = [
+    ...clusters.flatMap(({ legs }) => legs),
+    ...rings.flatMap(({ arms }) => arms.map(({ leg }) => leg)),
+  ];
+  for (const leg of exitLegs) {
+    const link = leg?.crossing ? linkAfter(leg) : null;
+    if (!link) continue;
+    exitLinks.set(leg, link);
+    for (const key of link.keys) exitOfKey.set(key, leg);
   }
 
-  /** 出口这段路连同已经放行、还没开上这段路的车，还放得下这辆车吗。 */
+  /** 这辆车要从哪条腿出路口：环岛的车记的是出口臂，臂上挂着腿。 */
+  const exitLegOf = (car) => (car.mode === 'ring' ? car.exit?.leg : car.exit);
+
+  /** 出口这段路连同已经放行、还没开上这段路的车，还放得下这辆车吗。前一格绿灯放进停车格的车也算已经放行。 */
   const linkFree = (car, exit) => {
     const link = exitLinks.get(exit);
     if (!link) return true;
@@ -288,7 +294,8 @@ export function createFleet(
       for (const other of queued(key)) if (other !== car) taken += bodyRoom(other);
     }
     for (const other of cars) {
-      if (other === car || other.exit !== exit || !other.cleared) continue;
+      if (other === car || !(other.cleared || other.released)) continue;
+      if ((other.released ? other.pending?.exit : exitLegOf(other)) !== exit) continue;
       if (!link.keys.has(other.key)) taken += bodyRoom(other);
     }
     return taken <= link.room;
@@ -496,7 +503,12 @@ export function createFleet(
     released: false,
   });
 
-  /** 车只生成在路段中间：路口、环岛和停车线那一格不生成，也不生成在别的车身上，路段放不下时不生成。 */
+  /** 停车格在下一格时，这一格里停车线前留给车身的最后一段：落在这里的新车连停都停不住。 */
+  const beforeStop = (car) =>
+    car.ahead === null ||
+    car.path.length - car.s + car.ahead.distance >= lengthOf(car) / 2 + STOP_MARGIN;
+
+  /** 车只生成在路段中间：路口、环岛和停车线那一格不生成，也不生成在别的车身上或停车线上，路段放不下时不生成。 */
   const spawnOnEdge = (edge) => {
     const forward = random() < 0.5;
     const cell = forward ? edge.from : edge.to;
@@ -509,7 +521,7 @@ export function createFleet(
     const exit = exitOfKey.get(car.key);
     if (exit && !linkFree(car, exit)) return;
     car.s = random() * car.path.length;
-    if (!crowdedAt(car)) cars.push(car);
+    if (beforeStop(car) && !crowdedAt(car)) cars.push(car);
   };
 
   /** 新车的落点周围 SPAWN_GAP 以内不能有别的车：平面上量，前一格队尾、下一格排头和同一帧刚生成的车都算。 */
@@ -625,7 +637,7 @@ export function createFleet(
       const gap = wrapAngle(ringAngleOf(other) - car.trip.start);
       return gap > -0.3 && gap < RING_WATCH;
     });
-    if (busy) {
+    if (busy || !linkFree(car, car.exit.leg)) {
       car.waiting = true;
       return limit - car.s;
     }

@@ -20,7 +20,8 @@ import { pngData, randomFrom, renderTown } from './townrender.js';
 // 地块的地面轮廓是建筑模型里贴地的三角形（地台和铺装），楼身不算，高楼挡住后面的路是正常的。
 // 停车检查量的是车身：停够 IDLE 秒的车，车头、车中、车尾三点都不能落在斑马线、路口或大路口的连接段里。
 // 路口里让行的左转车除外：它要让的线上确实有车在路口里或者在停车线前亮着绿灯，这里重新查一遍，
-// 查不到理由的让行算 falseYields。停车线前的车只在绿灯时放行，不靠绿灯过线的算 crossedOnRed。
+// 查不到理由的让行算 falseYields；对方在同一步里刚过冲突点的放宽一步的路程。停车线前的车只在绿灯时放行，
+// 不靠绿灯过线的算 crossedOnRed。
 // 单车道进口上左转车在路口里让行时，比它晚到停车线的车不能进路口，也不能叠在它身上，越过或叠上的算 passedYielder。
 // 灯和车道一致：每条线的相位要在它所在车道的灯的相位表里（外侧车道一面灯，左转专用道一面灯）。
 // 斑马线的端点落在人行道和路面的分界上，那一个像素是两层的混色，所以读它周围一圈，有一个像素在人行道上就算到了。
@@ -44,6 +45,7 @@ const IDLE = 1;
 const OLD_LAMP_DIRECTION = 4;
 const FACING_MATCH = 0.99;
 const CAR_HALF_WIDTH = 0.06;
+const STEP_REACH = 0.12;
 
 function caseParcels(world) {
   const { N, roads } = world;
@@ -217,7 +219,8 @@ export function yieldReason(fleet, car) {
   return (car.movement?.yields ?? []).some(({ movement, otherAt }) =>
     fleet.cars.some((other) => {
       if (other === car || other.movement !== movement) return false;
-      if (other.inJunction) return other.progress + other.s < otherAt + fleet.lengthOf(other);
+      if (other.inJunction)
+        return other.progress + other.s < otherAt + fleet.lengthOf(other) + STEP_REACH;
       if (!other.stop || other.cell !== other.stop.cell) return false;
       return other.cleared || lightAt(other.stop.signal, other.phases, time) === 'green';
     }),

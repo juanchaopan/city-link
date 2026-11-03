@@ -6,8 +6,8 @@
     "N": 24,
     "clusters": 1,
     "rings": 0,
-    "phases": 8,
-    "cycle": 65,
+    "phases": 3,
+    "cycle": 26.6,
     "room": {
       "room": 0,
       "buses": 0,
@@ -23,17 +23,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4793,
+      "samples": 4791,
       "blocked": 0,
-      "stopped": 3580,
-      "speed": 0.23,
+      "yielding": 21,
+      "stopped": 2957,
+      "speed": 0.35,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4790,
+      "samples": 4791,
       "blocked": 0,
-      "stopped": 3397,
-      "speed": 0.27,
+      "yielding": 23,
+      "stopped": 3081,
+      "speed": 0.33,
       "inLink": 0
     }
   },
@@ -44,8 +46,8 @@
     "N": 24,
     "clusters": 2,
     "rings": 0,
-    "phases": 4,
-    "cycle": 25.2,
+    "phases": 2,
+    "cycle": 14.1,
     "room": {
       "room": 1.69,
       "buses": 4,
@@ -61,17 +63,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4788,
+      "samples": 4775,
       "blocked": 0,
-      "stopped": 2126,
-      "speed": 0.54,
+      "yielding": 28,
+      "stopped": 1562,
+      "speed": 0.69,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4790,
+      "samples": 4785,
       "blocked": 0,
-      "stopped": 2009,
-      "speed": 0.56,
+      "yielding": 24,
+      "stopped": 1143,
+      "speed": 0.79,
       "inLink": 0
     }
   },
@@ -82,8 +86,8 @@
     "N": 24,
     "clusters": 2,
     "rings": 0,
-    "phases": 4,
-    "cycle": 25.2,
+    "phases": 2,
+    "cycle": 14.1,
     "room": {
       "room": 2.69,
       "buses": 6,
@@ -99,17 +103,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4788,
+      "samples": 4782,
       "blocked": 0,
-      "stopped": 2109,
-      "speed": 0.54,
+      "yielding": 25,
+      "stopped": 1374,
+      "speed": 0.72,
       "inLink": 0
     },
     "runMixed": {
       "samples": 4789,
       "blocked": 0,
-      "stopped": 1966,
-      "speed": 0.59,
+      "yielding": 28,
+      "stopped": 1255,
+      "speed": 0.76,
       "inLink": 0
     }
   },
@@ -120,8 +126,8 @@
     "N": 24,
     "clusters": 1,
     "rings": 0,
-    "phases": 6,
-    "cycle": 48.8,
+    "phases": 3,
+    "cycle": 26.6,
     "room": {
       "room": 0,
       "buses": 0,
@@ -137,17 +143,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4794,
+      "samples": 4790,
       "blocked": 0,
-      "stopped": 3090,
-      "speed": 0.33,
+      "yielding": 12,
+      "stopped": 2823,
+      "speed": 0.38,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4791,
+      "samples": 4788,
       "blocked": 0,
-      "stopped": 2973,
-      "speed": 0.35,
+      "yielding": 22,
+      "stopped": 3098,
+      "speed": 0.31,
       "inLink": 0
     }
   },
@@ -158,8 +166,8 @@
     "N": 24,
     "clusters": 2,
     "rings": 0,
-    "phases": 4,
-    "cycle": 25.2,
+    "phases": 2,
+    "cycle": 14.1,
     "room": {
       "room": 1.69,
       "buses": 4,
@@ -175,17 +183,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4788,
+      "samples": 4781,
       "blocked": 0,
-      "stopped": 2366,
-      "speed": 0.47,
+      "yielding": 16,
+      "stopped": 1575,
+      "speed": 0.66,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4791,
+      "samples": 4781,
       "blocked": 0,
-      "stopped": 2328,
-      "speed": 0.48,
+      "yielding": 16,
+      "stopped": 1156,
+      "speed": 0.78,
       "inLink": 0
     }
   },
@@ -196,8 +206,8 @@
     "N": 24,
     "clusters": 2,
     "rings": 0,
-    "phases": 4,
-    "cycle": 25.2,
+    "phases": 2,
+    "cycle": 14.1,
     "room": {
       "room": 2.69,
       "buses": 6,
@@ -213,17 +223,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4790,
+      "samples": 4782,
       "blocked": 0,
-      "stopped": 2392,
-      "speed": 0.46,
+      "yielding": 8,
+      "stopped": 1403,
+      "speed": 0.7,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4792,
+      "samples": 4782,
       "blocked": 0,
-      "stopped": 2082,
-      "speed": 0.54,
+      "yielding": 21,
+      "stopped": 1368,
+      "speed": 0.73,
       "inLink": 0
     }
   },
@@ -234,8 +246,8 @@
     "N": 24,
     "clusters": 1,
     "rings": 0,
-    "phases": 9,
-    "cycle": 83.3,
+    "phases": 3,
+    "cycle": 30,
     "room": {
       "room": 0,
       "buses": 0,
@@ -251,17 +263,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4796,
+      "samples": 4788,
       "blocked": 0,
-      "stopped": 3726,
-      "speed": 0.21,
+      "yielding": 31,
+      "stopped": 2929,
+      "speed": 0.36,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4795,
+      "samples": 4790,
       "blocked": 0,
-      "stopped": 3711,
-      "speed": 0.21,
+      "yielding": 28,
+      "stopped": 3113,
+      "speed": 0.31,
       "inLink": 0
     }
   },
@@ -272,8 +286,8 @@
     "N": 24,
     "clusters": 3,
     "rings": 0,
-    "phases": 5,
-    "cycle": 33.4,
+    "phases": 2,
+    "cycle": 14.8,
     "room": {
       "room": 1.19,
       "buses": 2,
@@ -289,17 +303,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4793,
+      "samples": 4795,
       "blocked": 0,
-      "stopped": 3126,
-      "speed": 0.3,
+      "yielding": 11,
+      "stopped": 3669,
+      "speed": 0.23,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4794,
+      "samples": 4785,
       "blocked": 0,
-      "stopped": 3349,
-      "speed": 0.25,
+      "yielding": 28,
+      "stopped": 2061,
+      "speed": 0.54,
       "inLink": 0
     }
   },
@@ -310,8 +326,8 @@
     "N": 24,
     "clusters": 3,
     "rings": 0,
-    "phases": 5,
-    "cycle": 33.4,
+    "phases": 2,
+    "cycle": 14.8,
     "room": {
       "room": 2.19,
       "buses": 5,
@@ -327,17 +343,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4796,
+      "samples": 4790,
       "blocked": 0,
-      "stopped": 3297,
-      "speed": 0.27,
+      "yielding": 33,
+      "stopped": 2196,
+      "speed": 0.49,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4794,
+      "samples": 4776,
       "blocked": 0,
-      "stopped": 3167,
-      "speed": 0.29,
+      "yielding": 17,
+      "stopped": 1186,
+      "speed": 0.76,
       "inLink": 0
     }
   },
@@ -348,8 +366,8 @@
     "N": 24,
     "clusters": 2,
     "rings": 1,
-    "phases": 5,
-    "cycle": 33.4,
+    "phases": 2,
+    "cycle": 14.8,
     "room": {
       "room": 1.53,
       "buses": 3,
@@ -365,17 +383,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4795,
-      "blocked": 0,
-      "stopped": 2137,
-      "speed": 0.48,
+      "samples": 4783,
+      "blocked": 1,
+      "yielding": 11,
+      "stopped": 1319,
+      "speed": 0.71,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4796,
-      "blocked": 0,
-      "stopped": 2150,
-      "speed": 0.48,
+      "samples": 4783,
+      "blocked": 13,
+      "yielding": 10,
+      "stopped": 878,
+      "speed": 0.83,
       "inLink": 0
     }
   },
@@ -386,8 +406,8 @@
     "N": 24,
     "clusters": 2,
     "rings": 1,
-    "phases": 5,
-    "cycle": 33.4,
+    "phases": 2,
+    "cycle": 14.8,
     "room": {
       "room": 2.53,
       "buses": 5,
@@ -403,17 +423,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4792,
+      "samples": 4777,
       "blocked": 0,
-      "stopped": 2175,
-      "speed": 0.49,
+      "yielding": 3,
+      "stopped": 798,
+      "speed": 0.86,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4798,
+      "samples": 4779,
       "blocked": 0,
-      "stopped": 2294,
-      "speed": 0.46,
+      "yielding": 10,
+      "stopped": 854,
+      "speed": 0.85,
       "inLink": 0
     }
   },
@@ -424,8 +446,8 @@
     "N": 24,
     "clusters": 2,
     "rings": 1,
-    "phases": 5,
-    "cycle": 33.4,
+    "phases": 2,
+    "cycle": 14.8,
     "room": {
       "room": 3.53,
       "buses": 8,
@@ -441,17 +463,19 @@
       "mixed": 0
     },
     "runBuses": {
-      "samples": 4795,
+      "samples": 4784,
       "blocked": 0,
-      "stopped": 2178,
-      "speed": 0.46,
+      "yielding": 6,
+      "stopped": 897,
+      "speed": 0.82,
       "inLink": 0
     },
     "runMixed": {
-      "samples": 4796,
+      "samples": 4787,
       "blocked": 0,
-      "stopped": 2148,
-      "speed": 0.47,
+      "yielding": 5,
+      "stopped": 868,
+      "speed": 0.84,
       "inLink": 0
     }
   }

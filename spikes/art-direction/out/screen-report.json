@@ -7,8 +7,8 @@
     "iconOverlaps": 0,
     "iconsVisible": true,
     "staticsInView": 5308,
-    "coverageKept": 0.8280918564972793,
-    "coloredPixels": 10843
+    "coverageKept": 0.8274781005071461,
+    "coloredPixels": 10845
   },
   "metro": [
     {
@@ -27,13 +27,13 @@
   "cars": [
     {
       "name": "高架",
-      "cars": 331,
+      "cars": 1081,
       "cut": 0,
       "examples": []
     },
     {
       "name": "丁字立交",
-      "cars": 384,
+      "cars": 859,
       "cut": 0,
       "examples": []
     }
