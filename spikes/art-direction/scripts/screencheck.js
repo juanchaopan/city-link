@@ -1,5 +1,6 @@
 // 按玩家真实看到的画面验收：手机竖屏视口，默认缩放或高架、立交的近景。node scripts/screencheck.js [views|cars]
-// views：play.html?n=128 默认缩放下，公共服务图标互不压住、绿黄红覆盖色没被盖掉，地铁线有几个像素粗。
+// views：play.html?n=128 默认缩放下，公共服务图标互不压住、绿黄红覆盖色没被盖掉，地铁线有几个像素粗，
+// 地铁图上的字只有线号：换乘和穿过不设站只用图形表示，不管缩放多少都不写字。
 // 读的是粒子实际的屏幕大小和画面像素，不是常量：常量写着多大不算数。地铁线沿法线数像素，取中位数，站点不算进粗细。
 // cars：高架和立交上的车，同一帧画三遍：只画车、只画桥面、车和桥面按真实顺序一起画。
 // 两处各取 CAR_SAMPLES 帧，隔 CAR_INTERVAL 毫秒一帧：排序成环时车只在经过接缝的那一两帧里被切，帧取少了看不到。
@@ -172,6 +173,17 @@ const measureLines = ({ lines, ratio }) => {
   });
 };
 
+/** 舞台上全部文字对象的内容，看不看得见都算：放大以后才显示的字也是字。 */
+const stageTexts = () => {
+  const texts = [];
+  const walk = (node) => {
+    if (typeof node.text === 'string') texts.push(node.text);
+    for (const child of node.children ?? []) walk(child);
+  };
+  walk(window.playParts.app.stage);
+  return texts;
+};
+
 async function metroCheck(city) {
   const page = await open(`n=${String(SIZE)}&view=metro&cars=0`);
   const lines = city.metro.lines.map(({ id, color, path }) => ({
@@ -180,9 +192,15 @@ async function metroCheck(city) {
     samples: lineSamples(path),
   }));
   const widths = await page.evaluate(measureLines, { lines, ratio: PIXEL_RATIO });
+  const numbers = new Set(lines.map(({ id }) => String(id)));
+  const texts = await page.evaluate(stageTexts);
   await page.screenshot({ path: 'out/screen-metro.png' });
   await page.close();
-  return lines.map(({ id }, index) => ({ id, width: widths[index] }));
+  return {
+    lines: lines.map(({ id }, index) => ({ id, width: widths[index] })),
+    texts: texts.length,
+    notLineNumbers: texts.filter((text) => !numbers.has(text)),
+  };
 }
 
 /** 一帧里每辆桥上的车有多少实心像素变成了桥面的颜色。 */
@@ -308,9 +326,13 @@ if (report.coverage) {
   if (coverageKept < MIN_COVERAGE_KEPT)
     failures.push(`覆盖色只留下 ${String(Math.round(coverageKept * 100))}%`);
 }
-for (const { id, width } of report.metro ?? []) {
-  if (width < MIN_LINE_PIXELS)
-    failures.push(`地铁 ${String(id)} 号线只有 ${width.toFixed(1)} 像素粗`);
+if (report.metro) {
+  for (const { id, width } of report.metro.lines) {
+    if (width < MIN_LINE_PIXELS)
+      failures.push(`地铁 ${String(id)} 号线只有 ${width.toFixed(1)} 像素粗`);
+  }
+  if (report.metro.notLineNumbers.length > 0)
+    failures.push(`地铁图上有线号以外的字：${report.metro.notLineNumbers.join('、')}`);
 }
 for (const { name, cut } of report.cars ?? []) {
   if (cut > 0) failures.push(`${name}上 ${String(cut)} 辆车被桥面切掉`);

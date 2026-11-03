@@ -5,8 +5,9 @@ import { screenOf } from './world.js';
 
 // 公共服务和地铁两个视图：在变暗的城市上盖一层图。交通视图在 trafficview.js。
 // 公共服务的颜色直接取配色表里的专用色，和建筑、图标牌是同一个颜色。
-// 全图时 128 城只有手机宽，世界尺寸的线和字都不到一个像素，所以地铁的线、站和字按屏幕像素保底；
+// 全图时 128 城只有手机宽，世界尺寸的线和字都不到一个像素，所以地铁的线、站和线号按屏幕像素保底；
 // 公共服务的名字这时连不成字，只会变成杂点，缩小到 LABEL_MIN_ZOOM 以下不显示。
+// 地铁图上的字只有线号。两条线交叉的格子只用图形区分：两条线都设站的画一个大白圈，只穿过的不画圈。
 
 const serviceColor = (use) => new Color(palettes.sunny.service[use]).toNumber();
 
@@ -21,9 +22,7 @@ const BADGE_RADIUS = 50;
 const BADGE_PIXELS = 9;
 const BADGE_FONT = 64;
 const BADGE_FONT_PIXELS = 12;
-const NAME_FONT = 46;
-const NAME_FONT_PIXELS = 11;
-const PASS_LABEL_MIN_ZOOM = 0.1;
+const OUTLINE = 0x1f3a4d;
 
 export function label(text, x, y, size, anchorY = 0) {
   const item = new Text({
@@ -83,18 +82,16 @@ export function metroView(city) {
   const g = new Graphics();
   root.addChild(g);
   const at = ([x, y]) => screenOf(x, y, 0);
-  const crossings = city.metro.crossings.map((crossing) => ({
-    ...at([crossing.x + 0.5, crossing.y + 0.5]),
-    interchange: crossing.interchange,
-    name: label(crossing.interchange ? '换乘站' : '穿过，不设站', 0, 0, NAME_FONT),
-  }));
+  const interchanges = city.metro.crossings
+    .filter((crossing) => crossing.interchange)
+    .map((crossing) => at([crossing.x + 0.5, crossing.y + 0.5]));
   const badges = city.metro.lines.map((line) => ({
     line,
     head: at(line.path[0]),
     number: label(String(line.id), 0, 0, BADGE_FONT, 0.5),
   }));
   const texts = new Container();
-  texts.addChild(...badges.map(({ number }) => number), ...crossings.map(({ name }) => name));
+  texts.addChild(...badges.map(({ number }) => number));
   root.addChild(texts);
 
   const drawLines = (zoom) => {
@@ -137,19 +134,12 @@ export function metroView(city) {
     }
   };
 
-  const drawCrossings = (zoom) => {
+  const drawInterchanges = (zoom) => {
     const radius = atLeast(INTERCHANGE_RADIUS, INTERCHANGE_PIXELS, zoom);
-    const scale = atLeast(1, NAME_FONT_PIXELS / NAME_FONT, zoom);
-    for (const { sx, sy, interchange, name } of crossings) {
-      if (interchange) {
-        g.circle(sx, sy, radius)
-          .fill(0xffffff)
-          .stroke({ color: 0x1f3a4d, width: radius * 0.3 });
-        g.circle(sx, sy, radius * 0.4).fill(0x1f3a4d);
-      }
-      name.visible = interchange || zoom >= PASS_LABEL_MIN_ZOOM;
-      name.scale.set(scale);
-      name.position.set(sx, sy + radius * 1.2);
+    for (const { sx, sy } of interchanges) {
+      g.circle(sx, sy, radius)
+        .fill(0xffffff)
+        .stroke({ color: OUTLINE, width: radius * 0.3 });
     }
   };
 
@@ -164,7 +154,7 @@ export function metroView(city) {
       drawLines(zoom);
       drawStations(zoom);
       drawBadges(zoom);
-      drawCrossings(zoom);
+      drawInterchanges(zoom);
     },
   };
 }

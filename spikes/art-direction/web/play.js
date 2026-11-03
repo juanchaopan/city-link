@@ -141,7 +141,7 @@ const LEGENDS = {
   traffic:
     '路面的颜色是负荷，绿到红越来越堵；箭头是车流，跑得越慢越堵。点一个物业看它的车走哪些路。',
   coverage: `绿：六种服务都到位；黄、橙、红：缺 1、2、3 种以上。住宅盲区 ${String(Math.round(city.coverage.blindShare * 100))}%。${city.parcels.services.shortages.length > 0 ? `缺少用地：${[...new Set(city.parcels.services.shortages.map((item) => item.name))].join('、')}` : ''}`,
-  metro: '三条线，两个换乘站，一处穿过不设站。每条线是一根线或一个环，不分叉。',
+  metro: '每种颜色是一条线，一根线或一个环，不分叉。小圆点是车站，大白圈是几条线都停的车站。',
 };
 
 const SCENE_ALPHA = { traffic: 0.45, coverage: 0.4, metro: 0.22 };
