@@ -1,0 +1,92 @@
+{
+  "游戏视角，上限 300 辆": {
+    "loadSeconds": 51,
+    "heapMb": 99,
+    "sprites": 132645,
+    "staticsInView": 569,
+    "zoom": 0.42,
+    "atlas": [
+      4096,
+      7935
+    ],
+    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 313,
+    "p50fps": 64,
+    "p95fps": 50,
+    "worstFps": 39,
+    "cars": 300,
+    "sortMs": 5.400000095367432
+  },
+  "半图缩小，不画车": {
+    "loadSeconds": 51,
+    "heapMb": 101,
+    "sprites": 132645,
+    "staticsInView": 5798,
+    "zoom": 0.078,
+    "atlas": [
+      4096,
+      7935
+    ],
+    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 484,
+    "p50fps": 103,
+    "p95fps": 66,
+    "worstFps": 34,
+    "cars": 0,
+    "sortMs": 2.299999952316284
+  },
+  "默认视野，不画车": {
+    "loadSeconds": 51,
+    "heapMb": 109,
+    "sprites": 132645,
+    "staticsInView": 20881,
+    "zoom": 0.020000000000000004,
+    "atlas": [
+      4096,
+      7935
+    ],
+    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 289,
+    "p50fps": 63,
+    "p95fps": 41,
+    "worstFps": 37,
+    "cars": 0,
+    "sortMs": 2.299999952316284
+  },
+  "鸟瞰全图（上限 300 辆，缩小后不画车）": {
+    "loadSeconds": 51,
+    "heapMb": 103,
+    "sprites": 132645,
+    "staticsInView": 25720,
+    "zoom": 0.01043701171875,
+    "atlas": [
+      4096,
+      7935
+    ],
+    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 243,
+    "p50fps": 48,
+    "p95fps": 38,
+    "worstFps": 33,
+    "cars": 0,
+    "sortMs": 2.299999952316284
+  },
+  "游戏视角，上限 100 辆": {
+    "loadSeconds": 50,
+    "heapMb": 98,
+    "sprites": 132645,
+    "staticsInView": 563,
+    "zoom": 0.42,
+    "atlas": [
+      4096,
+      7935
+    ],
+    "gpu": "ANGLE (AMD, AMD Radeon 780M Graphics (0x000015BF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 526,
+    "p50fps": 109,
+    "p95fps": 86,
+    "worstFps": 23,
+    "cars": 100,
+    "sortMs": 2.5999999046325684
+  }
+}
