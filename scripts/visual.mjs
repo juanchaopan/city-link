@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // 视觉回归测试。基准图和操作系统、字体有关，所以统一在 Playwright 官方镜像里生成和比对。
 // 仓库复制到容器里运行，避免容器碰到本机的 node_modules；基准图和差异图再复制回来。
+// 镜像里的 Node 版本跟着镜像走，不一定带 corepack，所以按根目录 packageManager 写的版本用 npm 装 pnpm。
 // 用法：node scripts/visual.mjs            和基准图比对
 //       node scripts/visual.mjs --update   重新生成基准图
 import { spawnSync } from 'node:child_process';
@@ -9,6 +10,7 @@ import path from 'node:path';
 
 const CLIENT = 'apps/client';
 const update = process.argv.includes('--update');
+const { packageManager } = JSON.parse(readFileSync('package.json', 'utf8'));
 const { devDependencies } = JSON.parse(readFileSync(`${CLIENT}/package.json`, 'utf8'));
 const image = `mcr.microsoft.com/playwright:v${devDependencies['@playwright/test']}-noble`;
 
@@ -17,7 +19,7 @@ set -e
 mkdir -p /work
 tar -C /repo --exclude=node_modules --exclude=dist --exclude=.git --exclude=.claude -cf - . | tar -C /work -xf -
 cd /work
-corepack enable
+npm install -g --silent ${packageManager}
 CI=1 pnpm install --frozen-lockfile --ignore-scripts
 pnpm rebuild esbuild
 status=0
