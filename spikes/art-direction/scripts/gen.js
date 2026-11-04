@@ -1,14 +1,16 @@
 // 在有显卡的无头 Chrome 里烘焙图集，写到 out/，并生成风格包清单。
-// node scripts/gen.js sunny 只烘一套调色，内存紧张时一次一套。图集里放 32、64、128 三种地图用到的全部精灵。
+// node scripts/gen.js sunny 只烘一套调色，内存紧张时一次一套。图集里放 32、64、128、256 四种地图用到的全部精灵。
+// 收集精灵要在页面里把每种地图生成一遍，256 的城市一座要一分多钟，所以整个过程要好几分钟。
 import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { COMBOS } from '../web/sim/combos.js';
 import { startServer } from './serve.js';
 
 const PORT = 4194;
+const KEYS_TIMEOUT = 20 * 60 * 1000;
 const argv = process.argv.slice(2);
 const palettes = argv.length > 0 ? argv : ['sunny', 'dusk', 'dayOnly'];
-const sizes = [32, 64, 128];
+const sizes = [32, 64, 128, 256];
 
 mkdirSync('out', { recursive: true });
 const server = await startServer(PORT);
@@ -18,6 +20,7 @@ const browser = await chromium.launch({
   args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'],
 });
 const page = await browser.newPage();
+page.setDefaultTimeout(KEYS_TIMEOUT);
 page.on('pageerror', (error) => console.error('页面错误', error));
 page.on('console', (message) => {
   if (message.type() === 'error' && !message.text().includes('404')) console.error(message.text());
