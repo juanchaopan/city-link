@@ -7,33 +7,37 @@
     "iconOverlaps": 0,
     "iconsVisible": true,
     "staticsInView": 5308,
-    "coverageKept": 0.8274781005071461,
-    "coloredPixels": 10845
+    "coverageKept": 0.8247099981587185,
+    "coloredPixels": 10862
   },
-  "metro": [
-    {
-      "id": 1,
-      "width": 3
-    },
-    {
-      "id": 2,
-      "width": 3
-    },
-    {
-      "id": 3,
-      "width": 3
-    }
-  ],
+  "metro": {
+    "lines": [
+      {
+        "id": 1,
+        "width": 3
+      },
+      {
+        "id": 2,
+        "width": 3
+      },
+      {
+        "id": 3,
+        "width": 3
+      }
+    ],
+    "texts": 3,
+    "notLineNumbers": []
+  },
   "cars": [
     {
       "name": "高架",
-      "cars": 1081,
+      "cars": 1093,
       "cut": 0,
       "examples": []
     },
     {
       "name": "丁字立交",
-      "cars": 859,
+      "cars": 868,
       "cut": 0,
       "examples": []
     }
