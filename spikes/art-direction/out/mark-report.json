@@ -1,0 +1,180 @@
+{
+  "totals": {
+    "legs": 3924,
+    "linePixels": 0,
+    "legsWithLines": 0,
+    "paintedOffDeck": 0
+  },
+  "rows": [
+    {
+      "name": "T 字",
+      "legs": 3,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "十字",
+      "legs": 4,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "四车道十字",
+      "legs": 4,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "45° 的 T",
+      "legs": 3,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "直斜交叉",
+      "legs": 4,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "五向",
+      "legs": 5,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "六向",
+      "legs": 6,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "七向",
+      "legs": 7,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "八向",
+      "legs": 8,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "相邻路口",
+      "legs": 6,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "相邻路口·公交",
+      "legs": 6,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "高地上的路口",
+      "legs": 4,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "坡上的路",
+      "legs": 0,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "斜穿坡的路",
+      "legs": 0,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "锐角小三角地块",
+      "legs": 4,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "穷举 564 个场景",
+      "legs": 2368,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    },
+    {
+      "name": "全图 128×128",
+      "legs": 1492,
+      "linePixels": 0,
+      "legsWithLines": 0,
+      "paintedOffDeck": 0,
+      "examples": [],
+      "offDeckExamples": [],
+      "pass": true
+    }
+  ]
+}
