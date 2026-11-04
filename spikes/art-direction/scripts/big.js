@@ -1,14 +1,15 @@
-// 128×128 试验，只测量，不改任何规格。node --max-old-space-size=900 scripts/big.js
+// 64、128、256 三种城市的规模试验，只测量，不改任何规格。node --expose-gc --max-old-space-size=4000 scripts/big.js
 // 量生成时间、街区划分时间、物体和精灵数、堆内存、存档大小的估算，写到 out/big-report.json。
-// 帧率在浏览器里量：先用 BIG=1 node scripts/gen.js sunny 烘进 128 用到的精灵，再 BIG=1 FPS=1 node scripts/shots.js。
+// 堆内存是城市生成完、做过一次垃圾回收后，城市本身还占着的内存。
+// 帧率在浏览器里量：先用 node scripts/gen.js sunny 烘图集（图集里有这几种城市用到的全部精灵），再 FPS=1 node scripts/shots.js。
 import { writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { generateCity, keysOf } from '../web/sim/city.js';
 
-const SIZES = [64, 128];
+const SIZES = [64, 128, 256];
 const VIEW_WIDTH = 390;
 const VIEW_HEIGHT = 844;
-const DEFAULT_ZOOM = { 64: 0.078, 128: 0.04 };
+const DEFAULT_ZOOM = { 64: 0.078, 128: 0.04, 256: 0.02 };
 
 /** 存档里要留的东西：路网、分区和物业，别的都能重新生成。 */
 function saveBytes(city) {
@@ -62,10 +63,15 @@ function spritesInView(city, zoom) {
   return { ground, objects, total: ground + objects };
 }
 
+/** 回收垃圾后的已用堆内存，单位兆字节。没开 --expose-gc 时只是当前读数。 */
+function heapMb() {
+  globalThis.gc?.();
+  return process.memoryUsage().heapUsed / 1048576;
+}
+
 const report = {};
 for (const N of SIZES) {
-  globalThis.gc?.();
-  const before = process.memoryUsage().heapUsed;
+  const before = heapMb();
   const started = performance.now();
   const city = generateCity(N);
   const ms = performance.now() - started;
@@ -74,7 +80,7 @@ for (const N of SIZES) {
     generateMs: Math.round(ms),
     partitionMs: Math.round(stats.millis),
     enumerated: stats.enumerated,
-    heapMb: Math.round((process.memoryUsage().heapUsed - before) / 1048576),
+    heapMb: Math.round(heapMb() - before),
     parcels: city.parcels.parcels.length,
     roads: city.roads.size,
     objects: city.objects.length,
