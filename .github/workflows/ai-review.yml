@@ -32,7 +32,7 @@ jobs:
       tier: ${{ steps.classify.outputs.tier }}
       approved: ${{ steps.classify.outputs.approved }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.sha }}
       - id: classify
@@ -66,7 +66,7 @@ jobs:
     env:
       MAX_ROUNDS: 3
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
