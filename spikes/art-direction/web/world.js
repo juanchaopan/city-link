@@ -13,6 +13,7 @@ import { sceneItems } from './sim/sceneitems.js';
 
 // 把图集和城市数据拼成 Pixi 场景。
 // 地面分层绘制：地表、田块、人行道、路缘、车道、路面标记，路面的层序保证人行道不会盖到车道上。
+// 路面标记分两遍：全城停车线以内的路面色底先画完，再画斑马线和停车线，相邻路口的底盖不到别的腿的标记。
 // 路面以上的东西都在一串粒子里，按遮挡顺序画：建筑、灯杆、桥墩、桥面和车用同一条规则比较，
 // 所以灯杆不会被路面盖住，车从桥下穿过时被桥面挡住，车绕到楼后面时被楼挡住。
 // 每帧只处理视野和周边一圈的物体：视野外的既不排序也不进粒子串。视野在周边一圈以内移动时不换物体，
@@ -291,7 +292,8 @@ export function buildWorld(
     addCells(city.walks);
     addCells(city.curbs);
     addCells(city.decks);
-    addCells(city.marks);
+    addCells(city.marks.filter((entry) => entry.under));
+    addCells(city.marks.filter((entry) => !entry.under));
   }
 
   const world = new Container();

@@ -1,3 +1,4 @@
+import { blankSprites } from './blanks.js';
 import { junctionPlan, markSprites } from './junctions.js';
 import { planRoundabouts } from './roundabout.js';
 import { roadSprites } from './roadsprites.js';
@@ -6,6 +7,7 @@ import { surfaceOf } from './surface.js';
 
 // 从原始地形和路网走到能画、能跑的世界：地形让路、改环岛、切路面精灵、算路面高度、规划路口。
 // 城市生成和验收场景走同一条流程，检查看到的就是游戏里的样子。
+// 路面标记的顺序就是画的顺序：停车线以内的路面色底在前，斑马线和停车线在后。
 
 /** 地形让路。corner(x, y) 是原来的角点高度，返回改过的高度和用它查询的函数。 */
 export function terrainOf({ N, roads, corner, isWater }) {
@@ -54,6 +56,6 @@ export function roadWorld({ N, roads, cornersOf, levelOf, isFlat, isWater, gates
     rings,
     blockedRings: blocked,
     junctions,
-    marks: markSprites(junctions.legs),
+    marks: [...blankSprites(junctions), ...markSprites(junctions.legs)],
   };
 }

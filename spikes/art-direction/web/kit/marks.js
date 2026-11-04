@@ -3,18 +3,17 @@ import { Builder, hashString, linear, shade } from './builder.js';
 import { tree } from './objects.js';
 import { LAYER, roadMesh } from './roadshader.js';
 import { DIRECTIONS, ROAD_SPEC, spokesOf } from '../sim/network.js';
-import { CROSSING, STOP_GAP } from '../sim/junctions.js';
+import { BLANK_INSET, BLANK_LENGTHS, STOP_DEPTH } from '../sim/blanks.js';
+import { CROSSING } from '../sim/junctions.js';
 import { RING } from '../sim/roundabout.js';
 
-// 路面上的标记和环岛。斑马线和停车线单独成一层，画在车道上面，位置由 sim/junctions.js 算好，
+// 路面上的标记和环岛。斑马线、停车线和它们下面的路面色底单独成一层，画在车道上面，位置由 sim 算好，
 // 所以它们可以退到下一格，不受路面精灵的格子限制。
-// 路面精灵的中心线和车道线不知道斑马线落在哪里，斑马线退到别的位置时它们会伸进来。
-// 所以斑马线先铺一层路面色的底，从内侧到停车线都盖住，标线在这段之前结束。
+// 路面精灵的中心线和车道线不知道停车线在哪里，底把停车线以内的标线盖掉，见 sim/blanks.js。
 
 const MARK_Y = 0.006;
-const UNDERLAY_Y = 0.004;
+const BLANK_Y = 0.004;
 const STRIPE = 0.036;
-const STOP_DEPTH = 0.018;
 const ISLAND_RADIUS = 0.9;
 const ISLAND_Y = 0.05;
 const EDGE_FOOT = 0.03;
@@ -37,22 +36,30 @@ function quad(c, x0, x1, v0, v1, color, y = MARK_Y) {
   );
 }
 
-/** 斑马线：一条条平行于路的白条，铺满整个车行道。dir 只分四个朝向，两头对称，底也是两头一样长。 */
+/** 斑马线：一条条平行于路的白条，铺满整个车行道。dir 只分四个朝向，两头对称。 */
 export function buildCrossing(kind, dir, P) {
   const b = new Builder(hashString(`crossing${kind}${String(dir)}`));
   const half = ROAD_SPEC[kind].deck / 2;
   const color = linear(P.road.line);
-  const asphalt = linear(P.road.asphalt);
-  const reach = CROSSING / 2 + STOP_GAP - STOP_DEPTH / 2;
   const count = Math.floor((half * 2) / (STRIPE * 2));
   const pitch = (half * 2) / count;
   b.at(0, 0, 0, rotationOf(dir), (c) => {
-    quad(c, -reach, reach, -half, half, asphalt, UNDERLAY_Y);
     for (let i = 0; i < count; i += 1) {
       const v = -half + pitch * (i + 0.25);
       quad(c, -CROSSING / 2, CROSSING / 2, v, v + pitch / 2, color);
     }
   });
+  return b;
+}
+
+/** 停车线以内的路面色底：车行道两边各收进 BLANK_INSET、沿腿长 BLANK_LENGTHS[index] 的一块路面。dir 只分四个朝向。 */
+export function buildBlank(kind, dir, index, P) {
+  const b = new Builder(hashString(`blank${kind}${String(dir)}${String(index)}`));
+  const half = ROAD_SPEC[kind].deck / 2 - BLANK_INSET;
+  const reach = BLANK_LENGTHS[index] / 2;
+  b.at(0, 0, 0, rotationOf(dir), (c) =>
+    quad(c, -reach, reach, -half, half, linear(P.road.asphalt), BLANK_Y),
+  );
   return b;
 }
 

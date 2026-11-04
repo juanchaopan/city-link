@@ -1,6 +1,6 @@
 import { hashString } from './builder.js';
 import { addHeadlightBeam, buildPiece, buildPierSprite, buildViaduct } from './interchange.js';
-import { buildCrossing, buildRoundabout, buildStopLine } from './marks.js';
+import { buildBlank, buildCrossing, buildRoundabout, buildStopLine } from './marks.js';
 import { buildModule } from './modules.js';
 import { buildObject } from './objects.js';
 import { buildLamp, buildPole, faceVisible } from './signal.js';
@@ -19,13 +19,14 @@ import {
   LAYER,
   waterLevel,
 } from './tiles.js';
+import { BLANK_LENGTHS } from '../sim/blanks.js';
 import { SERVICES } from '../sim/services.js';
 import { cornersOfShape } from '../sim/surface.js';
 
 // 精灵的名字决定它的画法，生成器只需要知道名字。类别用来分别统计数量和耗时。
 // 路面名字：rw、rc、rd 是人行道、路缘、车道三层，r 是三层合一，只用于界面缩略图；坡上的路加前缀 s。
 // 路面名字的第二段是普通路方向位，有双向四车道时写成 普通路_四车道，第三段是高速方向位。
-// 路面标记：xw 是斑马线，sl 是停车线，rb 是整个环岛。
+// 路面标记：xw 是斑马线，sl 是停车线，xb-种类-朝向-长度序号 是停车线以内的路面色底，rb 是整个环岛。
 // 高架：ev-走向-起点高度-终点高度，高度是百分之一层。ixp-模板-序号 是立交的一小块，
 // pr-高度-方向-横梁宽度 是一根桥墩，横梁宽度是百分之一格。
 // 这三种用同一块画布，渲染目标不用反复换尺寸，烘焙时显存不会一阵一阵涨。
@@ -70,6 +71,8 @@ const ROAD_LAYERS = {
   src: LAYER.curb,
   srd: LAYER.deck,
 };
+
+const MARK_BOX = { group: '路面标记', w: 240, h: 160, anchorY: 80, lit: false };
 
 const gradeOf = (text) => text.split('_').map((value) => Number(value.replace('n', '-')) / 1000);
 
@@ -159,13 +162,12 @@ export function specFor(key, P) {
   }
   if (kind === 'xw' || kind === 'sl') {
     const draw = kind === 'xw' ? buildCrossing : buildStopLine;
+    return { ...MARK_BOX, build: () => draw(parts[1], Number(parts[2]), P) };
+  }
+  if (kind === 'xb') {
     return {
-      group: '路面标记',
-      w: 240,
-      h: 160,
-      anchorY: 80,
-      lit: false,
-      build: () => draw(parts[1], Number(parts[2]), P),
+      ...MARK_BOX,
+      build: () => buildBlank(parts[1], Number(parts[2]), Number(parts[3]), P),
     };
   }
   if (kind === 'rb') {
@@ -360,6 +362,7 @@ export function bakeKey(baker, key, P) {
 
 const ROTATIONS = [0, 1, 2, 3, 4, 5, 6, 7];
 const MARK_KINDS = ['road', 'arterial'];
+const MARK_FACINGS = [0, 1, 2, 3];
 
 /** 一批不进示例城市、但要进图集的精灵：主界面的缩略图、信号灯、动态车流用的八个方向的车、全部路面标记和公共设施。 */
 export const EXTRA_KEYS = [
@@ -376,6 +379,11 @@ export const EXTRA_KEYS = [
     ROTATIONS.map((rotation) => `car-${String(color)}-${String(rotation)}`),
   ),
   ...ROTATIONS.map((rotation) => `bus-${String(rotation)}`),
-  ...MARK_KINDS.flatMap((kind) => [0, 1, 2, 3].map((dir) => `xw-${kind}-${String(dir)}`)),
+  ...MARK_KINDS.flatMap((kind) => MARK_FACINGS.map((dir) => `xw-${kind}-${String(dir)}`)),
   ...MARK_KINDS.flatMap((kind) => ROTATIONS.map((dir) => `sl-${kind}-${String(dir)}`)),
+  ...MARK_KINDS.flatMap((kind) =>
+    MARK_FACINGS.flatMap((dir) =>
+      BLANK_LENGTHS.map((_, index) => `xb-${kind}-${String(dir)}-${String(index)}`),
+    ),
+  ),
 ];
