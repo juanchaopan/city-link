@@ -3,7 +3,7 @@ packages:
   - libs/*
 
 catalog:
-  '@types/node': ^24
+  '@types/node': ^26
   typescript: ~6.0.3
   vitest: ^5.0.5
   zod: ^4.6.7
