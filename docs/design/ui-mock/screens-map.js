@@ -1,6 +1,6 @@
 // 点地图上的东西（E1 至 E12）和视图（F0 至 F8 及分项）。
 // 示例城市是 4 级：气泡里的星级、品种和奖励建筑都不超过 4 级能有的（工业、商业最高二星，粮食一星）。
-import { q, MAIN, NB, base, built, circleIcon, isoBox } from './screens-common.js';
+import { q, MAIN, NB, base, built, circleIcon, isoBox, states } from './screens-common.js';
 import { ROW2, modeTop, coBack, row2, subBtn, carBtn, tri, grey, nbName, port, chip, navyTag, BROKEN } from './parts-b.js';
 
 const EDU_COL = ['#c7c2b8', '#9ccf6a', '#2a9d8f', '#3b5ba9'];
@@ -93,7 +93,15 @@ const flow = (a, pts, w) => a.svg(a.line(pts, `stroke="#13303d" stroke-width="${
 const TOLL = '<span style="display:inline-grid;place-items:center;height:20px;padding:0 6px;border-radius:6px;background:#ffd76a;color:#4a2c00;font-size:11px;font-weight:900">过路</span>';
 const tollTag = (text) => `<span class="cap emo" style="padding:0 10px 0 6px;height:28px;font-size:13px">${TOLL}${text}</span>`;
 const lineDot = (col) => `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${col};border:2px solid #fff;box-shadow:0 0 0 1px #8a5a0c"></span>`;
+/** 共用站气泡上方的线路色块：每条线一个，写线号；选中的一条描金光，别的淡一些。 */
+const lineChip = (n, col, on = false) => `<span style="display:inline-grid;place-items:center;min-width:34px;height:24px;padding:0 6px;border-radius:7px;background:${col};color:#fff;font-weight:900;font-size:13px;text-shadow:0 1px 0 rgba(0,0,0,.35);${on ? 'box-shadow:0 0 0 2.5px #fff,0 0 0 4.5px #ffd76a,0 0 10px #ffd34d' : 'opacity:.6'}">${n}</span>`;
 const BUS = [[19.5, 23.5], [29.5, 23.5], [29.5, 32.5], [19.5, 32.5]];
+const BUS_COL = '#e07a1f';
+/** 和 2 号线在 BUS[2] 那一站相交的 5 号线。 */
+const BUS5 = [[22.5, 39.5], BUS[2], [37.5, 27.5]];
+const BUS5_COL = '#2a8fd6';
+/** 换路口的价格：按新造一个环岛算。 */
+const SWAP = '换成 ⭕ 环岛 · ¥600';
 
 export const MAP = [
   {
@@ -230,40 +238,54 @@ export const MAP = [
   {
     id: 'E8', title: '点路口', from: 'B1 点一个路口',
     query: MAIN,
-    notes: ['现在是红绿灯还是环岛', '换成另一种：画面上的路口跟着换，按新造算价', '三四条路默认红绿灯，五条以上默认环岛'],
+    notes: ['现在是红绿灯还是环岛', '换成另一种：按新造算价，按钮上写价格；点了画面上的路口跟着换', '钱不够时这个按钮变灰，价格照写（虚线框里的样子）', '三四条路默认红绿灯，五条以上默认环岛'],
     draw(a) {
       const [jx, jy] = [34, 32];
       a.svg(a.cellDiamond(jx, jy, 'fill="rgba(255,236,150,.5)" stroke="#ffd76a" stroke-width="3"'));
       base(a);
-      const b = a.bubble(jx + 0.5, jy + 0.5, `<div class="t emo">🚦 红绿灯</div><div class="bb">${a.btn('换成 ⭕ 环岛', 'blue')}</div>`, { lift: 10 });
+      const b = a.bubble(jx + 0.5, jy + 0.5, `<div class="t emo">🚦 红绿灯</div><div class="bb">${a.btn(SWAP, 'blue')}</div>`, { lift: 10 });
+      const st = states(a, '钱不够时', [['', a.btn(SWAP, 'gray off')]], 'left:20px;top:590px');
+      const bt = b.querySelector('.btn');
       side(a, 1, b, 16);
-      a.coAt(2, b.querySelector('.btn'), b.querySelector('.btn').offsetWidth + 14, 16);
-      a.co(3, 60, 640);
+      a.coAt(2, bt, bt.offsetWidth + 14, 16);
+      a.coAt(3, st, st.offsetWidth + 14, 26);
+      a.co(4, ...a.P(jx + 1.6, jy + 1.4));
     },
   },
   {
     id: 'E9', title: '点公交站或地铁站', from: 'B1 点一个公交站或地铁站',
     query: q({ zoom: 0.28, x: 24.5, y: 28 }),
-    notes: ['线路颜色、每天坐车的人', '整条线路高亮', '改线路：进 D13（公交）或 D14（地铁）', '拆掉整条线：红色，按住约 1 秒'],
+    notes: ['线路颜色、每天坐车的人', '选中的这条线整条高亮，别的线淡下去', '改线路：进 D13（公交）或 D14（地铁）', '拆掉整条线：红色，按住约 1 秒', '几条线共用的站：气泡上方一排线路色块，每条线一个，选中的一条高亮，点色块换一条；改线路和拆线都对选中的这一条。图里这站是 2 号线和 5 号线共用的'],
     draw(a) {
       a.fade(0.6);
+      for (let i = 0; i < BUS5.length - 1; i += 1) {
+        const seg = a.simplify(a.roadPath(BUS5[i], BUS5[i + 1]));
+        a.svg(a.line(seg, 'stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity=".7"') + a.line(seg, `stroke="${BUS5_COL}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".75"`));
+      }
+      for (const [x, y] of [BUS5[0], BUS5[2]]) { const [sx, sy] = a.P(x, y); a.svg(`<circle cx="${sx}" cy="${sy}" r="8" fill="#fff" stroke="${BUS5_COL}" stroke-width="3" opacity=".8"/>`); }
       const loop = [...BUS, BUS[0]];
       for (let i = 0; i < loop.length - 1; i += 1) {
         const seg = a.simplify(a.roadPath(loop[i], loop[i + 1]));
-        a.svg(a.line(seg, 'stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"') + a.line(seg, 'stroke="#e07a1f" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"'));
+        a.svg(a.line(seg, 'stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"') + a.line(seg, `stroke="${BUS_COL}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"`));
       }
-      for (const [x, y] of BUS) { const [sx, sy] = a.P(x, y); a.svg(`<circle cx="${sx}" cy="${sy}" r="11" fill="#fff" stroke="#e07a1f" stroke-width="3.5"/><text x="${sx}" y="${sy + 5}" text-anchor="middle" font-size="13">🚌</text>`); }
       const stop = BUS[2];
+      for (const s of BUS) {
+        if (s === stop) continue;
+        const [sx, sy] = a.P(...s);
+        a.svg(`<circle cx="${sx}" cy="${sy}" r="11" fill="#fff" stroke="${BUS_COL}" stroke-width="3.5"/><text x="${sx}" y="${sy + 5}" text-anchor="middle" font-size="13">🚌</text>`);
+      }
       const [sx, sy] = a.P(...stop);
-      a.svg(`<circle cx="${sx}" cy="${sy}" r="17" fill="none" stroke="#ffd76a" stroke-width="4"/>`);
+      a.svg(`<circle cx="${sx}" cy="${sy}" r="15" fill="#fff" stroke="${BUS5_COL}" stroke-width="3.5"/><circle cx="${sx}" cy="${sy}" r="11" fill="#fff" stroke="${BUS_COL}" stroke-width="3.5"/><text x="${sx}" y="${sy + 5}" text-anchor="middle" font-size="13">🚌</text><circle cx="${sx}" cy="${sy}" r="21" fill="none" stroke="#ffd76a" stroke-width="4"/>`);
       base(a);
-      const b = a.bubble(...stop, `<div class="t emo">${lineDot('#e07a1f')} 公交 2 号线</div>${big('👥 每天 640')}<div class="bb">${a.btn('改线路', 'blue')}<span class="btn red hold"><i class="fill" style="width:30%"></i><span>按住 拆线</span></span></div>`, { lift: 18 });
+      const b = a.bubble(...stop, `<div class="lines" style="display:flex;gap:8px;margin:0 0 8px;padding:3px">${lineChip('2', BUS_COL, true)}${lineChip('5', BUS5_COL)}</div><div class="t emo">${lineDot(BUS_COL)} 公交 2 号线</div>${big('👥 每天 640')}<div class="bb">${a.btn('改线路', 'blue')}<span class="btn red hold"><i class="fill" style="width:30%"></i><span>按住 拆线</span></span></div>`, { lift: 22 });
       const bs = b.querySelectorAll('.btn');
-      side(a, 1, b, 30);
+      const chips = b.querySelector('.lines');
+      side(a, 1, b, 62);
       const [lx, ly] = a.P(...BUS[3]);
       a.co(2, lx + 18, ly + 22);
       a.coAt(3, bs[0], 20, bs[0].offsetHeight + 14);
       a.coAt(4, bs[1], bs[1].offsetWidth - 20, bs[1].offsetHeight + 14);
+      a.coAt(5, chips.lastElementChild, chips.lastElementChild.offsetWidth + 18, 12);
     },
   },
   {
@@ -348,7 +370,7 @@ export const MAP = [
   {
     id: 'F1', title: '视图：交通', from: 'F0 选交通；或 C4 点通勤',
     query: q({ view: 'traffic', zoom: 0.3, x: 32, y: 33 }),
-    notes: ['左上返回：回到进来的那一层（F0 视图托盘，或 C4）；点视图名展开小托盘，直接切到别的视图', '分项：全部、公交客流（4 级）、货运', '路按负荷着色，绿到红越来越堵；路上的小箭头是车流', '楼里的淡色粗扁箭头只在放大到街道档、或点了这栋楼时显示，指向它出入口所在的路', '图例只有色块', '点路或楼照样冒气泡，气泡先写负荷'],
+    notes: ['左上返回：回到进来的那一层（F0 视图托盘，或 C4）；点视图名展开小托盘，直接切到别的视图', '分项：全部、公交客流（4 级）、货运', '路按负荷着色，绿到红越来越堵；路上的小箭头是车流', '楼里的淡色粗扁箭头只在放大到街道档、或点了这栋楼时显示，指向它出入口所在的路', '图例只有色块', '点路冒 E3 的气泡（车道和负荷）；点楼冒和平时一样的气泡，这里是一栋商业楼，和 E2 一样写品种、星和岗位，没有负荷条'],
     draw(a) {
       const p = a.near(2, 30, 36, built);
       const r = a.roadNear(p.px, p.py);
@@ -358,7 +380,7 @@ export const MAP = [
       a.svg(a.poly([[p.px + ux * 0.9, p.py + uy * 0.9], [p.px - uy * 0.6, p.py + ux * 0.6], [p.px + uy * 0.6, p.py - ux * 0.6]], 'fill="rgba(255,255,255,.85)" stroke="#13303d" stroke-width="2"'));
       const top = viewTop(a, '🚗', '交通', ['全部', '🚌', '🚚']);
       const leg = a.add('<div class="legend"><i style="background:#4fb06a"></i><i style="background:#f2b632"></i><i style="background:#e0533d"></i></div>');
-      const b = a.bubble(p.px, p.py, '<div class="t emo">🏬 商业</div><div class="meter"><i style="width:64%;background:linear-gradient(#ffd27a,#f2b632)"></i></div>', { lift: 24 });
+      const b = a.bubble(p.px, p.py, `<div class="t emo">🏬 超市 ${a.stars(2, 2)}</div>${big('💼 36 / 40')}<div class="bb">${carBtn()}</div>`, { lift: 24 });
       coBack(a, 1, top);
       a.coAt(2, top.sub(2), top.sub(2).offsetWidth + 12, 20);
       a.co(3, ...a.P(34, 27.5));
@@ -448,17 +470,23 @@ export const MAP = [
   {
     id: 'F3', title: '视图：水电燃气', from: 'F0 选水电燃气；或 C4 点水电燃气',
     query: q({ zoom: 0.24, x: 34, y: 33 }),
-    notes: ['三根进度条浮在地图上，颜色固定：水蓝、电黄、燃气橙；满了外框变红', '有供应的楼着蓝色；断了的楼变灰、一闪一闪，楼头上冒缺的那样的小图标。这里燃气不够，只有住宅要燃气，所以离燃气厂最远的那片住宅先停', '厂的位置一圈圈往外扩；城中间这座水厂不挨水面，是地下水厂', '三样画在同一张图上，不分页'],
+    notes: ['哪一片断供了，这一片的楼就变灰、整片一闪一闪，楼头上冒缺的那样的小图标；视图上不浮进度条。这里燃气不够，只有住宅要燃气，所以离燃气厂最远的那片住宅先停', '有供应的楼着蓝色', '厂的位置一圈圈往外扩；城中间这座水厂不挨水面，是地下水厂', '三样画在同一张图上，不分页'],
     draw(a) {
       a.fade(0.4);
       const gas = [21.6, 25.1];
       const grays = [];
+      const blues = [];
       for (const p of a.parcels.filter((x) => x.zone >= 1 && x.zone <= 3)) {
-        if (p.zone === 1 && p.py >= 40 && p.px < 40) {
-          grays.push(p);
-          a.svg(a.parcelShape(p, 'fill="rgba(160,168,172,.95)" stroke="#fff" stroke-width="1.5"'));
-          a.label(p.px, p.py - 0.8, '<span class="emo" style="display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #e07a3f;font-size:12px">🔥</span>');
-        } else a.svg(a.parcelShape(p, 'fill="rgba(70,150,214,.8)"'));
+        if (p.zone === 1 && p.py >= 40 && p.px < 40) grays.push(p);
+        else {
+          blues.push(p);
+          a.svg(a.parcelShape(p, 'fill="rgba(70,150,214,.8)"'));
+        }
+      }
+      for (const p of grays) a.svg(a.parcelShape(p, 'fill="none" stroke="#fff3c4" stroke-width="7" stroke-linejoin="round" opacity=".55"'));
+      for (const p of grays) {
+        a.svg(a.parcelShape(p, 'fill="rgba(160,168,172,.95)" stroke="#fff" stroke-width="1.5"'));
+        a.label(p.px, p.py - 0.8, '<span class="emo" style="display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #e07a3f;font-size:12px">🔥</span>');
       }
       isoBox(a, gas[0] - 1, gas[1] - 0.9, 2, 1.8, 18, ['#f6d6b4', '#d99a6a', '#b87a4a']);
       const plants = [...a.parcels.filter((p) => p.zone === 5 && (p.use === 'power' || p.use === 'water')).map((p) => [p.px, p.py, p.use === 'power' ? '⚡' : '💧']), [...gas, '🔥']];
@@ -470,10 +498,10 @@ export const MAP = [
       const [wx, wy] = a.P(water[0], water[1]);
       a.tag('地下水厂', wx, wy - 44);
       viewTop(a, UTIL, '水电燃气');
-      const fb = a.add(`<div class="floatbars emo" style="top:${ROW2}px">${[['💧', 72, '#5aa9d6'], ['⚡', 91, '#f2c94c'], ['🔥', 100, '#f08a3c']].map(([e, p, c]) => `<div style="${p >= 100 ? 'border-color:#e5332a;box-shadow:0 0 0 2px #e5332a' : ''}">${e}<div class="meter"><i style="width:${p}%;background:${c}"></i></div></div>`).join('')}</div>`);
-      a.coAt(1, fb, -14, 20);
       const g = onScreen(a, grays, 90, 470);
-      if (g) a.co(2, g[0] + 18, g[1] - 24);
+      if (g) a.co(1, g[0] + 18, g[1] - 24);
+      const bl = onScreen(a, blues, 280, 300);
+      if (bl) a.co(2, bl[0], bl[1]);
       const [gx, gy] = a.P(...gas);
       a.co(3, gx - 40, gy - 20);
       a.co(4, 60, 700);
