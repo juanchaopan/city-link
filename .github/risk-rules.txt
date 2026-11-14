@@ -17,11 +17,13 @@ CLAUDE.md
 REVIEW.md
 AGENTS.md
 .jscpd.json
-.dependency-cruiser.cjs
-eslint.config.mjs
+**/.dependency-cruiser.cjs
+**/.dependency-cruiser-known-violations.json
+**/eslint.config.*
+**/.oxlintrc.json
 tsconfig.base.json
 pnpm-workspace.yaml
-.editorconfig
+**/.editorconfig
 scripts/**
 # 视觉回归的基准截图：外观变了，要人对照新旧截图确认
 **/*-snapshots/**

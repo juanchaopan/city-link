@@ -52,5 +52,5 @@ jobs:
           additional_permissions: |
             actions: read
           claude_args: |
-            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(git:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(pnpm format:*),Bash(pnpm lint:*),Bash(pnpm arch:*),Bash(pnpm typecheck:*),Bash(pnpm test:*),Bash(pnpm build:*),Bash(npx jscpd:*)"
-            --append-system-prompt "按 CLAUDE.md、.claude/rules/ 和 REVIEW.md 工作。改动前先读相关的需求和架构文档（docs/）。每个提交只做一件事，提交信息用 Conventional Commits 并带上 issue 号。提交前运行 CLAUDE.md 的自检命令并确认通过。请求涉及需求或架构的重大变化、或者说不清验收标准时，不要直接改代码，在评论里说明原因，建议维护者在本地用 /change 处理。"
+            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(git:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(node .github/scripts/check-commit-message.mjs:*),Bash(pnpm format:*),Bash(pnpm lint:*),Bash(pnpm arch:*),Bash(pnpm typecheck:*),Bash(pnpm test:*),Bash(pnpm build:*),Bash(npx jscpd:*)"
+            --append-system-prompt "按 CLAUDE.md、.claude/rules/ 和 REVIEW.md 工作。改动前先读相关的需求、架构和设计文档（docs/）。每个提交只做一件事，提交信息用 Conventional Commits 并带上 issue 号，第一行不超过 100 个字符。提交前运行 CLAUDE.md 的自检命令并确认通过。每次推送之前运行 node .github/scripts/check-commit-message.mjs --range origin/<目标分支>..HEAD，把它报出的提交在推送前改掉，因为 CI 会检查 PR 里的每个提交，而已经推送的提交不能靠追加提交来补救。请求涉及需求、设计或架构的重大变化、或者说不清验收标准时，不要直接改代码，在评论里说明原因，建议维护者在本地用 /change 处理。"
