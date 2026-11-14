@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="stylesheet" href="/mock/kit.css" />
+<script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js", "pixi.js": "/node_modules/pixi.js/dist/pixi.mjs" } }</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+<svg id="ov" xmlns="http://www.w3.org/2000/svg"><defs>
+  <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#f6d77a"/><rect width="4" height="8" fill="#3a2a10"/></pattern>
+  <filter id="glow"><feGaussianBlur stdDeviation="3"/></filter>
+</defs></svg>
+<div id="ui"></div>
+<div id="sys"></div>
+<script type="module">
+// 先让探针的页面把城市画出来，再按 s 参数在上面叠界面；状态栏、刘海和微信胶囊盖在最上面，标注再盖在它们上面。
+const params = new URLSearchParams(location.search);
+if (params.get('map') !== '0') await import('/web/play.js');
+else document.documentElement.dataset.ready = 'true';
+const { generateCity } = await import('/web/sim/city.js');
+const { screenOf, TILE_HALF_W, TILE_HALF_H } = await import('/web/world.js');
+const { SCREENS } = await import('/mock/screens.js');
+const { makeApi } = await import('/mock/api.js');
+while (document.documentElement.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 100));
+const N = Number(params.get('n') ?? 64);
+const city = params.get('map') === '0' ? null : generateCity(N, 11, 'spread');
+const camera = window.playParts ? window.playParts.app.stage.children[0] : { position: { x: 0, y: 0 }, scale: { x: 1, y: 1 } };
+const api = makeApi({ city, N, camera, screenOf, TILE_HALF_W, TILE_HALF_H });
+const screen = SCREENS.find((s) => s.id === params.get('s'));
+await screen.draw(api);
+await new Promise((r) => setTimeout(r, Number(params.get('settle') ?? 600)));
+document.documentElement.dataset.done = 'true';
+</script>
+</body>
+</html>

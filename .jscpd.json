@@ -21,6 +21,7 @@
     "**/*.json",
     "**/*.yml",
     "**/*.yaml",
-    "**/*.svg"
+    "**/*.svg",
+    "docs/design/ui-mock/**"
   ]
 }

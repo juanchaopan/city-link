@@ -1,6 +1,6 @@
 // ESLint 配置：typescript-eslint 的严格规则加类型检查，函数复杂度和长度的上限，以及客户端的平台隔离。
 // JavaScript 文件不做类型检查；测试文件不限函数长度，因为 describe 块本身就很长。
-// 审查流程的脚本来自 setup-ai-review 模板，不属于项目代码，不在这里检查。
+// 审查流程的脚本来自 setup-ai-review 模板，界面效果图的生成代码是文档工具，都不属于项目代码，不在这里检查。
 import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
@@ -26,6 +26,7 @@ export default defineConfig(
       '.claude/worktrees/',
       '.claude/hooks/',
       '.github/scripts/',
+      'docs/design/ui-mock/',
       'evals/',
     ],
   },
