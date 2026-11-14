@@ -1,0 +1,25 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-11-14T09:00:00Z"},
+  "title": "CityLink 开工设计",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 1280, "h": 1500, "expand": "fill", "title": "总览"},
+    "Screens.dc.html": {"x": 1360, "y": 0, "w": 1280, "h": 1500, "expand": "fill", "title": "页面清单"},
+    "Decisions.dc.html": {"x": 2720, "y": 0, "w": 1280, "h": 1500, "expand": "fill", "title": "待拍板"},
+    "Fields.dc.html": {"x": 4080, "y": 0, "w": 1280, "h": 1500, "expand": "fill", "title": "输入页字段"},
+    "States.dc.html": {"x": 5440, "y": 0, "w": 1280, "h": 1500, "expand": "fill", "title": "异步状态"},
+    "Data.dc.html": {"x": 6800, "y": 0, "w": 1280, "h": 1500, "expand": "fill", "title": "页面到数据"}
+  },
+  "order": [
+    "Main.dc.html",
+    "Screens.dc.html",
+    "Decisions.dc.html",
+    "Fields.dc.html",
+    "States.dc.html",
+    "Data.dc.html"
+  ],
+  "notes": {},
+  "designSystems": []
+}

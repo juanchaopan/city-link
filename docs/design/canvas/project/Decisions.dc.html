@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>待拍板</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{--bg:#faf8f2;--ink:#1d1d1b;--muted:#5f5e58;--line:#d9d4c7;--head:#0f3d3e;--ok:#2f7d4f;--open:#a04a14}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0;--ok:#7fc79a;--open:#e7a06a}}
+:root[data-theme="dark"]{--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0;--ok:#7fc79a;--open:#e7a06a}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.65}
+.wrap{max-width:1120px;margin:0 auto;padding:40px 48px}
+h1{font-size:28px;margin:0 0 6px;color:var(--head)}
+h2{font-size:18px;margin:28px 0 10px;color:var(--head)}
+p{margin:6px 0}
+.note{color:var(--muted);font-size:13px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;white-space:nowrap}
+td.n{color:var(--head);font-weight:600;white-space:nowrap}
+td.done{color:var(--ok);font-weight:600;white-space:nowrap}
+td.open{color:var(--open);font-weight:600;white-space:nowrap}
+</style>
+</helmet>
+<div class="wrap">
+<h1>待拍板的决定</h1>
+<p class="note">已定下 11 项，全部写进了仓库的设计文档（ui-map.md 第 14 节“已定的界面决定”）。都选了对现有设计影响最小的选项，没有新增内容。还剩 2 项要美术和平台核实。</p>
+
+<div class="tw"><table>
+<tr><th>#</th><th>问题</th><th>决定</th><th>状态</th></tr>
+<tr><td class="n">1</td><td>公共服务预算三档的词</td><td>统一为“低 正常 高”，税率和预算两处用同一组词。</td><td class="done">已定</td></tr>
+<tr><td class="n">2</td><td>公交线的造价</td><td>站和线路免费造，只收每天维护费（game-design.md 第 5 节）。</td><td class="done">已定</td></tr>
+<tr><td class="n">3</td><td>立交模板</td><td>第一版只做两种，不起名，左右滑换；效果图里的“喇叭”“苜蓿叶”只是示意名。</td><td class="done">已定</td></tr>
+<tr><td class="n">4</td><td>水运出口的小签</td><td>出口旁只画图标，不写城名。</td><td class="done">已定</td></tr>
+<tr><td class="n">5</td><td>排队中的线头能不能先接</td><td>不能先接，要等前一个接好、轮到它才能接（game-design.md 第 9 节的原有排队规则）。</td><td class="done">已定</td></tr>
+<tr><td class="n">6</td><td>引导里“跳过”的位置</td><td>“跳过”放到信封下面，第二行保持不变。</td><td class="done">已定</td></tr>
+<tr><td class="n">7</td><td>“紧挨你的空位”的定义</td><td>指和你的城市四边或四角相邻的八格（game-design.md 第 13 节）。</td><td class="done">已定</td></tr>
+<tr><td class="n">8</td><td>满级时 C5 的图标行</td><td>显示这一级已经解锁的东西（彩色），与效果图一致。</td><td class="done">已定</td></tr>
+<tr><td class="n">9</td><td>注销后的撤回期</td><td>不设撤回期，确认后直接注销；注销确认是二次确认。</td><td class="done">已定</td></tr>
+<tr><td class="n">10</td><td>随机起名的名单</td><td>名单放进配置文件，由美术出，过一遍内容安全。</td><td class="done">已定（名单待美术出）</td></tr>
+<tr><td class="n">11</td><td>视频中途关掉</td><td>不另做提示，微信自己提示；2 分钟没执行由定时任务执行。</td><td class="done">已定</td></tr>
+<tr><td class="n">12</td><td>满意度五档的表情和词，图标风格</td><td>跟美术方向一起定；开发先用占位图标，换图不改代码结构。</td><td class="open">待美术</td></tr>
+<tr><td class="n">13</td><td>胶囊、安全区、版本更新、边缘手势</td><td>用探针和真机结果定；布局先按效果图的刘海屏做，留出安全区。</td><td class="open">待探针和真机</td></tr>
+</table></div>
+
+<h2>没有列进来的</h2>
+<ul>
+<li>各项价格、门槛、费率、半径、红线、保护期长度（Q-006）：不是界面决定，但界面上每个数字都来自它。见总览页。</li>
+<li>探针的结论（地形生成、渲染、交通分配、离线补算、存档、同步、广告回调）：见 game-design.md 第 15 节。</li>
+</ul>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

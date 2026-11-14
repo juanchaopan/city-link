@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>输入页字段</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{--bg:#faf8f2;--ink:#1d1d1b;--muted:#5f5e58;--line:#d9d4c7;--head:#0f3d3e;--warn:#a04a14}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0;--warn:#e7a06a}}
+:root[data-theme="dark"]{--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0;--warn:#e7a06a}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.65}
+.wrap{max-width:1120px;margin:0 auto;padding:40px 48px}
+h1{font-size:28px;margin:0 0 6px;color:var(--head)}
+h2{font-size:18px;margin:28px 0 8px;color:var(--head)}
+h3{font-size:15px;margin:18px 0 6px}
+p{margin:6px 0}
+.note{color:var(--muted);font-size:13px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;white-space:nowrap}
+td.f{font-weight:600;white-space:nowrap}
+.warn{color:var(--warn);font-weight:600}
+</style>
+</helmet>
+<div class="wrap">
+<h1>输入页字段规格</h1>
+<p class="note">只列有输入或选择的页面，和按住的按钮。规则出处写在“备注”里；括号里“建议”的是这次补的，还没有定，已在“待拍板”页按建议定下。“字”按一个字符算，表情按一个字算（合规核实：计数方式以平台要求为准）。</p>
+
+<h2>一、城市名：A2 取名、S2 必须改名、J2 改名</h2>
+<p class="note">三个页面用同一张输入卡片（A2 的样子）。区别见最后一行。</p>
+<div class="tw"><table>
+<tr><th>字段</th><th>控件</th><th>必填</th><th>长度</th><th>默认</th><th>校验</th><th>错误提示</th></tr>
+<tr><td class="f">城市名 name</td><td>单行文本，键盘弹起时卡片上移</td><td>是。去掉首尾空格后不能为空，空名时确认按钮不可按</td><td>最多 12 字，汉字、英文、符号、表情都可以</td><td>A2（开局）：骰子随机起的名字。开新城：上一座城市的名字，可沿用或重起。J2：当前城市名</td><td>长度；内容安全检查（改名必须在线，平台要求用户 2 小时内访问过）；检查服务不可用时，开局用默认名“某某的城市”，改名要求重试</td><td>输入框描红加一行小字（文案待定）；网络失败时按钮抖一下回原样，旁边断网图标</td></tr>
+<tr><td class="f">骰子</td><td>按钮，只在 A2 出现</td><td>—</td><td>—</td><td>随机名的名单由美术出，放在配置文件里（待拍板第 10 项，已定）</td><td>随机出的名字也走内容安全检查</td><td>同上</td></tr>
+<tr><td class="f">确认</td><td>绿色按钮</td><td>—</td><td>—</td><td>—</td><td>有网、名字合法才能按；按下变转圈，不能再按</td><td>失败：按钮抖一下，旁边断网图标或原因图标</td></tr>
+<tr><td class="f">返回</td><td>左上角</td><td>—</td><td>—</td><td>—</td><td>A2 回 A1；J2 回 J2；S2 没有返回（没有关闭按钮）</td><td>—</td></tr>
+</table></div>
+<div class="tw"><table>
+<tr><th>页面</th><th>出现的条件</th><th>价格和次数</th><th>其他</th></tr>
+<tr><td class="f">A2 取名</td><td>第一次开局；被邀请的朋友（顶部一行“你在〈邀请人〉旁边”）；开新城</td><td>开局取名不算改名，不收费</td><td>被邀请进来时顶部显示邀请人；开新城时输入框里先填好上一座城市的名字</td></tr>
+<tr><td class="f">S2 必须改名</td><td>名字被判违规（启动或改名检查时）</td><td>免费</td><td>没有关闭按钮；改好前城市名显示“某某的城市”；城市名判违规不影响进入游戏</td></tr>
+<tr><td class="f">J2 改名</td><td>设置里点“城市名”</td><td>第一次改名免费；之后距上次改名不到 30 天，按钮写价格（Q-006）；满 30 天按钮写“免费”</td><td>断网时置灰并带断网图标；价格按 player 或 city 上次改名的时间算，以服务端为准</td></tr>
+</table></div>
+
+<h2>二、J3 账号：昵称、头像、注销</h2>
+<div class="tw"><table>
+<tr><th>字段</th><th>控件</th><th>必填</th><th>长度</th><th>默认</th><th>校验</th><th>错误提示</th></tr>
+<tr><td class="f">昵称 nickname</td><td>单行文本</td><td>否。空的时候显示城市名</td><td>建议：和城市名一样，最多 12 字</td><td>城市名（不用微信头像和昵称，REQ-023）</td><td>内容安全检查（和城市名同一套）</td><td>同城市名</td></tr>
+<tr><td class="f">头像 avatar_id</td><td>系统动物头像，网格里单选</td><td>是（默认选中一个）</td><td>—</td><td>建议：新玩家随机选一个，之后可改</td><td>只能选系统提供的头像</td><td>—</td></tr>
+<tr><td class="f">注销</td><td>红色按钮，进入二次确认</td><td>—</td><td>—</td><td>—</td><td>确认页写清后果：城市、历史城市、好友、站内信都会删；确认后直接注销，不设撤回期</td><td>—</td></tr>
+</table></div>
+<p class="note">注销的确认方式：二次确认（ui-map 原有写法），不用按住。确认后直接注销，不设撤回期。</p>
+
+<h2>三、按住的按钮</h2>
+<p>破坏性动作一律按住约 1 秒，按住时有进度环；手指移动超过 8 px 算拖动，不触发。</p>
+<div class="tw"><table>
+<tr><th>按钮</th><th>页面</th><th>按住后做什么</th><th>松手或中断</th><th>备注</th></tr>
+<tr><td class="f">结束这座城市</td><td>K2</td><td>红色。按住约 1 秒后，有广告：进入看视频；视频看完进 K1。没有广告（广告不可用）：按住就直接结束，不限次数</td><td>视频没看完，按钮回到原样，这次按住作废</td><td>end_reason 记为“玩家结束”</td></tr>
+<tr><td class="f">取消工地</td><td>D8</td><td>按住约 1 秒，退回没建的那部分的钱</td><td>回到原样</td><td>退款写在气泡里：“退回 ¥N”</td></tr>
+<tr><td class="f">拆边界段</td><td>D10</td><td>按住约 1 秒，拆掉这一段</td><td>回到原样</td><td>要联网；没网时置灰</td></tr>
+<tr><td class="f">拆掉整条线（公交、地铁）</td><td>E9</td><td>按住，拆掉选中的这一条线</td><td>回到原样</td><td>只对选中的这一条线</td></tr>
+<tr><td class="f">删除历史城市</td><td>J1</td><td>垃圾桶按住约 1 秒，永久删除</td><td>回到原样</td><td>删除前的文字：写城市名和哪天结束</td></tr>
+<tr><td class="f">拆掉会影响邻居的东西</td><td>D9 选中的三种情况（对方有线头，对方没线头，对方在接）</td><td>按住约 1 秒</td><td>回到原样</td><td>按 ui-map 第 6 节的三种情况分别画</td></tr>
+</table></div>
+
+<h2>四、加速工地（D8）</h2>
+<div class="tw"><table>
+<tr><th>情况</th><th>按钮文字</th><th>价格</th><th>备注</th></tr>
+<tr><td class="f">剩余不到 30 分钟</td><td>“立即完成”</td><td>看视频</td><td>看完后服务端确认，工地立即完成</td></tr>
+<tr><td class="f">剩余 30 分钟以上</td><td>“−30 分钟”</td><td>看视频</td><td>每看一次减 30 分钟</td></tr>
+</table></div>
+
+<h2>五、选择类控件</h2>
+<div class="tw"><table>
+<tr><th>控件</th><th>位置</th><th>选项</th><th>默认</th><th>备注</th></tr>
+<tr><td class="f">四类税率</td><td>C1 钱的小卡（住宅、商业、工业、农业各一个）</td><td>低、正常、高（拨钮）</td><td>正常</td><td>市政厅造好前只有一个税率可拨；拨动时地图上对应的楼冒一下表情或箭头，不写字</td></tr>
+<tr><td class="f">公共服务预算</td><td>E4 公共服务建筑的气泡</td><td>低、正常、高</td><td>正常</td><td>预算改的是全城同一种服务，不是单栋楼</td></tr>
+<tr><td class="f">画质</td><td>J2 设置</td><td>流畅、标准</td><td>中端机默认流畅</td><td>流畅：帧率上限 30，分辨率降一档，街道档以外不画车和粒子</td></tr>
+<tr><td class="f">声音和震动</td><td>J2 设置</td><td>背景音乐、环境声、按钮音效、震动（开关）</td><td>开</td><td>三个开关放一行；震动跟按钮音效一个开关</td></tr>
+</table></div>
+
+<h2>六、不做输入的页面</h2>
+<p>S3 邀请好友、B5 订阅授权、N1 在另一台设备上打开了、N2 版本更新都没有输入框。S3 的卡片标题和封面、留位的过期时长（invitation.expires_at）还没写，要在实现前定；留位每人最多 3 个，用完时 ＋ 变灰，点了冒“3/3”。</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
