@@ -78,7 +78,7 @@ city 的字段：
 | visit_file | 参观快照在云存储里的位置；历史城市用结束那一刻的 |
 | verified_file、verified_version | 已核数据文件的位置和格式版本，文件名带同步序号；见第 7 节 |
 | name、name_status、name_changed_at | 内容安全状态和改名 30 天规则；开新城时取名卡片先填上一座历史城市的 name |
-| tax_by_class、budget_by_service | 四类税率（低、正常、高）和四项预算（高、中、低），服务端核税和支出时要读 |
+| tax_by_class、budget_by_service | 四类税率（低、正常、高）和四项预算（低、正常、高），服务端核税和支出时要读 |
 | level、xp、xp_total、xp_game_hour、xp_level_at | 新城从 1 级、零经验开始；经验每个游戏小时加一次；xp 用来显示，溢出最多到下一级门槛；xp_total 不封顶，只用来写 xp_level_at；xp_level_at 记经验第一次够上每一级的时刻，接口期限从这里取；等级由服务端以“level 还是 L、经验够了”为条件确认 |
 | money、credits_applied、adjust_pending | 资金只由手机写；credits_applied 是手机已经计入到哪个 seq；adjust_pending 是服务端截断后等手机确认的调整量 |
 | verified_tax_by_class、verified_hours | 滑动平均：住宅、商业、工业、农业四类各一个已核税之和（写入时折算到正常税率），和在线游戏小时数，按指数衰减：每次同步先把这五个数都乘 0.5^(经过的在线游戏小时 ÷ 半衰期)，再加这次各类的已核税和小时数；半衰期在 Q-006（默认 72 游戏小时）；离线的时段不计入。每小时平均税收 = 四类之和 ÷ verified_hours，视频资金和过路费封顶用它；离线收益按各类分别算：这一类之和 ÷ verified_hours，再乘这一类的折算系数 |
