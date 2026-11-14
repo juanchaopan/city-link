@@ -1,7 +1,10 @@
 # 依赖自动升级：Dependabot 每周检查一次，有新版本就开 PR，PR 走和平时一样的检查和审查。
 # 提交信息前缀设成 build 和 ci，带上范围，生成的是 "build(deps): bump ..."，符合 Conventional Commits。
 # 小版本和补丁版本合成一个 PR，大版本单独开 PR，因为大版本常有不兼容的改动，需要单独看升级说明。
-# TypeScript 暂不升大版本：typescript-eslint 还不支持 7。
+#
+# TypeScript 和读它的工具（typescript-eslint、dependency-cruiser）是一组，一起升。TypeScript 出了工具还不支持的新大版本时，
+# 这一组的 PR 会因为检查不过（lint 报不支持的版本）而失败：不要合并它，也不要放宽规则让它通过，把 PR 留着。
+# Dependabot 每周会用工具的最新版重新生成它，工具跟上以后检查就会通过，到时再合并。
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -23,9 +26,8 @@ updates:
       prefix: build
       include: scope
     groups:
+      typescript-toolchain:
+        patterns: ['typescript', 'typescript-eslint', '@typescript-eslint/*', 'dependency-cruiser']
       minor-and-patch:
         update-types: [minor, patch]
-    ignore:
-      - dependency-name: typescript
-        update-types: ['version-update:semver-major']
     open-pull-requests-limit: 5
