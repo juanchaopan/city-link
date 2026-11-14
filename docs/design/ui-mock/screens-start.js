@@ -365,7 +365,7 @@ export const START = [
   {
     id: 'B4', title: '资金为负和破产保护', from: '资金低于零时一直是这个样子；低于红线时多一个沙漏倒计时。图里是在建造模式放派出所',
     query: MAIN,
-    notes: ['资金变灰；沙漏只表示破产保护，倒计时写现实时间；地图不标红、不弹窗；离红线多远看 C1（C1b）', '钱不够的东西：价格气泡写差多少；▶ 看视频补钱，按钮写这次能补多少，看完更新差多少（广告不可用时直接领取，每天限次）', '确认按钮变灰；拆除、征收、调税、调预算照样能做', '建造模式的顶条：返回和工具名在第一行（胶囊左边），资金一格在第二行；派出所用盾牌图标'],
+    notes: ['资金变灰；破产保护时资金格右下角挂一个沙漏和倒计时（现实时间），不另占位置；沙漏只表示破产保护；地图不标红、不弹窗；离红线多远看 C1（C1b）', '钱不够的东西：价格气泡写差多少；▶ 看视频补钱，按钮写这次能补多少，看完更新差多少（广告不可用时直接领取，每天限次）', '确认按钮变灰；拆除、征收、调税、调预算照样能做', '建造模式的顶条：返回和工具名在第一行（胶囊左边），资金一格在第二行；派出所用盾牌图标'],
     draw(a) {
       const top = modeTop(a, { icon: '🛡️', name: '派出所', money: '-1,820', neg: true });
       const cx = 34;
@@ -376,7 +376,8 @@ export const START = [
       const price = a.add(`<div class="price" style="left:${sx}px;top:${sy}px"><span class="g">¥900</span> · 每天 −¥30<br><span class="r">差 ¥2,720</span> <span class="btn small" style="min-height:28px"><span class="vid">▶</span>+¥3,600</span></div>`);
       const cf = a.add('<div class="confirm"><div class="no">✕</div><div class="ok dis">✓</div></div>');
       const vb = price.querySelector('.btn');
-      a.coAt(1, top.money.querySelector('.hg'), 20, 38);
+      const hg = top.money.querySelector('.hg');
+      a.coAt(1, hg, hg.offsetWidth + 16, 8);
       a.coAt(2, vb, vb.offsetWidth + 22, 14);
       a.coAt(3, cf.lastElementChild, 4, 4);
       a.coAt(4, top.title, top.title.offsetWidth + 12, 12);
@@ -404,13 +405,15 @@ export const START = [
   {
     id: 'B6a', title: '看视频领钱：到账中', from: 'C1 点“看视频领钱”，视频看完回到地图',
     query: MAIN,
-    notes: ['资金旁出现“到账中”和转圈，金币从下面飞进资金；服务端确认了才变成能花的钱', '确认没来就淡出，不弹窗；视频中途关掉什么都没有', '到账中的钱还不能花：这时造东西按原来的资金算'],
+    notes: ['到账中：资金数字后面一个小转圈，不另占位置，人口和满意度照常显示；金币从下面飞进资金，旁边飘一下这次的金额；服务端确认了才变成能花的钱', '确认没来就淡出，不弹窗；视频中途关掉什么都没有', '到账中的钱还不能花：这时造东西按原来的资金算'],
     draw(a) {
-      base(a, { hud: { plus: false, pending: `<span class="pend">${ICON.spinner}+3,600 到账中</span>` } });
+      base(a, { hud: { pending: `<span class="pend">${ICON.spinner}</span>` } });
       const cap = document.querySelector('.cap.money').getBoundingClientRect();
       a.svg(`<path d="M195 560 C150 420 120 300 ${cap.left + 40} ${cap.bottom + 6}" fill="none" stroke="#fff3b0" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>`);
       for (const [x, y, s] of [[186, 520, 26], [150, 420, 22], [124, 320, 20], [cap.left + 46, cap.bottom + 30, 16]]) a.add(`<div class="emo" style="position:absolute;left:${x}px;top:${y}px;font-size:${s}px;filter:drop-shadow(0 0 6px #ffe48a)">🪙</div>`);
-      a.coAt(1, document.querySelector('.cap .pend'), 60, 26);
+      a.add(`<div style="position:absolute;left:${cap.left + 70}px;top:${cap.bottom + 30}px;font-weight:900;font-size:16px;color:#ffe48a;text-shadow:0 0 3px #4a2c00,0 2px 0 #4a2c00">+¥3,600</div>`);
+      const pend = document.querySelector('.cap .pend');
+      a.coAt(1, pend, pend.offsetWidth / 2, 40);
       a.co(2, 220, 440);
       a.co(3, 160, 300);
     },

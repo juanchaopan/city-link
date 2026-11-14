@@ -66,13 +66,14 @@ export const SYSTEM = [
   {
     id: 'N2', title: '版本更新', from: '打开游戏或玩的时候发现有新版本（排在隐私和授权之后）',
     query: MAIN,
-    notes: ['小卡：新版本准备好了，只有“重启”；关不掉，重启后回到这里', '协议不兼容（旧版本连不上服务端）时是整屏，同样只有“重启”（虚线框）', 'wx.getUpdateManager 的行为待核实'],
+    notes: ['新版本和服务端兼容时：小卡，“稍后”关掉小卡接着玩，“重启”马上用新版本', '协议不兼容（旧版本连不上服务端）时是整屏，只有“重启”，关不掉（虚线框）', 'wx.getUpdateManager 的行为待核实'],
     draw(a) {
       base(a);
       a.add('<div class="dim"></div>');
-      const m = a.panel('moment', '新版本准备好了', `<div class="chest emo">🔄</div><div class="mtx">重启一下就能用</div><div style="margin-top:14px">${a.btn('重启', 'green wide')}</div>`, 'top:38%');
+      const m = a.panel('moment', '新版本准备好了', `<div class="chest emo">🔄</div><div class="mtx">重启一下就能用</div><div style="display:flex;gap:10px;margin-top:14px">${a.btn('稍后', 'blue wide')}${a.btn('重启', 'green wide')}</div>`, 'top:38%');
       const st = a.add(`<div class="states" style="left:60px;right:60px;top:560px;height:220px;background:radial-gradient(circle at 50% 0%,#2f6f86,#12303c 70%)"><span class="lbl">协议不兼容时</span><div class="emo" style="text-align:center;padding-top:30px;color:#ffeab0;font-weight:900;font-size:16px">🔄 这个版本太旧了</div><div style="text-align:center;color:#cfe6ee;font-size:13px;margin-top:6px">重启后自动更新</div><div style="margin:20px 20px 0">${a.btn('重启', 'green wide')}</div></div>`);
-      a.coAt(1, m, 16, 12);
+      const bs = m.querySelectorAll('.btn');
+      a.coAt(1, bs[0], 10, 6);
       a.coAt(2, st, st.offsetWidth - 20, 0);
       a.co(3, 340, 760);
     },

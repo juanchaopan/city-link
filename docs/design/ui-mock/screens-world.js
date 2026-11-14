@@ -268,7 +268,7 @@ export const WORLD = [
   {
     id: 'J2', title: '设置', from: 'J1 点右下齿轮',
     map: false,
-    notes: ['声音三个开关放一行：背景音乐、环境声、按钮音效；震动跟按钮音效一个开关', '画质：流畅（帧率上限 30、分辨率降一档、街道档以外不画车和粒子）和标准；中端机默认流畅', '微信服务通知：再授权一次（订阅消息按次数发）', '改城市名沿用 A2 的输入卡片；距上次改名满 30 天按钮写“免费”，不到 30 天写价格；青色是次要动作', '重看引导：在一块不存档的 1 级空地上自动演示五步，随时可关；帮助 → J4；账号 → J3', '结束这座城市：红色，点了进 K2 结束确认'],
+    notes: ['声音三个开关放一行：背景音乐、环境声、按钮音效；震动跟按钮音效一个开关', '画质：流畅（帧率上限 30、分辨率降一档、街道档以外不画车和粒子）和标准；中端机默认流畅', '微信服务通知：再授权一次（订阅消息按次数发）', '改城市名沿用 A2 的输入卡片；开局取名不算改名，第一次改名免费（图里的样子）；之后距上次改名不到 30 天按钮写价格（见 Q-006），满 30 天写“免费”（虚线框）；青色是次要动作', '重看引导：在一块不存档的 1 级空地上自动演示五步，随时可关；帮助 → J4；账号 → J3', '结束这座城市：红色，点了进 K2 结束确认'],
     draw(a) {
       screenTop(a, '⚙️ 设置');
       const tg = (l, off = false) => `<span style="display:flex;align-items:center;gap:4px;font-size:13px"><span class="emo">${l}</span><span class="tog ${off ? 'off' : ''}"></span></span>`;
@@ -282,11 +282,13 @@ export const WORLD = [
         ['<span class="grow emo">👤 账号</span>', '<b>›</b>'],
         ['<span class="grow emo">🏚️ 结束这座城市</span>', a.btn('结束', 'red small')],
       ].map(([l, r]) => `<div class="setrow">${l}${r}</div>`).join('');
+      const st = states(a, '改过名以后', [['不到 30 天', a.btn('改名 · ¥1,000', 'blue small')], ['满 30 天', a.btn('改名 · 免费', 'blue small')]], 'left:16px;right:16px;bottom:calc(var(--sab) + 12px)');
       const rows = document.querySelectorAll('.setrow');
       a.coAt(1, rows[0], 6, 6);
       a.coAt(2, rows[1], 6, 6);
       a.coAt(3, rows[2], 6, 6);
       a.coAt(4, rows[3].querySelector('.btn'), 0, 0);
+      a.coAt(4, st, st.offsetWidth - 20, 0);
       a.coAt(5, rows[4], 6, 6);
       a.coAt(6, rows[7].querySelector('.btn'), 0, 0);
     },

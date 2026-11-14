@@ -77,8 +77,11 @@ canvas#game { display: block; position: absolute; inset: 0; }
 .cap .tr { font-size: 12px; color: #7ee08a; }
 .cap .tr.down { color: #aab4b8; }
 .cap.neg b { color: #aab4b8; }
-.cap .hg { font-size: 12px; color: #ffb3a8; background: rgba(210,71,58,.35); border-radius: 8px; padding: 1px 6px; }
-.cap .pend { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #ffe48a; background: rgba(242,182,47,.25); border-radius: 8px; padding: 1px 6px; }
+/* 破产保护的沙漏和倒计时挂在资金格的右下角，不占第二行的位置，人口和表情照常排得下。 */
+.cap .hg { position: absolute; right: -6px; bottom: -14px; z-index: 1; display: flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 8px; font-size: 10px; line-height: 14px; color: #fff; background: linear-gradient(#e0533d, #a8291c); border: 1.5px solid #ffd0c8; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+/* 到账中只是资金数字后面一个小转圈。 */
+.cap .pend { display: inline-flex; color: #ffe48a; }
+.cap .pend .spin { width: 14px; height: 14px; border: 2.5px solid rgba(255,255,255,.2); border-top-color: currentColor; border-right-color: currentColor; }
 .cap.face { padding: 0 8px 0 30px; }
 .cap .word { font-size: 13px; color: #7ee08a; }
 
@@ -202,9 +205,6 @@ canvas#game { display: block; position: absolute; inset: 0; }
 .legend { position: absolute; left: 10px; bottom: calc(var(--sab) + 12px); display: flex; gap: 6px; align-items: center; padding: 8px 10px; border-radius: 12px; background: rgba(13,36,46,.85); border: 1.5px solid var(--gold); color: #fff; font-size: 12px; font-weight: 800; }
 .legend i { width: 30px; height: 10px; border-radius: 5px; display: block; }
 .legend span { font-size: 16px; }
-.floatbars { position: absolute; right: 10px; top: calc(var(--sat) + 100px); width: 156px; display: grid; gap: 6px; }
-.floatbars > div { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 12px; background: rgba(13,36,46,.85); border: 1.5px solid var(--gold); font-size: 17px; }
-.floatbars .meter { flex: 1; margin: 0; }
 .demand { position: absolute; right: 8px; top: calc(var(--sat) + 100px); display: flex; gap: 7px; padding: 8px 9px; border-radius: 14px; background: rgba(13,36,46,.88); border: 1.5px solid var(--gold); }
 .demand div { display: grid; justify-items: center; gap: 4px; font-size: 15px; }
 .demand .col { width: 14px; height: 90px; border-radius: 7px; background: #26414c; display: flex; align-items: flex-end; overflow: hidden; border: 1px solid #5b7a86; }
