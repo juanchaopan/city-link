@@ -3,17 +3,18 @@ import { q, MAIN, NB, base, site, built } from './screens-common.js';
 import { ROW3, modeTop, coBack, row2, subBtn, confirm, price, deadline, grey, nbName, port, goldNet, brokenAt, OFFLINE, SPIN, inset, mini } from './parts-b.js';
 
 const ZC = { R: '#5fbf5a', C: '#3f8fd6', I: '#f2c94c', F: '#a8743a' };
-const CATS = ['🛣️', '🏘️', '🛡️', '<span style="font-size:11px;line-height:1.05;text-align:center">💧⚡<br>🔥</span>', '🚌', '⚓', '🌳', '🏆'];
+/** 托盘的类别：道路和铁路、分区、公共服务、水电燃气、公交地铁、港口机场、公园和垃圾、奖励建筑。盾牌只给派出所，公共服务用 🏛️。 */
+const CATS = ['🛣️', '🏘️', '🏛️', '<span style="font-size:11px;line-height:1.05;text-align:center">💧⚡<br>🔥</span>', '🚌', '⚓', '🌳', '🏆'];
 const catRow = (on, dots = []) =>
   `<div class="cats emo" style="gap:4px">${CATS.map((e, i) => `<div class="cat ${i === on ? 'on' : ''}" style="flex:1;width:auto;position:relative">${e}${dots.includes(i) ? '<i style="position:absolute;right:2px;top:2px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 40% 30%,#fff6c8,#f2b62f);border:1px solid #8a5a0c"></i>' : ''}</div>`).join('')}<div class="cat sep"></div><div class="cat" style="flex:1;width:auto">🚜</div></div>`;
 
-/** 托盘里的一张卡片：lock 锁住（照样写价格）、done 城里已有、ring 在建进度、terrain 地形不满足、nw 新解锁。 */
-function card({ e, n, p, u, lock, nw, done, ring, terrain }, w = 82) {
-  const pic = `<div class="pic emo" style="${lock || terrain ? 'filter:grayscale(1);opacity:.55' : ''}">${e}</div>`;
+/** 托盘里的一张卡片：lock 锁住（照样写价格）、done 城里已有、ring 在建进度、nw 新解锁。 */
+function card({ e, n, p, u, lock, nw, done, ring }, w = 82) {
+  const pic = `<div class="pic emo" style="${lock ? 'filter:grayscale(1);opacity:.55' : ''}">${e}</div>`;
   const ringSvg = ring ? `<svg width="40" height="40" viewBox="0 0 40 40" style="position:absolute;left:50%;top:9px;margin-left:-20px"><circle cx="20" cy="20" r="16" fill="rgba(13,36,46,.75)"/><circle cx="20" cy="20" r="13" fill="none" stroke="#7ee08a" stroke-width="5" stroke-dasharray="${81.7 * ring} 82" transform="rotate(-90 20 20)"/><text x="20" y="25" text-anchor="middle" font-size="13">🏗️</text></svg>` : '';
   const foot = done ? '<small>城里已有</small>' : `<span class="price emo">🪙¥${p}</span><small>${u}</small>`;
-  const marks = `${lock ? `<i class="emo" style="position:absolute;left:50%;top:14px;margin-left:-13px;font-size:22px;font-style:normal">🔒</i><small style="color:#8a5a0c;font-weight:900">Lv${lock}</small>` : ''}${terrain ? `<i class="emo" style="position:absolute;left:4px;top:6px;font-size:16px;font-style:normal;background:#fff;border-radius:50%;width:26px;height:26px;display:grid;place-items:center;border:1.5px solid #8a8a8a">${terrain}</i>` : ''}${nw ? '<i class="new">新</i>' : ''}${done ? '<i class="done">✓</i>' : ''}`;
-  return `<div class="item" style="width:${w}px;${done || terrain ? 'filter:grayscale(.85);opacity:.78' : ''}">${pic}${ringSvg}<b>${n}</b>${foot}${marks}</div>`;
+  const marks = `${lock ? `<i class="emo" style="position:absolute;left:50%;top:14px;margin-left:-13px;font-size:22px;font-style:normal">🔒</i><small style="color:#8a5a0c;font-weight:900">Lv${lock}</small>` : ''}${nw ? '<i class="new">新</i>' : ''}${done ? '<i class="done">✓</i>' : ''}`;
+  return `<div class="item" style="width:${w}px;${done ? 'filter:grayscale(.85);opacity:.78' : ''}">${pic}${ringSvg}<b>${n}</b>${foot}${marks}</div>`;
 }
 const tray = (a, items, on, dots, w) => a.panel('tray', '', `<div class="items" style="gap:6px">${items.map((it) => card(it, w)).join('')}</div>${catRow(on, dots)}`, 'left:15px;right:15px');
 /** 托盘打开时顶部只留资金一格，和建造模式一样画在第二行。 */
@@ -86,7 +87,7 @@ export const BUILD = [
       const cats = t.querySelectorAll('.cat');
       const before = card({ e: '🏥', n: '医院', p: '3,000', u: '−¥80/天', nw: true });
       const after = card({ e: '🏥', n: '医院', p: '3,000', u: '−¥80/天' });
-      const box = inset(a, { left: 30, top: 180, width: 330, title: '点过医院这张卡前后', body: `<div style="display:flex;align-items:center;gap:10px;justify-content:center">${before}<span style="font-size:24px;font-weight:900;color:#ffd76a">→</span>${after}<div style="font-size:12px;line-height:1.5;width:100px">类别 🛡️ 上的金点：这一类没有“新”了就消失</div></div>` });
+      const box = inset(a, { left: 30, top: 180, width: 330, title: '点过医院这张卡前后', body: `<div style="display:flex;align-items:center;gap:10px;justify-content:center">${before}<span style="font-size:24px;font-weight:900;color:#ffd76a">→</span>${after}<div style="font-size:12px;line-height:1.5;width:100px">公共服务类别 🏛️ 上的金点：这一类没有“新”了就消失</div></div>` });
       a.coAt(1, its[2], -8, 20);
       a.coAt(2, cats[4], 30, -10);
       a.coAt(3, document.querySelector('.db.build'), -6, 6);
@@ -110,13 +111,13 @@ export const BUILD = [
     },
   },
   {
-    id: 'D2b', title: '奖励建筑卡片的几种样子', from: 'D1 点类别里的 🏆（例子是 7 级的城市）',
+    id: 'D2b', title: '奖励建筑卡片的几种样子', from: 'D1 点类别里的 🏆（例子是 4 级的城市）',
     query: MAIN,
-    notes: ['城里已经有的：打勾、变灰；拆了以后恢复', '在建的：卡片上一个进度环', '新解锁的带“新”字', '地形不满足：变灰，角上一个地形图标（要挨河、湖或山）；只显示本气候能造的', '还没解锁的：锁和等级，照样写价格', '奖励建筑的类别是奖杯；卡片可以左右滑'],
+    notes: ['城里已经有的：打勾、变灰；拆了以后恢复', '在建的：卡片上一个进度环', '新解锁的带“新”字', '能造的：价格和每天维护费。带地形条件的（紧挨河、湖或山）每座城市都造得了，卡片不因地形变灰，放的时候只在满足条件的地方发亮；只显示本气候能造的', '还没解锁的：锁和等级，照样写价格', '奖励建筑的类别是奖杯；卡片可以左右滑'],
     draw(a) {
       a.dock({ on: 'build', buildDot: true });
-      moneyOnly(a, '86,410');
-      const t = tray(a, [{ e: '🏛️', n: '市政厅', done: true }, { e: '🏟️', n: '体育场', p: '5,000', u: '−¥50/天', ring: 0.55 }, { e: '🎓', n: '人才中心', p: '9,000', u: '−¥90/天', nw: true }, { e: '♨️', n: '温泉度假村', p: '9,500', u: '−¥85/天', terrain: '⛰️' }, { e: '🔬', n: '科技园', p: '12,000', u: '−¥120/天', lock: 8 }], 7, [7], 64);
+      moneyOnly(a);
+      const t = tray(a, [{ e: '🏛️', n: '市政厅', done: true }, { e: '🏟️', n: '体育场', p: '5,000', u: '−¥50/天', ring: 0.55 }, { e: '🦁', n: '动物园', p: '4,500', u: '−¥45/天', nw: true }, { e: '🌺', n: '植物园', p: '2,500', u: '−¥20/天' }, { e: '🚚', n: '物流园', p: '6,000', u: '−¥60/天', lock: 5 }], 7, [7], 64);
       t.querySelectorAll('.item .pic').forEach((p) => { p.style.background = 'radial-gradient(circle at 50% 35%,#fff1b8,#e0a83a)'; });
       t.querySelectorAll('.item b').forEach((b) => { b.style.fontSize = '11px'; });
       const its = t.querySelectorAll('.item');
@@ -182,25 +183,27 @@ export const BUILD = [
     },
   },
   {
-    id: 'D3c', title: '修线头：这条边接不了，或方案接了也不算', from: 'D3b 把线头拉到边界',
+    id: 'D3c', title: '修线头：这条边接不了，或线没连到主路网', from: 'D3b 把线头拉到边界',
     query: q({ zoom: 0.42, x: 57, y: 22 }),
-    notes: ['方案没连到人口最多的那片路网：边界照常发亮，虚影上一个断链图标', '人口最多的那片路网描一圈淡金光：接到这片才算接好', '✓ 仍然可以点，钱是你自己的；只是修好了也不算接好，逼不了邻居', '整条边都不能接时，边上画原因：嫩芽和天数是对方在保护期', '已有接口的圈闪一下：这对邻居之间已经有这种接口', '时钟加天数：冷却期，拆掉没人接的线头后几天内不能再往这边修'],
+    notes: ['线没连到人口最多的那片路网（这里的货运站在一段孤立的路上）：服务端不让修，边界不发亮，虚影上一个断链图标', '人口最多的那片路网描一圈淡金光：把站和这片连起来，边界才发亮', '✓ 变灰，点不了：一格孤头逼不了邻居', '整条边都不能接时，边上画原因：嫩芽和天数是对方在保护期', '已有接口的圈闪一下：这对邻居之间已经有这种接口', '时钟加天数：冷却期，拆掉没人接的线头后几天内不能再往这边修'],
     draw(a) {
       goldNet(a);
       grey(a, 'e', { lines: [{ kind: 'highway', pts: [[64, 7.5], [124, 7.5]] }] });
-      a.svg(rect(a, 54, 21, 58, 21, 'fill="#7c8288" stroke="#4a4f53" stroke-width="1.5"', 0.1));
-      for (let y = 15; y <= 30; y += 1) a.svg(a.cellDiamond(63, y, 'fill="rgba(255,214,90,.7)" stroke="#fff3a8" stroke-width="2"'));
-      a.svg(rect(a, 59, 21, 63, 21, GHOST));
-      const lk = brokenAt(a, 61, 21.5);
-      modeTop(a, { icon: '🛤️', name: '高速公路', money: '186,400' });
-      price(a, 61, 21, '<span class="g">¥2,000</span> · 每天 −¥60', { dy: -26 });
-      const cf = confirm(a);
+      a.svg(rect(a, 53, 21, 58, 21, 'fill="#7c8288" stroke="#4a4f53" stroke-width="1.5"', 0.1));
+      a.svg(rect(a, 57, 19, 58, 20, 'fill="rgba(255,255,255,.88)" stroke="#2a8fa8" stroke-width="3"', 0.05));
+      a.label(58, 20, '<span class="emo" style="font-size:22px">🚉</span>');
+      railGhost(a, [[59, 20], [63.6, 20]]);
+      const lk = brokenAt(a, 61.3, 20);
+      modeTop(a, { icon: '🚆', name: '铁路线' });
+      price(a, 61.5, 19.5, '<span class="g">¥300</span> · 每天 −¥15', { dy: -70 });
+      const cf = confirm(a, { ok: false });
       const row = (label, edge) => `<div style="display:flex;align-items:center;gap:8px;margin:4px 0">${mini({ cols: 2, rows: 6, cw: 8, width: '62px', cells: [0, 1, 2, 3, 4, 5].map((i) => [1, i, '#bbb']), icons: [[1.5, 3, edge, 14]] })}<div style="flex:1">${label}</div></div>`;
       const box = inset(a, { left: 8, top: 520, width: 200, title: '整条边都不能接时', body: `${row('<span class="cap emo" style="height:26px;padding:0 8px;font-size:13px;background:#2f6b3a">🌱 剩 2 天</span>', '🌱')}${row('<span style="display:inline-block;width:26px;height:26px;border-radius:50%;border:3px solid #3fa75a;box-shadow:0 0 0 5px rgba(126,224,138,.45)"></span> 一闪', '◯')}${row('<span class="cap emo" style="height:26px;padding:0 8px;font-size:13px">🕒 3 天</span>', '🕒')}` });
       const rows = box.querySelectorAll(':scope > div > div');
+      const net = a.roadNear(48, 18);
       a.coAt(1, lk, 38, 0);
-      a.co(2, ...a.P(44, 17.5));
-      a.coAt(3, cf, cf.offsetWidth - 20, -14);
+      a.co(2, ...a.P(net[0] + 0.5, net[1] + 0.5));
+      a.coAt(3, cf.lastElementChild, cf.lastElementChild.offsetWidth - 10, -14);
       rows.forEach((r, i) => a.coAt(4 + i, r, r.offsetWidth - 6, 14));
     },
   },
@@ -327,12 +330,12 @@ export const BUILD = [
   {
     id: 'D8', title: '工地气泡：加速和取消', from: '点地图上任何一个在建的工程',
     query: MAIN,
-    notes: ['工程名、进度条、剩余时间（1 小时以上写“1 时 12 分”，以下写“12:05”）', '看视频加速：剩余不到 30 分钟写“立即完成”，否则写“−30 分钟”', '取消：红色，按住约 1 秒，按钮里的进度走满才取消；写退回多少钱（没建的那部分）', '自己长的楼也有进度环，但气泡里没有这两个按钮', '点气泡外面：先关掉气泡，这一下不会点到地图上的东西'],
+    notes: ['工程名、进度条、剩余时间（1 小时以上写“1 时 12 分”，以下写“06:00”）', '看视频加速：剩余不到 30 分钟写“立即完成”（图里的样子），否则写“−30 分钟”', '取消：红色，按住约 1 秒，按钮里的进度走满才取消；写退回多少钱（没建的那部分）', '自己长的楼也有进度环，但气泡里没有这两个按钮', '点气泡外面：先关掉气泡，这一下不会点到地图上的东西'],
     draw(a) {
       const p = a.near(1, 33, 41);
       site(a, p);
       base(a);
-      const b = a.bubble(p.px, p.py, `<div class="t emo">🏗️ 医院</div><div class="meter"><i style="width:40%;background:linear-gradient(#8de07c,#2f8f3a)"></i></div><div style="margin-top:4px;font-weight:800;font-size:14px" class="emo">⏱ 1 时 12 分</div><div class="bb">${a.btn('−30 分钟', '', true)}<span class="btn red hold"><i class="fill" style="width:45%"></i><span>按住 退 ¥1,800</span></span></div>`, { lift: 30 });
+      const b = a.bubble(p.px, p.py, `<div class="t emo">🏗️ 植物园</div><div class="meter"><i style="width:40%;background:linear-gradient(#8de07c,#2f8f3a)"></i></div><div style="margin-top:4px;font-weight:800;font-size:14px" class="emo">⏱ 06:00</div><div class="bb">${a.btn('立即完成', '', true)}<span class="btn red hold"><i class="fill" style="width:45%"></i><span>按住 退 ¥1,500</span></span></div>`, { lift: 30 });
       const bs = b.querySelectorAll('.btn');
       a.coAt(1, b, b.offsetWidth - 14, 40);
       a.coAt(2, bs[0], 24, bs[0].offsetHeight + 16);
@@ -515,7 +518,7 @@ export const BUILD = [
   {
     id: 'D15', title: '其他建造工具的样子', from: 'D1 选公园、垃圾用地、清森林、厂；或者把一样东西画在原来的上面',
     query: q({ zoom: 0.3, x: 32, y: 34 }),
-    notes: ['公园：刷子划区，系统按面积和位置长出小游园、街心公园或湖滨步道', '垃圾处理用地：刷子划区，挨着已有的划就并成一块，容量变大', '清森林：刷子刷过森林，按格算价；画路、放东西落在森林上时，价格和工期里含清森林', '桥和坡：画路过河自动修桥，过坡自动修坡道，价格气泡一起算', '往高密度重刷：选“高”刷在中密度上，只写差价', '换等级：一级水厂上放二级，只写差价；占地变大多出来的格子描红走征收；往低写“不退款”', '水厂、码头、国际港：只有满足条件的格子发亮（水厂只在水边）', '风电换火电这类换种类：直接放在原来的上面，按新造算价'],
+    notes: ['公园：刷子划区，系统按面积和位置长出小游园、街心公园或湖滨步道', '垃圾处理用地：刷子划区，挨着已有的划就并成一块，容量变大', '清森林：刷子刷过森林，按格算价；画路、放东西落在森林上时，价格和工期里含清森林', '桥和坡：画路过河自动修桥，过坡自动修坡道，价格气泡一起算', '往高一档密度重刷：选“中”刷在低密度上，只写差价', '换等级：四车道画在两车道上、二级厂放在一级厂上，都只写差价；厂占地变大时多出来的格子描红走征收；往低写“不退款”', '水厂、码头、国际港：只有满足条件的格子发亮（水厂只在水边）', '换种类（水厂换地下水厂、火电换风电）：直接放在原来的上面，按新造算价'],
     draw(a) {
       a.fade(0.35);
       modeTop(a, { icon: '🌳', name: '公园' });
@@ -524,10 +527,10 @@ export const BUILD = [
         ['垃圾处理用地', { cells: [[1, 1, '#b08a5a'], [2, 1, '#b08a5a'], [1, 2, '#b08a5a'], [2, 2, '#b08a5a'], [3, 1, '#c9a978', 'stroke="#fff" stroke-dasharray="2 2"'], [3, 2, '#c9a978', 'stroke="#fff" stroke-dasharray="2 2"']], icons: [[2, 2, '♻️', 14]] }, '并成一块 · 容量 +1,200 人'],
         ['清森林', { cells: [[2, 1, '#e8a85a'], [3, 1, '#e8a85a'], [2, 2, '#e8a85a'], [3, 2, '#e8a85a']], icons: [[1.2, 3, '🌲', 13], [2.5, 1.5, '🌲', 13], [3.5, 2.5, '🌲', 13], [4.6, 1.2, '🌲', 13]] }, '¥8/格 · 工期 +2:00'],
         ['桥和坡', { cells: [0, 1, 2, 3, 4, 5, 6].map((x) => [x, 3, '#6fb6d6']), lines: [[[[3.5, 0], [3.5, 5]], 'stroke="#2a8fa8" stroke-width="5" stroke-dasharray="4 3"']], icons: [[3.6, 3.2, '🌉', 14]] }, '路 ¥80 + 桥 ¥600'],
-        ['往高密度重刷', { cells: [[1, 1, ZC.R], [2, 1, ZC.R], [3, 1, ZC.R], [1, 2, ZC.R], [2, 2, ZC.R], [3, 2, ZC.R]], icons: [[2.5, 2, '高', 13]] }, '只写差价 ¥36'],
-        ['换等级（厂）', { cells: [[2, 1, '#9fd0f0'], [3, 1, '#9fd0f0'], [2, 2, '#9fd0f0'], [3, 2, '#9fd0f0'], [4, 1, '#f3b3ab', 'stroke="#e5332a" stroke-width="1.5"'], [4, 2, '#f3b3ab', 'stroke="#e5332a" stroke-width="1.5"']], icons: [[3, 2, '💧Ⅱ', 12]] }, '差价 ¥2,400 · 🏠×1'],
+        ['往中密度重刷', { cells: [[1, 1, ZC.R], [2, 1, ZC.R], [3, 1, ZC.R], [1, 2, ZC.R], [2, 2, ZC.R], [3, 2, ZC.R]], icons: [[2.5, 2, '中', 13]] }, '只写差价 ¥36'],
+        ['换等级（路）', { cells: [0, 1, 2, 3, 4, 5, 6].map((x) => [x, 2, '#c9ccd0', 'stroke="#fff" stroke-width="1"']), lines: [[[[0, 2.5], [7, 2.5]], 'stroke="#2a8fa8" stroke-width="7" stroke-dasharray="5 3"']], icons: [[3.5, 1.3, '四', 13]] }, '四车道 · 只写差价 ¥25/格'],
         ['水厂只在水边发亮', { cells: [...[0, 1, 2, 3, 4, 5, 6].map((x) => [x, 4, '#6fb6d6']), ...[1, 2, 3, 4, 5].map((x) => [x, 3, '#ffe27a', 'stroke="#fff" stroke-width="1"'])], icons: [[3.5, 2.6, '💧Ⅰ', 12]] }, '别处的虚影变灰'],
-        ['风电换火电', { cells: [[2, 1, '#cfd6da'], [3, 1, '#cfd6da'], [2, 2, '#cfd6da'], [3, 2, '#cfd6da']], icons: [[3, 2, '🌬️', 15]] }, '按新造算价 ¥6,000'],
+        ['水厂换地下水厂', { cells: [[2, 1, '#9fd0f0'], [3, 1, '#9fd0f0'], [2, 2, '#9fd0f0'], [3, 2, '#9fd0f0']], icons: [[3, 2, '💧Ⅰ', 12]] }, '按新造算价 ¥1,600'],
       ];
       items.forEach(([t, m, cap], i) => {
         const left = i % 2 === 0 ? 8 : 200;

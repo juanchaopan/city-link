@@ -7,7 +7,7 @@ const SKY = 'position:absolute;inset:0;background:linear-gradient(#7fc8e6 0%,#bf
 
 function loadingBack(a, pct, line) {
   a.add(`<div style="${SKY}"></div>`);
-  const logo = a.add(`<div style="position:absolute;left:0;right:0;top:120px">${LOGO}<div style="text-align:center;color:#13303d;font-weight:800;font-size:14px;margin-top:8px">在城市群里建一座城，把它们连起来</div></div>`);
+  const logo = a.add(`<div style="position:absolute;left:0;right:0;top:120px">${LOGO}<div style="text-align:center;color:#13303d;font-weight:800;font-size:14px;margin-top:8px">在地区里建一座城，和邻居连成贸易网</div></div>`);
   a.add(`<div style="position:absolute;left:30px;right:30px;top:250px;height:300px;border-radius:24px;overflow:hidden;border:4px solid #e9c46a;box-shadow:0 0 0 3px #5a3a12,0 16px 30px rgba(0,0,0,.4)">${thumb('height:100%;border:0;border-radius:0;background-size:150%')}</div>`);
   const bar = a.add(`<div style="position:absolute;left:40px;right:40px;top:600px;text-align:center"><div class="xp" style="height:18px"><i style="width:${pct}%"></i></div><div style="color:#ffeab0;font-weight:800;font-size:14px;margin-top:10px">${line}</div></div>`);
   return { logo, bar };
@@ -35,15 +35,15 @@ export const SYSTEM = [
   {
     id: 'L2', title: '隐私指引和用户协议', from: 'L1 加载完，第一次进游戏（在 A1 之前）；隐私指引更新后再出一次',
     map: false,
-    notes: ['微信要求的隐私弹窗：说明收集什么、做什么用', '两份全文点了打开', '同意 → A1 位置预览（有城市的进 B1）', '拒绝：不能进游戏，停在加载页，弹窗可以重新打开（虚线框）'],
+    notes: ['微信要求的隐私弹窗：说明收集什么、做什么用（openid 和城市存档、广告组件的设备信息、订阅消息）；头像和昵称在游戏里挑，不读取微信的', '两份全文点了打开', '同意 → A1 位置预览（有城市的进 B1）', '拒绝：不能进游戏，停在加载页，弹窗可以重新打开（虚线框）'],
     draw(a) {
       loadingBack(a, 100, '加载完成');
       a.add('<div class="dim"></div>');
-      const m = a.panel('moment', '用户隐私保护指引', `<div style="text-align:left;font-size:14px;line-height:1.6;color:#5a3a12">开始前请读一读 <a style="color:#1f7f92;font-weight:900">《用户隐私保护指引》</a>和<a style="color:#1f7f92;font-weight:900">《用户协议》</a>。我们只用你的微信昵称和头像来显示好友，用城市存档在不同手机上同步。</div><div style="display:flex;gap:10px;margin-top:16px">${a.btn('拒绝', 'gray wide')}${a.btn('同意', 'green wide')}</div>`, 'top:46%');
+      const m = a.panel('moment', '用户隐私保护指引', `<div style="text-align:left;font-size:14px;line-height:1.6;color:#5a3a12">开始前请读一读 <a style="color:#1f7f92;font-weight:900">《用户隐私保护指引》</a>和<a style="color:#1f7f92;font-weight:900">《用户协议》</a>。我们用你的微信身份标识（openid）保存城市存档、在不同手机上同步；广告组件会收集设备信息；你允许以后才发订阅消息。头像和昵称在游戏里挑，不读取微信头像和昵称。</div><div style="display:flex;gap:10px;margin-top:16px">${a.btn('拒绝', 'gray wide')}${a.btn('同意', 'green wide')}</div>`, 'top:46%');
       const st = states(a, '拒绝以后', [['', `<span style="flex:1">要同意才能进游戏</span>${a.btn('再看一次', 'blue small')}`]], 'left:30px;right:30px;bottom:calc(var(--sab) + 40px)');
       const bs = m.querySelectorAll('.btn');
       a.coAt(1, m, 16, 12);
-      a.coAt(2, m.querySelector('a'), 30, 26);
+      a.coAt(2, m.querySelector('a'), 40, -18);
       a.coAt(3, bs[1], 10, 6);
       a.coAt(4, bs[0], 10, 6);
       a.coAt(4, st, st.offsetWidth - 20, 0);
@@ -69,8 +69,8 @@ export const SYSTEM = [
     draw(a) {
       base(a);
       a.add('<div class="dim"></div>');
-      const m = a.panel('moment', '新版本准备好了', `<div class="chest emo">🎁</div><div class="mtx">重启一下就能用</div><div style="margin-top:14px">${a.btn('重启', 'green wide')}</div>`, 'top:38%');
-      const st = a.add(`<div class="states" style="left:60px;right:60px;top:560px;height:220px;background:radial-gradient(circle at 50% 0%,#2f6f86,#12303c 70%)"><span class="lbl">协议不兼容时</span><div style="text-align:center;padding-top:30px;color:#ffeab0;font-weight:900;font-size:16px">${ICON.brokenLink} 这个版本太旧了</div><div style="text-align:center;color:#cfe6ee;font-size:13px;margin-top:6px">重启后自动更新</div><div style="margin:20px 20px 0">${a.btn('重启', 'green wide')}</div></div>`);
+      const m = a.panel('moment', '新版本准备好了', `<div class="chest emo">🔄</div><div class="mtx">重启一下就能用</div><div style="margin-top:14px">${a.btn('重启', 'green wide')}</div>`, 'top:38%');
+      const st = a.add(`<div class="states" style="left:60px;right:60px;top:560px;height:220px;background:radial-gradient(circle at 50% 0%,#2f6f86,#12303c 70%)"><span class="lbl">协议不兼容时</span><div class="emo" style="text-align:center;padding-top:30px;color:#ffeab0;font-weight:900;font-size:16px">🔄 这个版本太旧了</div><div style="text-align:center;color:#cfe6ee;font-size:13px;margin-top:6px">重启后自动更新</div><div style="margin:20px 20px 0">${a.btn('重启', 'green wide')}</div></div>`);
       a.coAt(1, m, 16, 12);
       a.coAt(2, st, st.offsetWidth - 20, 0);
       a.co(3, 340, 760);
@@ -93,14 +93,15 @@ export const SYSTEM = [
   {
     id: 'S1', title: '空状态（几处拼在一张图上）', from: '各页面没有内容时',
     map: false,
-    notes: ['没有好友：地区地图底部一排头像的位置放“＋ 邀请好友”', '没有历史城市：J1 下半放一张小插画', '站内信空：小插画', '全国只有一个地区：只画这一个，别处是雾', 'F2 没有任何服务：全城橙色，图例照常', '1 级的 C3：只有一星一行；空图表不画（C1 见 C1a）'],
+    notes: ['没有好友：地区地图底部一排头像的位置放“＋ 邀请好友”', '没有历史城市：J1 下半放一张小插画', '站内信空：小插画', '全国只有一个地区：只画这一个，别处是雾；你的位置用金框标出', 'F2 没有任何服务：全城橙色，图例照常', '1 级的 C3：只有一星一行；空图表不画（C1 见 C1a）'],
     draw(a) {
       a.add('<div class="screen"></div>');
       const box = (x, y, w, h, title, inner) => a.add(`<div style="position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:14px;border:2px solid #4d7f8f;background:rgba(255,255,255,.05);overflow:hidden"><div style="padding:4px 10px;color:#ffd76a;font-size:12px;font-weight:900;background:#13303d">${title}</div>${inner}</div>`);
       const b1 = box(10, 100, 370, 96, '地区地图：没有好友', '<div class="friends emo" style="margin:10px"><span class="lbl">好友</span><span class="btn green small">＋ 邀请好友</span></div>');
       const b2 = box(10, 210, 180, 170, 'J1：没有历史城市', '<div class="illus"><span class="pic emo">🏞️</span>还没有结束过的城市</div>');
       const b3 = box(200, 210, 180, 170, '站内信：空', '<div class="illus"><span class="pic emo">📭</span>信都处理完了</div>');
-      const { svg } = regionSvg({ cw: 20, ox: 90, oy: 20, mini: true, me: [1, 1] });
+      // 共用的小地区图在你的位置上另画一个红点；红点只留给待处理，这里只留金框。
+      const svg = regionSvg({ cw: 20, ox: 90, oy: 20, mini: true, me: [1, 1] }).svg.replace(/<circle[^>]*fill="#d2473a"[^>]*\/>/, '');
       const b4 = box(10, 394, 180, 190, '全国：只有一个地区', `<svg viewBox="0 0 180 160" width="180" height="160"><defs><radialGradient id="fog"><stop offset="40%" stop-color="#cfd8dc" stop-opacity="0"/><stop offset="100%" stop-color="#e8eef0"/></radialGradient></defs><rect width="180" height="160" fill="#dfe6e8"/><g transform="translate(0,30)">${svg}</g><rect width="180" height="160" fill="url(#fog)"/></svg>`);
       const b5 = box(200, 394, 180, 190, 'F2：没有任何服务', `<div style="position:relative;height:166px">${thumb('position:absolute;inset:0;height:auto;border:0;border-radius:0;filter:grayscale(.6)')}<div style="position:absolute;inset:0;background:rgba(240,138,36,.55)"></div><div class="legend" style="left:6px;bottom:6px;padding:4px 6px"><i style="background:#3fa75a;width:16px"></i><i style="background:#f2c94c;width:16px"></i><i style="background:#f08a24;width:16px"></i></div></div>`);
       const b6 = box(10, 598, 370, 150, 'C3：1 级', '<div class="panel" style="position:relative;margin:8px;padding:8px 10px"><div class="row" style="margin:2px 0"><span class="emo">👥 64</span></div><div class="row"><span class="stars" style="width:30px">★</span><div style="flex:1;display:grid;gap:4px"><div class="duo emo"><span>👥</span><i style="width:60%;background:#e07a3f"></i></div><div class="duo emo"><span>💼</span><i style="width:48%;background:#3b5ba9"></i></div></div></div></div>');
@@ -148,7 +149,7 @@ export const SYSTEM = [
       document.getElementById('sb').innerHTML = [0, 1, 2].map(() => '<div style="display:grid;grid-template-columns:46px 1fr;gap:8px 10px;padding:10px 12px;margin-bottom:8px;border-radius:12px;background:rgba(255,255,255,.06)"><div class="skel" style="grid-row:span 2;height:46px"></div><div class="skel" style="height:16px;width:70%"></div><div class="skel" style="height:12px;width:45%"></div></div>').join('');
       const sp = a.add('<div style="position:absolute;left:50%;top:330px;transform:translateX(-50%);color:#ffd76a"><span class="spin big"></span></div>');
       const st = states(a, '失败和按钮', [
-        ['整屏失败', `<span style="font-size:22px;color:#cfe6ee">${ICON.brokenLink}</span>${a.btn('重试', 'green small')}`],
+        ['整屏失败', `<span style="font-size:22px;color:#cfe6ee">${ICON.offline}</span>${a.btn('重试', 'green small')}`],
         ['点下', a.btn(`${ICON.spinner} 领取`, 'green small')],
         ['失败', `<span style="display:inline-flex;transform:translateX(-4px)">${a.btn('领取', 'green small')}</span><span style="color:#ffb3a8;font-size:20px">${ICON.offline}</span><span style="color:#cfe6ee">抖一下回原样</span>`],
       ], 'left:20px;right:20px;top:470px');

@@ -111,10 +111,10 @@ export function earlyCity(a, stage = 4) {
 /** 地区的 4×4 个位置。c 往东、r 往南；青川市在 (1, 1)，四个邻居和 NB 对得上。 */
 export const SLOTS = [
   { c: 1, r: 1, name: '青川市', lv: 4, me: true },
-  { c: 2, r: 1, name: '北岭', lv: 6, av: '🐻', friend: true },
+  { c: 2, r: 1, name: '北岭', lv: 8, av: '🐻', friend: true },
   { c: 1, r: 2, name: '江屿市', lv: 3, av: '🦊' },
   { c: 1, r: 0, name: '云港市', lv: 5, av: '🐧' },
-  { c: 0, r: 1, name: '桃溪', lv: 1, av: '🐯', sprout: '剩 2 天' },
+  { c: 0, r: 1, name: '桃溪', lv: 6, av: '🐯' },
   { c: 3, r: 0, name: '石门', lv: 7, av: '🐺' },
   { c: 3, r: 1, name: '白沙', lv: 3, av: '🦉' },
   { c: 2, r: 3, name: '鹿鸣', lv: 8, av: '🐼', friend: true },
@@ -160,7 +160,7 @@ export function regionSvg({ cw = 50, ox = 195, oy = 60, mini = false, me = [1, 1
     const [x2, y2] = at(c2, r2);
     s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${w}" stroke-linecap="round" ${col === '#7a5a3a' ? 'stroke-dasharray="7 4"' : ''}/>`;
   }
-  for (const { c, r, name, lv, me: mine, av, sprout } of SLOTS) {
+  for (const { c, r, name, lv, me: mine, av } of SLOTS) {
     const [x, y] = at(c, r);
     const hgt = 8 + lv * 3;
     const col = mine ? ['#5fb3c9', '#2a7f95', '#1d6577'] : dim.includes(name) ? ['#c9c9c9', '#a5a5a5', '#8c8c8c'] : ['#f2ede0', '#cfc6b0', '#b3aa94'];
@@ -172,7 +172,6 @@ export function regionSvg({ cw = 50, ox = 195, oy = 60, mini = false, me = [1, 1
     }
     s += `<text x="${x}" y="${y + 20}" text-anchor="middle" font-size="13" font-weight="900" fill="#13303d" stroke="#fff" stroke-width="3" paint-order="stroke">${name}</text>`;
     if (av) s += `<circle cx="${x + 22}" cy="${y - hgt - 2}" r="11" fill="#f6dd8c" stroke="#5a3a0c" stroke-width="1.5"/><text x="${x + 22}" y="${y - hgt + 3}" text-anchor="middle" font-size="13">${av}</text>`;
-    if (sprout) s += `<text x="${x - 22}" y="${y - hgt + 2}" text-anchor="middle" font-size="15">🌱</text>`;
   }
   return { svg: s, at, iso, dia };
 }

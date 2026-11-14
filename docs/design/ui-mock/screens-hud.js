@@ -79,7 +79,7 @@ export const HUD = [
   {
     id: 'C1b', title: '钱的小卡：资金为负', from: 'B1 点资金（资金低于零，或已经在破产保护里）',
     query: MAIN,
-    notes: ['顶部资金变灰，破产保护时旁边沙漏和现实时间的倒计时', '每小时净收入为负，灰色 ▼', '曲线掉到零以下；橙色虚线是红线（不写数字），资金不能低于它', '低于红线进入破产保护时，虚线旁加一个沙漏', '支出比收入长；调低支出（拆、调预算）和调高税照样能做', '看视频领钱补回来'],
+    notes: ['顶部资金变灰，破产保护时旁边沙漏和现实时间的倒计时', '每小时净收入为负，灰色 ▼', '曲线掉到零以下；橙色虚线是红线（不写数字），在线时资金低于它就进入破产保护', '进入破产保护时，虚线旁加一个沙漏', '支出比收入长；调低支出（拆、调预算）和调高税照样能做', '看视频领钱补回来'],
     draw(a) {
       base(a, { hud: { neg: true, trend: 'down' } });
       const down = [14, 12, 11, 9, 8, 6, 4, 3, 1, -1, -3, -4, -6, -8, -9, -11, -12, -14, -15, -16, -17, -18, -19, -20];
@@ -123,7 +123,7 @@ export const HUD = [
   {
     id: 'C2a', title: '钱花在哪：道路维护费', from: 'C1 点支出条上的“道路”一段',
     query: q({ zoom: 0.22, x: 32, y: 32 }),
-    notes: ['左上返回 → C1', '小签写这一项每小时花多少，支出用“−”', '贡献这一项的东西（这里是路）用金色深浅着色：高速和四车道花得多，颜色深', '点一段路冒路的气泡；点空地不响应', '公共服务、水电燃气、公交地铁、奖励建筑同样做法：着色的是对应的建筑'],
+    notes: ['左上返回 → C1', '小签写这一项每小时花多少，支出用“−”', '贡献这一项的东西（这里是路）用金色深浅着色：路越宽花得越多，颜色越深', '点一段路冒路的气泡；点空地不响应', '公共服务、水电燃气、公交地铁、奖励建筑同样做法：着色的是对应的建筑'],
     draw(a) {
       a.fade(0.45);
       for (const [id, v] of a.city.roads) a.svg(a.cellDiamond(id % a.N, Math.floor(id / a.N), `fill="${gold(v.highway ? 0.95 : 0.25 + (id % 3) * 0.2)}"`));
@@ -139,16 +139,16 @@ export const HUD = [
   {
     id: 'C2b', title: '钱从哪来：过路费', from: 'C1 点收入里的“过路费”小按钮',
     query: q({ zoom: 0.046, x: 32, y: 32, extra: '&cars=0' }),
-    notes: ['左上返回 → C1', '镜头拉到全城档，看得见四边的接口', '有别人的货穿过的接口和码头亮金色，旁边写每小时收多少；颜色越深收得越多', '水运过路费只在地区内收；河的出入口照样标出来', '点一个接口冒 G5 的气泡（每天多少货、多少过路费）'],
+    notes: ['左上返回 → C1', '镜头拉到全城档，看得见四边的接口', '有别人的货穿过的接口和码头亮金色，“过路”小签写每天收多少（过路费按天结算）；颜色越深收得越多', '水运过路费只在地区内收；河的出入口照样标出来', '点一个接口冒 G5 的气泡（每天多少货、多少过路费）'],
     draw(a) {
       a.fade(0.5);
-      const ports = [[64.4, 7.5, '🛣️', 0.9, '+¥18'], [12.5, 64.4, '🛣️', 0.5, '+¥9'], [28, -0.4, '🚆', 0.3, '+¥5'], [-0.4, 53, '⛴️', 0.7, '+¥12'], [64.4, 46.5, '⛴️', 0.45, '+¥6']];
+      const ports = [[64.4, 7.5, '🛣️', 0.9, '+¥430'], [12.5, 64.4, '🛣️', 0.5, '+¥220'], [28, -0.4, '🚆', 0.3, '+¥120'], [-0.4, 53, '⛴️', 0.7, '+¥290'], [64.4, 46.5, '⛴️', 0.45, '+¥140']];
       const pos = ports.map(([x, y, e, k, t]) => {
         const [sx, sy] = a.P(x, y, 0);
         a.svg(`<circle cx="${sx}" cy="${sy}" r="22" fill="${gold(k)}" opacity=".55"/><circle cx="${sx}" cy="${sy}" r="14" fill="#fff" stroke="${gold(k)}" stroke-width="4"/><text x="${sx}" y="${sy + 5}" text-anchor="middle" font-size="14">${e}</text>`);
-        return a.add(`<div class="cap" style="position:absolute;left:${Math.min(sx - 20, 320)}px;top:${sy - 52}px;height:24px;padding:0 8px;font-size:13px">${t}</div>`);
+        return a.add(`<div class="cap" style="position:absolute;left:${Math.min(sx - 20, 282)}px;top:${sy - 52}px;height:24px;padding:0 8px;font-size:13px;white-space:nowrap">过路 ${t}/天</div>`);
       });
-      const bar2 = drillTop(a, '🚚 过路费 · 每小时 +¥50');
+      const bar2 = drillTop(a, '🚚 过路费 · 每天 +¥1,200');
       const lg = a.add(goldLegend('🚚'));
       a.coAt(1, bar2.firstElementChild, 0, 40);
       a.co(2, 195, 330);
@@ -196,10 +196,10 @@ export const HUD = [
   {
     id: 'C5', title: '等级小卡（满级）', from: 'B1 点城市徽章（经验没满时）；图里是 10 级满级的样子',
     query: MAIN,
-    notes: ['满级时经验条金色满格；经验照样累计，记第一次够上每一级的时刻', '没满级时这一行是“下一级要解锁的东西”，灰色图标；满级时是这一级已经解锁的', '点一个图标冒小签写名字，小签上一个“?”进帮助页（J4）', '满级多一个“开新城” → K2 结束确认（要先结束这座城）', '经验满了（没满级）徽章发光，再点徽章是 B3；没网时徽章旁一个断线图标，不能升级', scrimNote],
+    notes: ['满级时经验条金色满格；经验照样累计，记第一次够上每一级的时刻；经验不写数字', '没满级时这一行是“下一级要解锁的东西”，灰色图标；满级时是这一级已经解锁的', '点一个图标冒小签写名字，小签上一个“?”进帮助页（J4）', '满级多一个“开新城” → K2 结束确认（要先结束这座城）', '经验满了（没满级）徽章发光，再点徽章是 B3；没网时徽章旁一个断线图标，不能升级', scrimNote],
     draw(a) {
       base(a, { hud: { level: 10, xp: 1 } });
-      const c = a.panel('card', '等级 Lv10 · 已满级', `<div class="row"><b>Lv10</b><div class="xp max"><i style="width:100%"></i></div><b class="emo">👑</b></div><div style="text-align:center;font-size:12px;color:#7a5a30;margin:-2px 0 10px">经验 1,286,400</div><div class="tiles emo" style="justify-content:center">${['🚢', '🗼', '🏢', '🏖️'].map((e) => `<div class="tile got">${e}</div>`).join('')}</div><div style="margin-top:44px">${a.btn('开新城', 'blue wide')}</div>`);
+      const c = a.panel('card', '等级 Lv10 · 已满级', `<div class="row"><b>Lv10</b><div class="xp max"><i style="width:100%"></i></div><b class="emo">👑</b></div><div class="tiles emo" style="justify-content:center;margin-top:12px">${['🚢', '🗼', '🏢', '🏖️'].map((e) => `<div class="tile got">${e}</div>`).join('')}</div><div style="margin-top:44px">${a.btn('开新城', 'blue wide')}</div>`);
       const tiles = c.querySelectorAll('.tile');
       const t = tiles[0].getBoundingClientRect();
       const tip = a.add(`<div class="tip" style="left:${t.left - 4}px;top:${t.bottom + 6}px">国际港 <i class="help">?</i></div>`);
