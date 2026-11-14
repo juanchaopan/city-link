@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>总览</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{--bg:#faf8f2;--ink:#1d1d1b;--muted:#5f5e58;--line:#d9d4c7;--head:#0f3d3e;--ok:#2f7d4f;--warn:#a04a14}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0;--ok:#7fc79a;--warn:#e7a06a}}
+:root[data-theme="dark"]{--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0;--ok:#7fc79a;--warn:#e7a06a}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.65}
+a{color:var(--head)}
+.wrap{max-width:1120px;margin:0 auto;padding:40px 48px}
+h1{font-size:28px;margin:0 0 6px;color:var(--head)}
+h2{font-size:18px;margin:32px 0 10px;color:var(--head)}
+p{margin:6px 0}
+.note{color:var(--muted);font-size:13px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;white-space:nowrap}
+.ok{color:var(--ok);font-weight:600}
+.warn{color:var(--warn);font-weight:600}
+ol,ul{margin:6px 0;padding-left:20px}
+li{margin:4px 0}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+.card{border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.card b{display:block;font-size:22px;color:var(--head)}
+</style>
+</helmet>
+<div class="wrap">
+<h1>CityLink 开工设计：总览</h1>
+<p class="note">依据：docs/design 下的 ui-map.md（页面和跳转）、game-design.md（规则）、data-model.md（数据）、catalog.md（建筑）、sim-impl.md 和 server-impl.md（实现大纲），以及 ui-screens 里 110 张效果图。日期 2026-11-14。</p>
+
+<h2>结论</h2>
+<ul>
+<li><b>页面、跳转、规则、数据结构和效果图已经齐全，可以按页开工。</b>每个页面都有效果图、从哪里来、往哪里去、点了之后的规则。</li>
+<li><b>还缺的是数值和几项实测。</b>game-design.md 第 15 节说的 Q-006 数值表还没写，所有价格、门槛、费率、半径都还是空的。256 格的地形、渲染、交通分配、离线补算、存档大小、同步耗时，要在探针里量；不达标时各有备选办法，已写在 game-design.md 第 15 节。</li>
+<li><b>13 项决定，11 项已按建议定下。</b>还剩美术的满意度和图标，以及平台的胶囊、安全区和手势核实，见“待拍板”页。</li>
+<li><b>输入页、异步状态、页面到数据的对照</b>是这次补全的部分：输入页的字段规格、按钮和异步操作的状态表、每个页面读写哪些数据、调哪个接口，分别在后面三页。</li>
+</ul>
+
+<div class="cards">
+<div class="card"><b>110</b>效果图（ui-screens 里的页面和状态图）</div>
+<div class="card"><b>11 / 13</b>待拍板的项已按建议定下</div>
+<div class="card"><b>3</b>写代码前要补的大块：Q-006 数值、探针、平台核实</div>
+</div>
+
+<h2>区域开工状态</h2>
+<div class="tw"><table>
+<tr><th>区域</th><th>页面（编号）</th><th>效果图</th><th>规则</th><th>还卡住的</th><th>结论</th></tr>
+<tr><td>启动和开局</td><td>L1 L2 A1 A1b A2 A3 A3b A3c B5</td><td>有</td><td>完整</td><td>位置预览的加权（Q-006）；引导里“跳过”的位置（决定 6）</td><td class="ok">可开工；A1 的地形等探针</td></tr>
+<tr><td>主界面和偶尔的时刻</td><td>B1 B1a B1n B1o B2 B2b B2c B2d B3 B3b B4 B5 B6a B6b K1 K2 N1 N2 N3 S2</td><td>有</td><td>完整</td><td>离线补算探针（B2）；Q-006</td><td class="ok">可开工；B2 等探针</td></tr>
+<tr><td>顶部的四个数</td><td>C1 C1a C1b C2 C2a C2b C3 C4 C5</td><td>有</td><td>完整</td><td>满意度五档的表情和词（美术）；满级时 C5 的图标行（决定 8）</td><td class="ok">可开工</td></tr>
+<tr><td>建造</td><td>D1 D1b D2 D2b D3 D3b D3c D4 D4b D5 D6 D7 D8 D9 D9b D10 D11 D12 D13 D14 D15</td><td>有</td><td>完整</td><td>造价、工期、维护费（Q-006）；公交线造价（决定 2）；立交模板（决定 3）</td><td class="ok">可开工</td></tr>
+<tr><td>点地图上的东西</td><td>E1 至 E12</td><td>有</td><td>完整</td><td>同上；公交站的造价</td><td class="ok">可开工</td></tr>
+<tr><td>视图</td><td>F0 至 F8（含 F2a F2b F4a F4b）</td><td>有</td><td>依赖交通和人口的模拟</td><td>交通分配探针；水运出口的小签（决定 4）</td><td class="warn">页面可开工；数值等探针</td></tr>
+<tr><td>邻居和接口</td><td>G1 G2 G2a G2b G2c G2d G3 G4 G4b G5 G6</td><td>有</td><td>完整（期限规则见 game-design.md 第 9 节）</td><td>排队中的线头能不能先接（决定 5）</td><td class="ok">可开工；依赖服务端 border_pair</td></tr>
+<tr><td>站内信、社交、地区、参观</td><td>H1 H2 I1 I1b I2 I3 I3a I3b I3c S3</td><td>有</td><td>完整</td><td>“紧挨你的空位”的定义（决定 7）</td><td class="ok">可开工</td></tr>
+<tr><td>我的城市、设置、账号</td><td>J1 J2 J3 J4</td><td>有</td><td>完整</td><td>注销后的撤回期（决定 9）；J4 帮助页每个系统一页的图解内容还没写</td><td class="warn">可开工；J4 的内容要补</td></tr>
+<tr><td>空状态和等待</td><td>S1 S2 S4</td><td>有</td><td>完整</td><td>无</td><td class="ok">可开工</td></tr>
+</table></div>
+
+<h2>写代码前必须定下来的</h2>
+<ol>
+<li><b>Q-006 全份数值</b>：价格、门槛、费率、半径、红线、系数、保护期、间距、离线补算天数上限、广告次数。game-design.md 里每一处“见 Q-006”都要列进去，并用机器人工具跑一个参照玩家从 1 级到 10 级，核对五条约束能否同时满足。</li>
+<li><b>探针实测</b>（game-design.md 第 15 节）：256 格地形生成（每块 10 秒内）、跨引擎的哈希一致、满城渲染 30 帧、交通分配 2 秒内、离线补算 8 小时 5 秒内、存档 300 到 600 KB、同步 1 到 2 秒、广告回调 1 秒内回包、费用、边缘手势。</li>
+<li><b>平台核实</b>：广告回调的域名和备案、定时触发能不能每分钟、云函数超时、请求包上限和事务步数、云存储流量计费、切后台后的时钟、胶囊和安全区接口、更新机制、版号、实名防沉迷、隐私指引、注销时限、内容安全接口和场景值。</li>
+</ol>
+
+<h2>可以先写的</h2>
+<ul>
+<li>地图和地形的数据结构、位置和地区的目录、开新城和登录的服务端流程。</li>
+<li>道路、分区、楼的生长和建造的本地规则（不含交通分配）；建造的确认、撤销、工地。</li>
+<li>同步骨架：离线队列、批次号、会话、调整量的静默入账、断网和退避重试。</li>
+<li>界面框架：顶部、底部、三类浮层（气泡、小卡、整屏）、返回层叠、等待和失败的统一样子。图标先用占位，正式图标等美术定。</li>
+</ul>
+
+<h2>不在这次补的</h2>
+<ul>
+<li>图标的风格、满意度五档的表情和词：跟美术方向定。</li>
+<li>效果图的重画和压缩（ui-screens 里旧图的处理，见记忆里的说明）。效果图和文档不一致时，以 game-design.md 为准。</li>
+</ul>
+<p class="note">这份总览和后面的五页只整理已有设计，没有新增规则。要改规则或界面，先用 /change 改设计文档，再改这里。</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

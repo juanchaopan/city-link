@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>页面清单</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{--bg:#faf8f2;--ink:#1d1d1b;--muted:#5f5e58;--line:#d9d4c7;--head:#0f3d3e}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0}}
+:root[data-theme="dark"]{--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.65}
+.wrap{max-width:1120px;margin:0 auto;padding:40px 48px}
+h1{font-size:28px;margin:0 0 6px;color:var(--head)}
+h2{font-size:18px;margin:28px 0 10px;color:var(--head)}
+p{margin:6px 0}
+.note{color:var(--muted);font-size:13px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;white-space:nowrap}
+td.id{font-weight:600;white-space:nowrap;color:var(--head)}
+</style>
+</helmet>
+<div class="wrap">
+<h1>页面清单</h1>
+<p class="note">每个页面的编号和效果图一致（ui-screens/编号.jpg）。形式：整屏＝盖住地图、左上返回；小卡＝从顶部或底部按钮旁展开；气泡＝贴着地图上的东西；浮层＝小卡和气泡统称；页内＝不离开地图，只是地图上的一块状态。</p>
+
+<h2>一、启动和开局</h2>
+<div class="tw"><table>
+<tr><th>编号</th><th>页面</th><th>形式</th><th>从哪进</th><th>去哪、怎么关</th></tr>
+<tr><td class="id">L1</td><td>加载页</td><td>整屏</td><td>打开游戏</td><td>有城市进 B1；没网有存档进 B1o；没存档停住，出“重试”</td></tr>
+<tr><td class="id">L2</td><td>隐私指引和用户协议</td><td>整屏</td><td>L1</td><td>第一次进 A1；有城市进 B1；拒绝不能进</td></tr>
+<tr><td class="id">A1</td><td>位置预览</td><td>整屏</td><td>L2；K1 点开新城；被邀请跳过</td><td>“就这里”进 A2；开新城时返回回 K1</td></tr>
+<tr><td class="id">A1b</td><td>换过位置以后</td><td>整屏</td><td>A1 换一个</td><td>点缩略图免费切回；“就这里”进 A2</td></tr>
+<tr><td class="id">A2</td><td>取名</td><td>小卡（输入）</td><td>A1；被邀请；J2 改名；S2</td><td>确认进 A3；返回回 A1</td></tr>
+<tr><td class="id">A3</td><td>新手引导 第 1 到 3 步</td><td>页内遮罩</td><td>A2</td><td>走完进 A3b；跳过要二次确认</td></tr>
+<tr><td class="id">A3b</td><td>新手引导 第 4、5 步</td><td>页内</td><td>A3</td><td>第 5 步升到 2 级后，镜头拉远，进 B5</td></tr>
+<tr><td class="id">A3c</td><td>第 1 步画路的推荐虚影</td><td>页内</td><td>A3</td><td>画到别处也算完成</td></tr>
+<tr><td class="id">B5</td><td>微信订阅授权</td><td>微信弹窗</td><td>引导结束、领升级奖励、首次造码头或货运站、收下离线收益</td><td>微信自己的弹窗，关掉回原处</td></tr>
+</table></div>
+
+<h2>二、主界面和偶尔出现的时刻</h2>
+<div class="tw"><table>
+<tr><th>编号</th><th>页面</th><th>形式</th><th>从哪进</th><th>去哪、怎么关</th></tr>
+<tr><td class="id">B1</td><td>主界面</td><td>地图</td><td>L1、B2、A2 确认、K2 之后的新城</td><td>各入口见下面几行</td></tr>
+<tr><td class="id">B1a</td><td>1 级空城（跳过引导后）</td><td>地图</td><td>A3 跳过</td><td>只能造 1 级的东西</td></tr>
+<tr><td class="id">B1n</td><td>夜里的主界面</td><td>地图</td><td>按时间</td><td>只调暗并亮灯；视图里仍用白天光</td></tr>
+<tr><td class="id">B1o</td><td>没网时打开</td><td>地图</td><td>L1 有本地存档</td><td>城市名旁断网图标；联网后恢复</td></tr>
+<tr><td class="id">B2</td><td>离线收益</td><td>浮层</td><td>B1 启动时（离开超过 10 分钟）</td><td>“收下”（绿色）；超过 8 小时有冻结图标和延长</td></tr>
+<tr><td class="id">B2b</td><td>离线收益：不到 8 小时</td><td>浮层</td><td>同上</td><td>没有冻结图标，没有延长</td></tr>
+<tr><td class="id">B2c</td><td>离线收益：翻倍以后</td><td>浮层</td><td>B2 看视频翻倍</td><td>数字翻倍，翻倍按钮消失</td></tr>
+<tr><td class="id">B2d</td><td>离线收益：广告不可用</td><td>浮层</td><td>B2</td><td>两个按钮换成“直接领取”</td></tr>
+<tr><td class="id">B3</td><td>升级仪式</td><td>整屏</td><td>点发光的徽章</td><td>点任意处关；不超过 3 秒</td></tr>
+<tr><td class="id">B3b</td><td>升级仪式：没有升级奖励</td><td>整屏</td><td>B3 同一玩家已领过这一级奖励</td><td>同上，底下一行小字</td></tr>
+<tr><td class="id">B4</td><td>资金为负、破产保护</td><td>页内</td><td>资金跌到负数</td><td>资金回正或回到红线以上自动消失；不弹窗</td></tr>
+<tr><td class="id">B6a</td><td>看视频领钱：到账中</td><td>页内</td><td>C1 看视频领钱</td><td>服务端确认后自动；没确认淡出</td></tr>
+<tr><td class="id">B6b</td><td>看视频领钱：直接领取</td><td>页内</td><td>广告不可用时的同一按钮</td><td>用完当天变灰</td></tr>
+<tr><td class="id">K1</td><td>城市结束</td><td>整屏</td><td>启动时城市已结束；K2 结束后；同步时返回已结束</td><td>“开新城”进 A1；“看历史城市”进 J1</td></tr>
+<tr><td class="id">K2</td><td>结束确认</td><td>整屏</td><td>C5 点“开新城”；J2 点“结束这座城市”</td><td>左上返回；结束后进 K1（看完视频）</td></tr>
+<tr><td class="id">N1</td><td>在另一台设备上打开了</td><td>整屏</td><td>同步时会话过期</td><td>“在这台继续”，重拉存档</td></tr>
+<tr><td class="id">N2</td><td>版本更新</td><td>小卡（兼容）／整屏（不兼容）</td><td>启动或 B1 检测到新版本</td><td>兼容有“稍后”“重启”；不兼容只有“重启”</td></tr>
+<tr><td class="id">N3</td><td>断网和维护</td><td>页内条</td><td>自动</td><td>自动恢复；维护时第二行下面一条字</td></tr>
+<tr><td class="id">S2</td><td>名字被判违规：必须改名</td><td>小卡，没有关闭按钮</td><td>启动或改名检查后</td><td>改好名字才能关；改好前城市名显示“某某的城市”</td></tr>
+</table></div>
+
+<h2>三、顶部的四个数</h2>
+<div class="tw"><table>
+<tr><th>编号</th><th>页面</th><th>形式</th><th>从哪进</th><th>去哪、怎么关</th></tr>
+<tr><td class="id">C1</td><td>钱的小卡</td><td>小卡</td><td>资金格、资金旁的“+”</td><td>点收入或支出的一段进 C2；看视频领钱进 B6a／B6b；点外面关</td></tr>
+<tr><td class="id">C1a</td><td>钱：1 级</td><td>小卡</td><td>同上</td><td>只画已经有税的几类</td></tr>
+<tr><td class="id">C1b</td><td>钱：资金为负</td><td>小卡</td><td>同上</td><td>曲线上画橙色虚线（红线），破产时加沙漏</td></tr>
+<tr><td class="id">C2</td><td>钱从哪来：住宅税</td><td>页内（地图着色）</td><td>C1 点收入的一段</td><td>左上返回回 C1；点楼冒气泡</td></tr>
+<tr><td class="id">C2a</td><td>钱花在哪：道路维护费</td><td>页内（地图着色）</td><td>C1 点支出的一段</td><td>同上</td></tr>
+<tr><td class="id">C2b</td><td>钱从哪来：过路费</td><td>页内（地图着色）</td><td>C1 点过路费</td><td>同上</td></tr>
+<tr><td class="id">C3</td><td>人口小卡</td><td>小卡</td><td>顶部人口</td><td>右下“看地图”进 F4</td></tr>
+<tr><td class="id">C4</td><td>满意度小卡</td><td>小卡</td><td>顶部表情</td><td>点因素：垃圾 F2、工作 F4、购物 F4、水电燃气 F3、通勤 F1、环境 F6、服务 F2；点税进 C1</td></tr>
+<tr><td class="id">C5</td><td>等级小卡</td><td>小卡</td><td>顶部徽章</td><td>点图标冒小签；经验满了点徽章进 B3；满级点“开新城”进 K2</td></tr>
+</table></div>
+
+<h2>四、主界面的其他入口</h2>
+<div class="tw"><table>
+<tr><th>编号</th><th>页面</th><th>形式</th><th>从哪进</th><th>去哪、怎么关</th></tr>
+<tr><td class="id">H1</td><td>站内信：待处理</td><td>整屏（两个页签）</td><td>信封</td><td>线头“去看看”关掉整屏、镜头飞到接口进 G2；领奖励</td></tr>
+<tr><td class="id">H2</td><td>站内信：通知</td><td>整屏（页签）</td><td>信封</td><td>点一封镜头飞到相关的地方；公告原地展开</td></tr>
+<tr><td class="id">J1</td><td>我的城市</td><td>整屏</td><td>书本图标</td><td>点当前城市回地图；眼睛进 I3b；齿轮进 J2</td></tr>
+<tr><td class="id">J2</td><td>设置</td><td>整屏</td><td>J1 齿轮</td><td>账号进 J3；帮助进 J4；结束这座城市进 K2</td></tr>
+<tr><td class="id">J3</td><td>账号</td><td>整屏</td><td>J2</td><td>注销二次确认；昵称和头像在这里改</td></tr>
+<tr><td class="id">J4</td><td>帮助页</td><td>整屏（一个系统一页）</td><td>J2；等级小签；建造卡片角上的“?”</td><td>左上返回回到进入它的那一层</td></tr>
+</table></div>
+
+<h2>五、建造</h2>
+<div class="tw"><table>
+<tr><th>编号</th><th>页面</th><th>形式</th><th>从哪进</th><th>去哪、怎么关</th></tr>
+<tr><td class="id">D1</td><td>建造托盘：道路和铁路</td><td>托盘（两排）</td><td>底部建造按钮</td><td>选卡片进对应工具；推土机进 D9；点外面收起</td></tr>
+<tr><td class="id">D1b</td><td>托盘的“新”标签</td><td>托盘</td><td>D1</td><td>点过这张卡后“新”消失</td></tr>
+<tr><td class="id">D2</td><td>建造托盘：奖励建筑</td><td>托盘</td><td>D1 的奖励建筑类别</td><td>选卡片进放置</td></tr>
+<tr><td class="id">D2b</td><td>奖励建筑卡片的几种样子</td><td>卡片</td><td>D2</td><td>打勾（已有）、进度环（在建）、锁（没解锁）</td></tr>
+<tr><td class="id">D3</td><td>画路</td><td>建造模式</td><td>D1 选道路</td><td>✓ 进 D7；拉到高速边上进 D4；画到边界进 D3b</td></tr>
+<tr><td class="id">D3b</td><td>修到边界：能接</td><td>建造模式</td><td>D3 画到边界</td><td>能接的边界格发亮，✓ 进 D7</td></tr>
+<tr><td class="id">D3c</td><td>修到边界：不能接</td><td>建造模式</td><td>D3b 接不上</td><td>断链图标；✓ 变灰</td></tr>
+<tr><td class="id">D4</td><td>匝道自动出现</td><td>建造模式</td><td>普通路拉到高速或邻居线头边上</td><td>和路一起确认</td></tr>
+<tr><td class="id">D4b</td><td>匝道接上邻居修来的高速</td><td>建造模式</td><td>G2 去接上高速线头</td><td>同 D4</td></tr>
+<tr><td class="id">D5</td><td>划区、改规划</td><td>建造模式</td><td>D1 分区</td><td>✓ 进 D7；右边四根需求条</td></tr>
+<tr><td class="id">D6</td><td>放公共服务、厂、站、奖励建筑</td><td>建造模式</td><td>D1 对应类别</td><td>能放的格子发亮；自动打开对应的视图</td></tr>
+<tr><td class="id">D7</td><td>撤销倒数</td><td>底部按钮</td><td>任一确认之后</td><td>10 秒倒数，点了全额退款；过了倒数自动消失</td></tr>
+<tr><td class="id">D8</td><td>工地气泡</td><td>气泡</td><td>点在建的东西</td><td>加速（看视频）、取消（按住约 1 秒）</td></tr>
+<tr><td class="id">D9</td><td>拆除：选中</td><td>气泡</td><td>推土机点路或楼</td><td>“拆”按一下；拆的东西 10 秒内可撤销</td></tr>
+<tr><td class="id">D9b</td><td>拆除：拖动选好几样</td><td>页内（选中描红）</td><td>D9 拖选</td><td>同 D9</td></tr>
+<tr><td class="id">D10</td><td>拆除边界段</td><td>气泡</td><td>D9 选中边界段</td><td>按住约 1 秒，要联网</td></tr>
+<tr><td class="id">D11</td><td>铁路</td><td>建造模式</td><td>D1 铁路</td><td>接线头进 G3 货运站（铁路线头）</td></tr>
+<tr><td class="id">D12</td><td>高速公路</td><td>建造模式</td><td>D1 高速</td><td>地面、高架、立交三种，左右滑换模板</td></tr>
+<tr><td class="id">D13</td><td>公交线</td><td>建造模式</td><td>D1 或 E9 改线路</td><td>点路面放站，点回第一站成环</td></tr>
+<tr><td class="id">D14</td><td>地铁</td><td>建造模式</td><td>D1 或 E9 改线路</td><td>拖出线路，点格子放站</td></tr>
+<tr><td class="id">D15</td><td>其他建造工具</td><td>建造模式</td><td>D1 的公园、垃圾、清森林，以及换等级、换种类</td><td>同上</td></tr>
+</table></div>
+
+<h2>六、点地图上的东西、视图、邻居、社交</h2>
+<div class="tw"><table>
+<tr><th>编号</th><th>页面</th><th>形式</th><th>从哪进</th><th>去哪、怎么关</th></tr>
+<tr><td class="id">E1–E12</td><td>点住宅、商场、办公、工业、农田、路段、公共服务、水厂电厂燃气厂、路口、公交地铁站、码头机场港、奖励建筑、公园、垃圾用地、铁路段、货运站、客运站、高架立交、没长楼的格子</td><td>气泡</td><td>地图上点东西（优先级见 ui-map 第 7 节）</td><td>点外面或拖出屏幕关；车 + 路线进 E5</td></tr>
+<tr><td class="id">E5</td><td>车流去向</td><td>页内（光带）</td><td>E1、E2、E3 的车 + 路线</td><td>左上返回回原来的气泡</td></tr>
+<tr><td class="id">F0</td><td>视图托盘</td><td>托盘</td><td>B1 视图按钮</td><td>选一个进 F1–F8；点外面收起</td></tr>
+<tr><td class="id">F1–F8</td><td>交通、公共服务（F2 含 F2a 学校、F2b 垃圾）、水电燃气、人口和岗位（F4 含 F4a 学历、F4b 商场）、满意度、环境、货运、地铁</td><td>页内（地图着色）</td><td>F0 或建造模式自动打开</td><td>左上返回回 F0 或原处</td></tr>
+<tr><td class="id">G1</td><td>地图四边的边界接口</td><td>页内</td><td>拖过边界能看到邻居</td><td>点接口进 G2、G5、G6</td></tr>
+<tr><td class="id">G2</td><td>对着你的线头</td><td>气泡</td><td>G1 点光环</td><td>“去接上”进 G3 或 D4b 或 D4</td></tr>
+<tr><td class="id">G2a / G2b / G2c / G2d</td><td>期限还没开始／已开工期限冻结／没网／方案接了也不算接好</td><td>气泡</td><td>G2 的几种状态</td><td>同 G2</td></tr>
+<tr><td class="id">G3</td><td>去接上：放货运站</td><td>建造模式</td><td>G2 对面是铁路线头</td><td>只有线头旁能接的格子发亮</td></tr>
+<tr><td class="id">G4</td><td>看邻居（灰色画面）</td><td>页内</td><td>拖过边界</td><td>点头像进 G4b</td></tr>
+<tr><td class="id">G4b</td><td>邻居头像的气泡</td><td>气泡</td><td>G4 点头像</td><td>加好友；已是好友多一个“实地参观”进 I3</td></tr>
+<tr><td class="id">G5</td><td>已接好的接口</td><td>气泡</td><td>G1 点绿圈</td><td>写每天经过多少货、过路费</td></tr>
+<tr><td class="id">G6</td><td>你修出去的接口</td><td>气泡</td><td>G1 点“⋯”或空白圈</td><td>写对方状态小签</td></tr>
+<tr><td class="id">I1</td><td>地区</td><td>整屏</td><td>B1 地区按钮</td><td>点城市进气泡；全国按钮进 I2；左上返回</td></tr>
+<tr><td class="id">I1b</td><td>地区：留给邀请的空位</td><td>整屏</td><td>I1</td><td>灰色头像占位和剩几天</td></tr>
+<tr><td class="id">I2</td><td>全国</td><td>整屏</td><td>I1 全国按钮</td><td>返回回 I1</td></tr>
+<tr><td class="id">I3</td><td>参观：实地参观好友</td><td>整屏（彩色）</td><td>I1 好友头像；G4b；J1 历史城市</td><td>左上返回回来的地方；只能看</td></tr>
+<tr><td class="id">I3a / I3b / I3c</td><td>“看看”灰色画面／历史城市（灰色）／点对方头像</td><td>整屏</td><td>I1 看看、J1 眼睛、I3 头像</td><td>同 I3</td></tr>
+<tr><td class="id">S3</td><td>邀请好友（微信分享卡片）</td><td>微信弹窗</td><td>I1 紧挨你的空位上的 ＋</td><td>微信卡片；留位写在 I1b 上</td></tr>
+</table></div>
+
+<h2>七、通用的样子</h2>
+<div class="tw"><table>
+<tr><th>编号</th><th>页面</th><th>用在哪</th></tr>
+<tr><td class="id">S1</td><td>空状态（没好友、没历史城市、站内信空、地区只有你、全国只有一个地区、F2 没有服务、C1 与 C3 的 1 级）</td><td>各页面的空状态</td></tr>
+<tr><td class="id">S4</td><td>等待和失败：整屏骨架，超过 1 秒转圈；失败断线图标加“重试”；按钮转圈不能再点、失败抖一下；10 秒没回应算失败</td><td>所有要联网的页面和按钮</td></tr>
+</table></div>
+<p class="note">共 110 张效果图，本页按页面列出；带小写字母的是同一页面的别的状态，与主编号的进出一致。</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

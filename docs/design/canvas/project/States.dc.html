@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>异步状态</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{--bg:#faf8f2;--ink:#1d1d1b;--muted:#5f5e58;--line:#d9d4c7;--head:#0f3d3e}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0}}
+:root[data-theme="dark"]{--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.65}
+.wrap{max-width:1120px;margin:0 auto;padding:40px 48px}
+h1{font-size:28px;margin:0 0 6px;color:var(--head)}
+h2{font-size:18px;margin:28px 0 8px;color:var(--head)}
+p{margin:6px 0}
+.note{color:var(--muted);font-size:13px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;white-space:nowrap}
+td.f{font-weight:600;white-space:nowrap}
+</style>
+</helmet>
+<div class="wrap">
+<h1>异步操作的状态</h1>
+<p class="note">按流程列出：每一步的状态、画面上看到的东西、怎么进入和离开。出处是 ui-map.md 第 4、6、9 节和 game-design.md、data-model.md。规则以 game-design.md 为准。</p>
+
+<h2>一、同步（手机和服务端）</h2>
+<div class="tw"><table>
+<tr><th>状态</th><th>画面</th><th>怎么进入</th><th>怎么离开</th></tr>
+<tr><td class="f">在线、无待发</td><td>什么都不画</td><td>上一次同步成功</td><td>到了同步间隔（默认 2 分钟，ops_switch 可改）</td></tr>
+<tr><td class="f">发送中</td><td>不画（资金按秒平滑）</td><td>到了间隔，或退后台、当场确认的操作之后</td><td>成功进“在线”；失败进“重试”</td></tr>
+<tr><td class="f">重试</td><td>断网时城市名旁断网图标（只有超过一次失败才出）</td><td>请求失败或超时</td><td>指数退避重试；成功回“在线”。手机保证同一时刻只有一个同步在路上</td></tr>
+<tr><td class="f">会话过期</td><td>N1 整屏“在这台继续”</td><td>服务端的 session_id 不是这台的</td><td>点按钮，重拉存档，告知没同步的操作丢了</td></tr>
+<tr><td class="f">重建基线</td><td>不画，静默</td><td>save_seq 落后于 sync_seq</td><td>重新下载存档后回“在线”</td></tr>
+<tr><td class="f">调整量静默修正</td><td>资金按秒平滑跳到服务端的数，不弹提示</td><td>同步被截断，或断网后联网拿到服务端的数</td><td>自动，下一次同步完成</td></tr>
+</table></div>
+
+<h2>二、看视频（ad_grant）</h2>
+<div class="tw"><table>
+<tr><th>状态</th><th>画面</th><th>怎么进入</th><th>怎么离开</th></tr>
+<tr><td class="f">待播（建 ad_grant）</td><td>按钮转圈，不能再点</td><td>玩家点“看视频”；每个玩家同一时刻只有一条待确认</td><td>广告播放完成，或放弃</td></tr>
+<tr><td class="f">待确认（到账中）</td><td>资金数字后一个转圈（B6a）；金币飞进资金；不另占位置</td><td>广告播完</td><td>微信回调确认（1 秒内回包）→ 已确认</td></tr>
+<tr><td class="f">已确认</td><td>同上，服务端确认后才能花</td><td>adCallback 核对 transaction_id 通过</td><td>本城执行（领钱、加速、换位置、翻倍、结束城市）→ 已执行</td></tr>
+<tr><td class="f">已执行</td><td>金币飞进资金；加速时工地的进度环直接跳</td><td>服务端执行完</td><td>结束</td></tr>
+<tr><td class="f">没确认、淡出</td><td>到账中淡出，不弹窗</td><td>播完但 2 分钟内没收到回调</td><td>定时任务再核一次；仍没有就丢弃，不扣次数（建议，待核实）</td></tr>
+<tr><td class="f">广告不可用</td><td>同一按钮变成“直接领取 · 今天还剩 N 次”（B6b）</td><td>广告不可用，且 ops_switch 开了直接领取</td><td>次数用完后按钮变灰，写原因图标</td></tr>
+</table></div>
+
+<h2>三、修到边界和接线头（G1、G2、D3b、D3c）</h2>
+<div class="tw"><table>
+<tr><th>状态</th><th>画面</th><th>怎么进入</th><th>怎么离开</th></tr>
+<tr><td class="f">拖到边界附近（几格以内）</td><td>问服务端一次（这一笔记住结果）</td><td>虚影第一次到边界附近</td><td>拿到结果后进下面的一种</td></tr>
+<tr><td class="f">能接</td><td>能接的边界格发亮；✓ 可按</td><td>服务端说可以</td><td>✓ 进 D7；离开边界回到“拖到边界附近”</td></tr>
+<tr><td class="f">这一格不能接</td><td>这一格带禁止图标，其他格照常</td><td>服务端说这一格不行</td><td>换一格</td></tr>
+<tr><td class="f">整条边都不能接</td><td>边上画原因图标：嫩芽（对方在保护期）；已有接口的圈闪一下（这对位置已经有这种接口）；时钟加天数（冷却期）</td><td>服务端按原因拒绝</td><td>换一条边</td></tr>
+<tr><td class="f">线没连到你城里人口最多的那片</td><td>边界不发亮；虚影上一个断链图标；人口最多的那片描淡金光；✓ 变灰（D3c）</td><td>服务端拒绝：一格孤头不能逼邻居</td><td>把线连到人口最多的那片，或撤掉</td></tr>
+<tr><td class="f">没网</td><td>边界不发亮；✓ 变灰；“去接上”置灰</td><td>断网</td><td>恢复网络后自动同步</td></tr>
+<tr><td class="f">被对方抢先</td><td>工地变回空地；资金旁飘“+¥N”（全额退款）；镜头飞到对方接口，打开 G2</td><td>服务端通知：对方先到</td><td>自动，玩家可以改接对方的接口</td></tr>
+<tr><td class="f">接好了</td><td>光环停下，变实线绿圈；镜头上闪一下</td><td>服务端判定接好（期限结束前）</td><td>—</td></tr>
+</table></div>
+
+<h2>四、期限（G1、G2）</h2>
+<p class="note">一侧的期限有这些状态，画在接口上。规则在 game-design.md 第 9 节和 data-model.md 第 9 节。</p>
+<div class="tw"><table>
+<tr><th>状态</th><th>画面</th><th>怎么进入</th><th>怎么离开</th></tr>
+<tr><td class="f">无</td><td>灰色虚线圈，没有“⋯”（空白位置）或有“⋯”（你修出去、等对方接）</td><td>没有线头</td><td>修出线头 → 等待或排队</td></tr>
+<tr><td class="f">排队中</td><td>金色光环不扩，小签“排队中”</td><td>另一个期限在走（一座城同一时间只有一个期限在走）</td><td>前一个结束 → 在走</td></tr>
+<tr><td class="f">等待开始</td><td>金色光环不扩，小签“保护期后”“Lv7 后”“Lv3 后”</td><td>对方在保护期、或等级不够、或前面还有期限</td><td>条件满足 → 在走</td></tr>
+<tr><td class="f">在走</td><td>金色光环一圈圈往外扩，旁边“剩 N 天”；最后一天写小时并变橙</td><td>期限开始</td><td>接好 → 接好；超过期限没接 → 结束城市（先过 1 小时宽限）</td></tr>
+<tr><td class="f">冻结（已开工接）</td><td>金色光环停住，旁边进度环</td><td>玩家开工接线</td><td>完工后接好 → 接好；没完工被取消 → 回到在走</td></tr>
+<tr><td class="f">接好</td><td>实线绿圈，车或火车一直在过</td><td>判定接好</td><td>拆掉边界段 → 无（期限算在拆的一方）</td></tr>
+<tr><td class="f">接好后又没接好（1 天内）</td><td>光环继续，剩余天数接着上次算</td><td>没接好的时刻距上次接好不到 1 天</td><td>不重新给 7 天（game-design.md 第 9 节）</td></tr>
+</table></div>
+
+<h2>五、建造、撤销和工地（D7、D8）</h2>
+<div class="tw"><table>
+<tr><th>状态</th><th>画面</th><th>怎么进入</th><th>怎么离开</th></tr>
+<tr><td class="f">确认前（虚影）</td><td>虚影跟手指；价格气泡（造价、每天维护费）；钱不够时 ✓ 变灰，气泡写差多少，可以看视频补</td><td>建造模式里拖动或放置</td><td>✓ 确认 → 已确认；✕ 或退出 → 丢掉</td></tr>
+<tr><td class="f">已确认、可撤销（D7）</td><td>底部一个 10 秒倒数的撤销按钮</td><td>✓ 确认</td><td>点撤销：全额退款、按原样恢复；倒数完按钮消失。撤销只对最后一笔</td></tr>
+<tr><td class="f">在建（工地）</td><td>进度环；点它冒气泡（D8）</td><td>倒数完或没撤销</td><td>完工 → 工地闪光；自己长的楼有进度环但没有加速和取消</td></tr>
+<tr><td class="f">完工</td><td>工地闪光；工期超过 10 分钟的发一封站内信</td><td>到时间</td><td>—</td></tr>
+<tr><td class="f">取消</td><td>按住约 1 秒，退回没建的那部分的钱</td><td>D8 按住取消</td><td>已退款</td></tr>
+</table></div>
+
+<h2>六、离线补算（B2）</h2>
+<div class="tw"><table>
+<tr><th>情况</th><th>画面</th><th>备注</th></tr>
+<tr><td class="f">离开不到 10 分钟</td><td>不出 B2；落下的时间当在线补上</td><td>切后台回来</td></tr>
+<tr><td class="f">离开 10 分钟到 8 小时（B2b）</td><td>B2：税的数字从零往上滚；“维护费 −¥N”；过路费单列“已到账”；收下</td><td>不出冻结图标，不出延长</td></tr>
+<tr><td class="f">离开超过 8 小时（B2）</td><td>同上，加冻结的小图标；看视频翻倍、延长</td><td>补算的天数上限在 Q-006</td></tr>
+<tr><td class="f">翻倍以后（B2c）</td><td>数字翻倍，翻倍按钮消失</td><td>每次离线记录一次翻倍</td></tr>
+<tr><td class="f">广告不可用（B2d）</td><td>两个按钮换成直接领取</td><td>次数在 ops_switch</td></tr>
+<tr><td class="f">补算中</td><td>先画出城市；顶部一根进度条；这时只能看、不能造</td><td>进度条消失再出 B2（如果有）</td></tr>
+</table></div>
+
+<h2>七、破产保护（B4、C1b）</h2>
+<div class="tw"><table>
+<tr><th>状态</th><th>画面</th><th>怎么进入</th><th>怎么离开</th></tr>
+<tr><td class="f">资金为负</td><td>资金变灰；C1 曲线上橙色虚线（红线）</td><td>资金跌到负数</td><td>回正 → 正常</td></tr>
+<tr><td class="f">破产保护</td><td>资金格角上挂沙漏和倒计时（现实时间，离线延期期间只显示在线剩余）；不弹窗</td><td>在线时资金落到红线以下</td><td>资金回到红线以上 → 正常；到期 → 结束城市</td></tr>
+<tr><td class="f">建造时钱不够</td><td>✓ 变灰；气泡写差多少；可以看视频补钱，看完写“▶ +¥N”并更新差多少</td><td>确认前钱不够</td><td>补够或放弃</td></tr>
+</table></div>
+
+<h2>八、等待和失败（S4）</h2>
+<div class="tw"><table>
+<tr><th>情况</th><th>画面</th><th>备注</th></tr>
+<tr><td class="f">整屏的内容（地区、全国、站内信、参观）</td><td>先画骨架；超过 1 秒出转圈；失败时中间一个断线图标加“重试”</td><td>整屏的样子统一，不弹窗</td></tr>
+<tr><td class="f">按钮</td><td>点下变转圈，不能再点；失败时按钮抖一下回原样，旁边一个图标说明原因（断线或被拒的原因）</td><td>任何要联网的按钮</td></tr>
+<tr><td class="f">超时</td><td>10 秒没有回应按失败处理</td><td>—</td></tr>
+<tr><td class="f">没网</td><td>要联网的功能置灰，带断网小图标：升级、修接拆线头和撤销线头、看视频和直接领取、地区和全国、站内信、好友、参观、改名、结束城市、开新城</td><td>恢复后自动同步，不弹窗</td></tr>
+</table></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

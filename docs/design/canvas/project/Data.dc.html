@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>页面到数据</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{--bg:#faf8f2;--ink:#1d1d1b;--muted:#5f5e58;--line:#d9d4c7;--head:#0f3d3e}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0}}
+:root[data-theme="dark"]{--bg:#171816;--ink:#ece9df;--muted:#aaa79a;--line:#3a3b36;--head:#9fd3d0}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.65}
+.wrap{max-width:1120px;margin:0 auto;padding:40px 48px}
+h1{font-size:28px;margin:0 0 6px;color:var(--head)}
+h2{font-size:18px;margin:28px 0 8px;color:var(--head)}
+p{margin:6px 0}
+.note{color:var(--muted);font-size:13px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;white-space:nowrap}
+td.f{font-weight:600;white-space:nowrap}
+</style>
+</helmet>
+<div class="wrap">
+<h1>页面到数据和接口</h1>
+<p class="note">每个页面读什么、写什么、调哪个云函数动作或定时任务，没网时怎么办。表名和字段以 data-model.md 为准；接口动作名以 server-impl.md 为准。“手机”＝只存在手机存档里，不进云数据库（城市文档只放服务端要读的字段）。</p>
+
+<div class="tw"><table>
+<tr><th>页面</th><th>读</th><th>写</th><th>接口或任务</th><th>没网</th></tr>
+<tr><td class="f">L1 加载、恢复</td><td>player、city、存档文件（云存储）</td><td>—</td><td>identity 的 enter：返回服务端时间、城市、存档地址、sync_seq、city_inbox、未计入的入账、今天各用途剩余次数、配置版本</td><td>有本地存档进 B1o；没有就停在 L1 出“重试”</td></tr>
+<tr><td class="f">L2 隐私指引</td><td>手机</td><td>手机（同意记录）</td><td>—</td><td>可看</td></tr>
+<tr><td class="f">A1 位置预览</td><td>slot 摘要、slot_offer</td><td>slot_offer（一条）</td><td>world：按 (free, order_key) 取前 10 个空位，跳过别人有效的留位，取第一个；换位置先建 ad_grant（purpose 换位置）</td><td>看视频换位置置灰；“就这里”需要网络（开新城要联网）</td></tr>
+<tr><td class="f">A2 取名</td><td>city.name、city.name_status、city.name_changed_at</td><td>city（成功后）</td><td>内容安全检查（外部接口，场景值待核实）；开新城在 identity 的事务里写 slot、player、city 等</td><td>改名和开新城置灰</td></tr>
+<tr><td class="f">A3 新手引导</td><td>手机</td><td>手机（tutorial_step）</td><td>— （引导进度只存手机；跳过记为完成）</td><td>可进行，断网中途不丢进度</td></tr>
+<tr><td class="f">B1 主界面</td><td>手机状态、city_inbox（每次同步只读这一条）</td><td>存档文件（每 5 分钟、退后台、当场确认的操作之后）</td><td>city：同步，每 2 分钟一次（ops_switch 可改）；在线才有</td><td>离线队列按批次保存，断网退避重试；断网图标</td></tr>
+<tr><td class="f">B2 离线收益</td><td>手机存档（sim_time）、offline_claim</td><td>offline_claim（服务端记）</td><td>离线补算在本地做；看视频翻倍、延长走 ad_grant</td><td>本地补算，联网后服务端核对；翻倍、延长需要联网</td></tr>
+<tr><td class="f">B3 升级仪式</td><td>city.level、xp、xp_level_at、player.levels_rewarded</td><td>city（升级）、reward（每级一条）、mail（升级奖励）</td><td>服务端确认等级（level 还是 L、经验够了）</td><td>升级的确认置灰</td></tr>
+<tr><td class="f">B4 破产保护</td><td>city.bankrupt_deadline（服务端查到期）</td><td>—</td><td>tick 每分钟查快到期的破产保护</td><td>倒计时按现实时间，离线延期期间只显示在线剩余</td></tr>
+<tr><td class="f">B5 订阅授权</td><td>wx_notify_quota</td><td>wx_notify_quota（授权后加次数）</td><td>微信的订阅弹窗（客户端）</td><td>无关</td></tr>
+<tr><td class="f">B6 看视频领钱</td><td>ad_grant、ops_switch（广告开关、次数）</td><td>ad_grant（建、确认、执行）；free_grant（直接领取）</td><td>微信激励广告；adCallback（HTTP，1 秒内回包）；tick 执行超过 2 分钟没执行的已确认记录</td><td>广告不可用时走 free_grant；次数用完变灰</td></tr>
+<tr><td class="f">C1 钱、C2 来源、C2a 支出、C2b 过路费</td><td>手机 sim 的税和支出分项；city_summary 的过路费</td><td>—</td><td>税率拨钮写手机；过路费由 city_inbox 的 toll_pending 入账</td><td>可看本地算的值</td></tr>
+<tr><td class="f">C3 人口、C4 满意度</td><td>residents_by_edu、jobs_by_stars、satisfaction</td><td>—</td><td>—</td><td>可看</td></tr>
+<tr><td class="f">C5 等级</td><td>city.level、xp、player.levels_rewarded</td><td>—</td><td>同 B3</td><td>可看</td></tr>
+<tr><td class="f">K1 城市结束、K2 结束确认</td><td>city.ended、end_reason、end_step、end_seen_at</td><td>city（结束）、job_queue（城市结束任务，分步接力）</td><td>identity 的开新城；K2 看视频走 ad_grant（purpose 结束城市）</td><td>结束和开新城置灰；K1 显示最后一眼的画面（手机快照）</td></tr>
+<tr><td class="f">N1 另一台设备</td><td>city.session_id</td><td>—</td><td>同步时 session_id 不一致返回会话过期</td><td>—</td></tr>
+<tr><td class="f">N2 版本更新</td><td>ops_switch（最低客户端版本）</td><td>—</td><td>enter 的响应里带版本要求</td><td>—</td></tr>
+<tr><td class="f">N3 维护、断网</td><td>ops_switch（维护时间）</td><td>—</td><td>同步失败、响应里的维护信息</td><td>自动恢复</td></tr>
+<tr><td class="f">S2 必须改名</td><td>city.name_status</td><td>city（名字和状态）</td><td>内容安全检查（改名时）</td><td>没法检查时城市名显示“某某的城市”</td></tr>
+<tr><td class="f">H1 待处理</td><td>mail（待处理的类别：线头、好友申请、升级奖励）</td><td>mail（read_at、resolved_at）</td><td>同步的 city_inbox.mail_version 变了，才读 mail</td><td>只读本地已有的信</td></tr>
+<tr><td class="f">H2 通知</td><td>手机（城内的通知）；mail（跨玩家和服务端产生的）</td><td>mail（已读）</td><td>同上</td><td>本地的通知照常</td></tr>
+<tr><td class="f">D1–D15 建造</td><td>手机存档、路网、分区、楼</td><td>手机（虚影、撤销记录）</td><td>确认和撤销在本地算；需要服务端判断的（修线头、拆边界段）随同步一起提交</td><td>本地建造照常；修线头、拆边界段、接线头置灰</td></tr>
+<tr><td class="f">E1–E12 气泡</td><td>手机 sim；region_result（by_port、主要去向）</td><td>—</td><td>region_result 每天结算后下载，本地沿用最近结果</td><td>沿用最近结果</td></tr>
+<tr><td class="f">F0–F8 视图</td><td>手机 sim（交通、人口、供需）</td><td>—</td><td>交通分配和覆盖在本地算（sim-impl.md）</td><td>可看</td></tr>
+<tr><td class="f">G1、G2、G5、G6 接口</td><td>border_pair、city_summary（写时机见 data-model.md 第 7 节）、ports</td><td>border_pair（修到边界、接好）；city（running_port）</td><td>city：修到边界（同步 + 操作合并）；tick 每分钟按 next_due_at 处理期限</td><td>修线头、去接上置灰；已有接口的状态照常显示</td></tr>
+<tr><td class="f">G3 放货运站</td><td>手机</td><td>手机（虚影）</td><td>接线头的操作随同步提交</td><td>置灰</td></tr>
+<tr><td class="f">G4 看邻居、G4b 头像</td><td>city_snapshot（灰色画面的数据，只读）</td><td>friendship（加好友）</td><td>world 读快照；加好友是 friendship 的请求</td><td>只能看最近一次同步的画面</td></tr>
+<tr><td class="f">I1 地区、I1b 留位</td><td>region、slot、city_snapshot</td><td>—</td><td>world：地区的位置列表</td><td>整屏骨架加“重试”（S4）</td></tr>
+<tr><td class="f">I2 全国</td><td>country、region、national_demand、foreign_market</td><td>—</td><td>world：国家的列表</td><td>同上</td></tr>
+<tr><td class="f">I3 参观</td><td>visit_file（参观快照，云存储）</td><td>—</td><td>云函数查好友关系后签发临时链接；历史城市用结束那一刻的快照</td><td>不可用</td></tr>
+<tr><td class="f">S3 邀请好友</td><td>invitation、slot.held_by</td><td>invitation（新建）、slot（held_by 写上留位）</td><td>微信分享卡片，带邀请码；新玩家从启动参数进来</td><td>＋ 置灰</td></tr>
+<tr><td class="f">J1 我的城市</td><td>city（历史城市）、city_snapshot</td><td>city（永久删除历史城市）</td><td>identity（删除历史城市的 city 和快照）</td><td>删除需要联网</td></tr>
+<tr><td class="f">J2 设置</td><td>ops_switch（画质选项、功能开关）、手机设置</td><td>手机（画质、声音、震动）；wx_notify_quota（再授权）</td><td>城市名改名走 identity（J2 的改名）</td><td>改名置灰</td></tr>
+<tr><td class="f">J3 账号</td><td>player（nickname、avatar_id）</td><td>player（nickname、avatar_id）；注销时 player.status 置注销中</td><td>identity 的改昵称；注销启动 job_queue 的注销任务，分步接力</td><td>改昵称、注销置灰</td></tr>
+<tr><td class="f">J4 帮助页</td><td>手机（静态内容）</td><td>—</td><td>—</td><td>可看</td></tr>
+</table></div>
+
+<h2>定时任务和后台</h2>
+<div class="tw"><table>
+<tr><th>任务</th><th>频率</th><th>做什么</th><th>对应页面</th></tr>
+<tr><td class="f">tick</td><td>每分钟，做满约 40 秒就停</td><td>接口期限的开始、冻结到期和到期判定；地区结算（next_settle_at）；国家汇总；超过 2 分钟没执行的已确认广告；job_queue 的分段任务</td><td>G 系列、B6、K1</td></tr>
+<tr><td class="f">每天 04:00</td><td>每天</td><td>30 天没上线的玩家的城市结束；180 天没上线的玩家的历史城市删除；过期的站内信、过期的数据清理</td><td>K1、J1、H2</td></tr>
+<tr><td class="f">通知任务</td><td>每小时</td><td>按 border_pair 的 next_due_at 查 7 天内要处理的接口；按 city.bankrupt_deadline 查快到期的破产保护；发微信服务通知（每人每天一条，额度只剩一次时留给第 6 天）</td><td>H2、B4</td></tr>
+<tr><td class="f">机器人</td><td>每 30 分钟（GitHub 定时任务）</td><td>内测用，走和玩家一样的规则，统计里排除</td><td>—</td></tr>
+</table></div>
+<p class="note">这一页没有新接口。页面到接口的对应来自 data-model.md 和 server-impl.md；如果其中某个接口名和实现时的代码对不上，以代码为准，并回来改设计文档。</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
