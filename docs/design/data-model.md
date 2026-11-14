@@ -206,7 +206,7 @@ building 的字段：
   5. 删完整存档和已核数据文件。
   6. city.status 改成历史。
 - 结束的城市成为历史城市：保留 city 记录和参观快照，玩家自己和好友都能看；缩略图由手机用参观快照当场画，不存图片。
-- 玩家永久删除、或玩家 180 天没上线时，city 记录和快照一起删掉。保留期和 REQ-024 的一致性待核实。
+- 玩家永久删除、或玩家 180 天没上线时，city 记录和快照一起删掉。保留期见 REQ-024。
 - **注销**：player.status 置注销中，job_queue 的“注销”任务分步接力：先走“城市结束”任务；再删历史城市的 city、快照、信、两边好友关系、邀请、留位、slot_offer、订阅次数、sync_audit、player_openid；ad_grant、free_grant 去掉 player_id；最后删 player。
 - 每天的维护任务对账一次：city 和 slot 互相指向、player.city_id 指向的城市是在用的、border_pair 的 city 字段和 slot 一致，不一致以 slot 为准修正。
 

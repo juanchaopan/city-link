@@ -11,7 +11,7 @@
 | `architecture/overview.md` | 架构：分层、组件、部署、数据、故障处理 | /architect 或 /onboard 创建，/architect 更新 |
 | `architecture/tech-debt.md` | 技术债和质量基线 | /onboard 创建，处理一项更新一项 |
 | `adr/` | 架构决策记录，每个重要决策一个文件 | /architect、/spike 新增 |
-| `design/` | 详细设计：一批类、接口、模块要重新设计时的方案 | /change 新增 |
+| `design/` | 详细设计：游戏规则、数据、建筑目录、界面和效果图、两端的实现大纲；`design/README.md` 是页面索引和需求覆盖表 | /design 创建，/change 更新 |
 | `roadmap.md` | 里程碑和 issue 列表，进度以 GitHub issue 为准 | /roadmap 创建，/change 更新 |
 | `changes/` | 较大变更的记录：变了什么、为什么、影响了哪些文档和代码 | /change 新增 |
 
