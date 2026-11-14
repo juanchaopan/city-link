@@ -1,5 +1,18 @@
 {
+  "permissions": {
+    "allow": ["Bash(node .github/scripts/check-commit-message.mjs:*)"]
+  },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/enable-git-hooks.mjs\""
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",

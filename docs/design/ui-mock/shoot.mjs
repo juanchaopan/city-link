@@ -5,7 +5,7 @@
 import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { startServer } from './server.mjs';
+import { HOST, startServer } from './server.mjs';
 import { SCREENS } from './screens.js';
 
 if (!process.env.SPIKE_DIR) {
@@ -19,16 +19,18 @@ const outDir = process.env.OUT_DIR ?? 'out';
 const port = Number(process.env.PORT ?? 4193);
 const scale = Number(process.env.SCALE ?? 1.25);
 const quality = Number(process.env.QUALITY ?? 75);
+// 进仓库的图是在 Windows 上用 Direct3D 后端出的；别的系统用 Chromium 默认的图形后端，画面可能有细微差别。
+const gpuArgs = process.platform === 'win32' ? ['--use-angle=d3d11'] : [];
 mkdirSync(outDir, { recursive: true });
 const server = await startServer(port, spikeDir);
-const browser = await chromium.launch({ args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ args: [...gpuArgs, '--enable-gpu', '--ignore-gpu-blocklist'] });
 const list = SCREENS.filter((s) => filter.length === 0 || filter.some((f) => s.id === f || s.id.startsWith(f)));
 for (const s of list) {
   const page = await browser.newPage({ viewport: { width: 780, height: 884 }, deviceScaleFactor: scale });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-  await page.goto(`http://localhost:${String(port)}/mock/outer.html?s=${s.id}`);
+  await page.goto(`http://${HOST}:${String(port)}/mock/outer.html?s=${s.id}`);
   try {
     await page.waitForFunction(() => document.getElementById('f').contentDocument?.documentElement?.dataset.done === 'true', null, { timeout: 180000 });
     await page.screenshot({ path: path.join(outDir, `${s.id}.jpg`), type: 'jpeg', quality });

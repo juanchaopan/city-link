@@ -5,6 +5,8 @@
 1. `CLAUDE.md`：组件、自检命令、代码规范、写代码的方式、分支和提交规则。文件名是 CLAUDE，内容对所有工具通用。
 2. `.claude/rules/` 下和要改的目录对应的规范（每个文件开头的 `paths` 写着它管哪些目录），包括必须遵守的分层规则。
 3. `REVIEW.md`：PR 会按它审查。
-4. `docs/README.md`：需求、架构、设计、决策记录和路线图的索引。
+4. `docs/README.md`：需求、架构、设计、决策记录和路线图的索引。用户看得到的行为照 `docs/design/` 里的设计。
 
 所有改动通过 PR 合并。合并前必须通过 CI（测试、lint、架构检查、重复代码检查、提交信息检查）和审查；中、高风险的改动还需要维护者人工确认。
+
+CI 会检查 PR 里每个提交的提交信息，而已经推送的提交不能靠追加提交来补救。每次提交之后、每次推送之前，运行 `node .github/scripts/check-commit-message.mjs --range origin/<目标分支>..HEAD`，趁提交还在本地时改掉它报出的问题。克隆之后运行一次 `git config core.hooksPath .githooks`，git 就会在每次提交时检查提交信息。

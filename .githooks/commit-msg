@@ -1,3 +1,5 @@
 #!/bin/sh
-# 提交时检查提交信息格式（Conventional Commits）。启用方法：git config core.hooksPath .githooks
+# 每次提交时检查提交信息格式（Conventional Commits），规则和 CI 的 commit-lint 相同。
+# 克隆的 core.hooksPath 是 .githooks 时才生效：Claude Code 在会话开始时设置（.claude/hooks/enable-git-hooks.mjs）；
+# 其他克隆要运行一次：git config core.hooksPath .githooks
 exec node "$(git rev-parse --show-toplevel)/.github/scripts/check-commit-message.mjs" --file "$1"
