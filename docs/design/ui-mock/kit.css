@@ -293,7 +293,8 @@ canvas#game { display: block; position: absolute; inset: 0; }
 .moment .chest { font-size: 54px; margin-top: 4px; }
 .rays { position: absolute; inset: 0; background: repeating-conic-gradient(from 0deg at 50% 38%, rgba(255,240,170,.55) 0 8deg, rgba(255,200,60,0) 8deg 20deg), radial-gradient(circle at 50% 38%, #fff4c2, #f0b429 45%, #8c5a06 100%); }
 .lvbig { position: absolute; left: 0; right: 0; top: 200px; text-align: center; }
-.lvbig .rib { display: inline-block; padding: 8px 40px; color: #fff; font-weight: 900; font-size: 22px; background: linear-gradient(#d2473a, #8e1f14); border: 3px solid var(--gold-hi); clip-path: polygon(0 0, 100% 0, 94% 50%, 100% 100%, 0 100%, 6% 50%); text-shadow: 0 2px 0 #4a0c06; }
+/* 升级是好事，缎带用深青底金边（红色只留给坏的状态）。 */
+.lvbig .rib { display: inline-block; padding: 8px 40px; color: #ffeab0; font-weight: 900; font-size: 22px; background: linear-gradient(#2c6b80, #13303d); border: 3px solid var(--gold); box-shadow: inset 0 0 0 2px var(--gold-hi); clip-path: polygon(0 0, 100% 0, 94% 50%, 100% 100%, 0 100%, 6% 50%); text-shadow: 0 2px 0 #0a1f27; }
 .lvbig .num { font-size: 120px; font-weight: 900; color: #fff; line-height: 1.1; text-shadow: 0 6px 0 #9a6200, 0 0 30px #fff7c8; }
 .unl { position: absolute; left: 16px; right: 16px; top: 470px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 .unl div { width: 74px; display: grid; justify-items: center; gap: 4px; font-size: 12px; font-weight: 900; color: #4a2c00; }

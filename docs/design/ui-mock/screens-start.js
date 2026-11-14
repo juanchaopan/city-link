@@ -1,10 +1,12 @@
 // 开局、主界面和偶尔出现的时刻：A1 至 A3、B1 至 B6、K1。
 import { ICON } from './api.js';
 import { q, MAIN, BARE, ME, NB, base, site, ddl, states, earlyCity, isoRoad, regionMini, scrimNote } from './screens-common.js';
+import { cityMoneyCard } from './screens-hud.js';
 import { modeTop } from './parts-b.js';
 
 const steps = (n, done = n - 1) => `<div class="steps">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= done ? 'ok' : i === n ? 'on' : ''}"></i>`).join('')}</div>`;
 const coach = (a, top, n, text) => a.add(`<div class="coach" style="top:${top}px"><span class="who emo">👷</span><span class="grow">第 ${n} 步 / 5　${text}${steps(n)}</span></div>`);
+/** 刚建好的 1 级城（还在保护期）的顶部数据。 */
 const L1 = { level: 1, money: '5,000', pop: '0', xp: 0.04, mail: 0, sprout: '剩 3 天', face: '😐', word: '一般' };
 const EARLY = BARE({ zoom: 0.32, x: 30, y: 42 });
 const PREVIEW = BARE({ zoom: 0.046, x: 32, y: 32 });
@@ -20,28 +22,31 @@ function terrainExtras(a) {
   }
 }
 
-/** 边界上留下的旧线头：金色光环不扩散，小签写“保护期后要接”。 */
-function oldStub(a, x, y) {
-  const [sx, sy] = a.P(x, y);
+/**
+ * 边界上留下的旧线头：金色光环不扩散，小签写“保护期后要接”。
+ * 画在东边北岭（8 级，修得了高速）那一侧，位置和 G1 东边的高速接口一样。
+ */
+function oldStub(a) {
+  const [sx, sy] = a.P(64.4, 7.5, 0);
   a.svg(`<circle cx="${sx}" cy="${sy}" r="15" fill="none" stroke="#f2b62f" stroke-width="3" opacity=".6"/><circle cx="${sx}" cy="${sy}" r="9" fill="#fff3d1" stroke="#f2b62f" stroke-width="3"/><text x="${sx}" y="${sy + 4}" text-anchor="middle" font-size="10">🛤️</text>`);
-  return a.add(`<div style="position:absolute;left:${sx - 150}px;top:${sy - 44}px">${ddl('🛤️ 旧线头 · 保护期后要接')}</div>`);
+  return a.add(`<div style="position:absolute;right:${a.W - sx + 20}px;top:${sy - 11}px">${ddl(`🛤️ ${NB.e.av} 高速旧线头 · 保护期后要接`)}</div>`);
 }
 
-function previewTop(a, back) {
+/** 预览的顶部：标题、位置标签，胶囊下方的地区小缩略图用金框标出 me 这一格。 */
+function previewTop(a, back, me) {
   a.add(`<div class="modebar">${back ? '<div class="back">‹</div>' : ''}<div class="title" style="flex:1;justify-content:center">选一块地方</div></div>`);
   const tags = a.add(`<div style="position:absolute;left:10px;top:104px;display:grid;gap:8px;justify-items:start">${['🏞️ 内陆', `${ME.climate}`, '⛰️ 有山 · 🌲 有森林', '🛶 能通航的河'].map((t) => `<span class="cap emo" style="padding:0 10px;height:30px;font-size:14px">${t}</span>`).join('')}</div>`);
-  const mini = regionMini(a, [2, 2]);
-  // 共用的小缩略图在这块位置上另画一个红点；红点只留给待处理，这里只用金框标出位置。
-  mini.querySelector('circle[fill="#d2473a"]')?.remove();
+  const mini = regionMini(a, me);
   return { tags, mini };
 }
 
 /** 升级仪式里图标飞走的虚线：画在光芒背景上面。 */
 const flyPaths = (a, paths) => a.add(`<svg style="position:absolute;inset:0" width="390" height="844">${paths.map((d) => `<path d="${d}" fill="none" stroke="#fff3b0" stroke-width="4" stroke-dasharray="2 9" stroke-linecap="round"/>`).join('')}</svg>`);
 
-function ceremony(a, level, items) {
+/** mail 是奖励飞进信封以后的红点数。 */
+function ceremony(a, level, items, mail) {
   a.add('<div class="rays"></div>');
-  a.hud({ level: level - 1, full: true, xp: 1, mail: 1 });
+  a.hud({ level: level - 1, full: true, xp: 1, mail });
   document.querySelector('.res').remove();
   document.querySelector('.nameplate').remove();
   document.querySelectorAll('.topright .sq')[1].remove();
@@ -58,6 +63,8 @@ const moment = (a, body) => {
 };
 const AWAY_LONG = '<div class="mtx emo">离开了 9 时 30 分　<span class="chipcity">🧊 只补算 8 小时</span></div>';
 const TOLL_PAID = '<div class="mtx emo" style="margin-top:8px">🚚 过路费 +¥420 已到账</div>';
+/** 翻倍的章：好事用金色底、深棕字，和看视频按钮同一组金色。 */
+const DOUBLE_STAMP = '<span style="position:absolute;right:-58px;top:2px;transform:rotate(14deg);font-size:20px;color:#4a2c00;background:linear-gradient(#ffe48a,#f2b62f 60%,#d18c12);border:2px solid #8a5a0c;border-radius:10px;padding:0 8px;text-shadow:none;box-shadow:0 2px 0 #6b4308">×2</span>';
 
 /** 站内信的一行，和 H1 的排法一样：图标、标题，第二行是金额或说明和按钮。 */
 const mailRow = ([e, l1, l2, act, cls = '']) => `<div class="mail ${cls}"><span class="e emo">${e}</span><span class="l1 emo">${l1}</span><span class="l2">${l2}<span class="grow"></span>${act}</span></div>`;
@@ -66,11 +73,11 @@ export const START = [
   {
     id: 'A1', title: '开局：位置预览', from: '第一次进游戏（隐私指引 L2 之后）；K1 点“开新城”。被邀请进来的朋友跳过这一步，直接到 A2',
     query: PREVIEW,
-    notes: ['位置类型和气候；保证有一条能通航的河从这块地上穿过', '整块地不裁切：山、河、湖、森林（沿海的位置还有海岸），还没有任何建筑', '胶囊下方靠右：本地区 4×4 的小缩略图，金框是这块位置', '位置上原来留下的线头画在边界上，标“保护期后要接”', '这块位置给你留 30 分钟', '看视频换一个：只在顺序最前面的约 4 个空位里换（新玩家按地形加权）；换过以后和广告不可用见 A1b', '就这里（绿色） → A2 取名。第一次进游戏没有返回；从 K1 开新城进来时左上有返回，回 K1'],
+    notes: ['位置类型和气候；保证有一条能通航的河从这块地上穿过', '整块地不裁切：山、河、湖、森林（沿海的位置还有海岸），还没有任何建筑', '胶囊下方靠右：本地区 4×4 的小缩略图，金框是这块位置，小方块是已经有人的位置', '位置上原来留下的线头画在边界上，写明是哪种线（图里是北岭的高速），标“保护期后要接”', '这块位置给你留 30 分钟', '看视频换一个：只在顺序最前面的约 4 个空位里换（新玩家按地形加权）；换过以后和广告不可用见 A1b', '就这里（绿色） → A2 取名。第一次进游戏没有返回；从 K1 开新城进来时左上有返回，回 K1'],
     draw(a) {
       terrainExtras(a);
-      const { tags, mini } = previewTop(a, false);
-      const stub = oldStub(a, 30, -0.4);
+      const { tags, mini } = previewTop(a, false, [1, 1]);
+      const stub = oldStub(a);
       const keep = a.add('<div style="position:absolute;left:0;right:0;bottom:112px;text-align:center"><span class="cap emo" style="display:inline-flex;padding:0 12px;height:30px;font-size:14px">⏱ 这块位置给你留 29:12</span></div>');
       const btns = a.add(`<div style="position:absolute;left:16px;right:16px;bottom:calc(var(--sab) + 12px);display:flex;gap:10px">${a.btn('换一个', 'wide', true)}${a.btn('就这里', 'green wide')}</div>`);
       a.coAt(1, tags, 4, 4);
@@ -85,16 +92,17 @@ export const START = [
   {
     id: 'A1b', title: '开局：换过位置以后', from: 'A1 看过视频换了位置；或进来时原来的位置已被别人占了；或从 K1 开新城进来',
     query: PREVIEW,
-    notes: ['从 K1 开新城进来：左上有返回，回 K1', '进来时原来的位置被别人占了：自动换成下一个空位，顶部写一句话', '最近看过的位置（最多 3 个），角上写还留几分钟；点一个免费切回', '广告不可用：按钮写“换一个 · 今天还剩 N 次”，不带 ▶；用完变灰（图里是用完的样子）', '就这里 → A2；开新城时 A2 的输入框先填好上一座城市的名字'],
+    notes: ['从 K1 开新城进来：左上有返回，回 K1', '进来时原来的位置被别人占了：自动换成下一个空位，顶部写一句话；小缩略图的金框跟着换到新位置，原来的位置变成别人的城', '最近看过的位置（最多 3 个），角上写还留几分钟；点一个免费切回', '广告不可用：按钮写“换一个 · 今天还剩 N 次”，不带 ▶；用完变灰（图里是用完的样子）', '就这里 → A2；开新城时 A2 的输入框先填好上一座城市的名字'],
     draw(a) {
       terrainExtras(a);
-      previewTop(a, true);
+      const { mini } = previewTop(a, true, [2, 2]);
       const top = a.add('<div class="toast emo" style="top:calc(var(--sat) + 54px);left:10px;right:128px;transform:none;white-space:normal;background:rgba(122,74,0,.92)">原来的位置被占了，换成了下一个空位</div>');
       const thumbs = ['linear-gradient(160deg,#a7cf8f 0 45%,#4f9cc9 45% 55%,#b3d48b 55%)', 'linear-gradient(120deg,#9cc27c 0 30%,#bfdc98 30% 62%,#3d8fc4 62% 68%,#b3d48b 68%)', 'linear-gradient(200deg,#b3d48b 0 40%,#3d8fc4 40% 47%,#8cbf78 47%)'];
       const recent = a.add(`<div style="position:absolute;left:12px;right:12px;bottom:110px;display:flex;gap:8px">${['正在看', '剩 24 分', '剩 11 分'].map((t, i) => `<div class="citycard ${i === 0 ? 'cur' : ''}" style="flex:1;padding:4px"><div class="thumb" style="height:62px;background:${thumbs[i]}"></div><small class="emo" style="position:absolute;right:6px;top:6px;background:#13303d;color:#ffeab0;border-radius:8px;padding:0 6px">${i ? `⏱ ${t}` : t}</small></div>`).join('')}</div>`);
       const btns = a.add(`<div style="position:absolute;left:16px;right:16px;bottom:calc(var(--sab) + 12px);display:flex;gap:10px">${a.btn('换一个 <span class="cnt">今天还剩 0 次</span>', 'gray wide')}${a.btn('就这里', 'green wide')}</div>`);
       a.coAt(1, document.querySelector('.back'), 0, 40);
-      a.coAt(2, top, 6, 4);
+      a.coAt(2, top, top.offsetWidth - 14, 0);
+      a.coAt(2, mini, 4, 70);
       a.coAt(3, recent.children[1], 10, 10);
       a.coAt(4, btns.firstElementChild, 10, 4);
       a.coAt(5, btns.lastElementChild, 10, 4);
@@ -102,7 +110,7 @@ export const START = [
   },
   {
     id: 'A2', title: '开局：给城市取名', from: 'A1 点“就这里”；被邀请进来的朋友直接到这里（S3）', map: false,
-    notes: ['左上返回 → A1', '最多 12 个字，表情按一个字算；只过内容安全检查', '骰子：随机起一个名字', '键盘弹起时卡片上移，输入框和按钮都在键盘上面', '开始建设 → A3 新手引导；虚线框里是输入框和按钮的其他样子：没通过描红加一行小字、空名不能点、等待转圈、开新城时先填好上一座的名字'],
+    notes: ['左上返回 → A1', '最多 12 个字，表情按一个字算；只过内容安全检查', '骰子：随机起一个名字', '键盘弹起时卡片上移，输入框和按钮都在键盘上面', '开始建设 → A3 新手引导；虚线框里是其他样子：没通过描红加一行小字、空名不能点、等待转圈、开新城时先填好上一座的名字；被邀请进来时顶部一行“你在〈邀请人〉旁边”'],
     draw(a) {
       a.add('<div class="screen"><div class="top"><div class="back">‹</div><div class="title">给城市取名</div></div></div>');
       const box = a.panel('', '你的城市叫什么？', `<div style="display:flex;gap:8px;margin:6px 0 4px"><div class="namebox emo">青川市🌸<span class="caret"></span></div><div class="sq emo" style="width:52px;height:52px;font-size:28px">🎲</div></div><div style="text-align:right;font-size:12px;color:#7a5a30;margin:0 0 10px">4 / 12</div>${a.btn('开始建设', 'green wide')}`, 'left:16px;right:16px;top:118px');
@@ -111,7 +119,8 @@ export const START = [
         ['空名', a.btn('开始建设', 'gray off')],
         ['等待', a.btn(`${ICON.spinner} 开始建设`, 'green')],
         ['开新城', '<div class="namebox" style="height:36px;font-size:15px;flex:0 0 120px">青川市<span class="caret" style="height:18px"></span></div><span style="color:#cfe6ee">先填好上一座的名字</span>'],
-      ], 'left:16px;right:16px;top:340px');
+        ['被邀请', `<span class="toast emo" style="position:static;transform:none;display:inline-block;padding:4px 12px;background:rgba(63,167,90,.9)">你在 ${NB.e.av} ${NB.e.name} 旁边</span><span style="color:#cfe6ee">顶部一行</span>`],
+      ], 'left:16px;right:16px;top:322px');
       a.add('<div class="kbd"><div class="cand"><span>青川</span><span>青川市</span><span>清川</span><span>🌸</span><span>🌊</span></div>' + [['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'], ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'], ['⇧', 'z', 'x', 'c', 'v', 'b', 'n', 'm', '⌫']].map((r) => `<div class="kr">${r.map((k) => `<span>${k}</span>`).join('')}</div>`).join('') + '<div class="kr"><span class="w">123</span><span class="w">😀</span><span class="sp">空格</span><span class="go">完成</span></div></div>');
       a.coAt(1, document.querySelector('.back'), 0, 40);
       a.coAt(2, box, box.offsetWidth - 70, 112);
@@ -147,7 +156,7 @@ export const START = [
     query: EARLY,
     notes: ['第 4、5 步不遮罩，可以自由建造', '徽章下面一个目标小签：楼长出来 → 收到第一笔税 → 升 2 级，完成的打勾', '徽章发光（经验满了）时手指再出来指它；点了是升级仪式（B3）', '第 5 步：这个玩家第一次到 2 级时领升级奖励；第二座城起没有奖励，升级仪式结束就算完成（B3b）', '胶囊下方的“跳过”一直在'],
     draw(a) {
-      earlyCity(a, 4);
+      earlyCity(a);
       const [tx, ty] = a.P(23, 39);
       a.svg(`<text x="${tx}" y="${ty - 26}" font-size="16">🪙</text><text x="${tx + 18}" y="${ty - 28}" font-size="13" font-weight="900" fill="#ffe48a" stroke="#4a2c00" stroke-width="3" paint-order="stroke">+12</text>`);
       base(a, { hud: { ...L1, xp: 1, full: true, money: '3,260', pop: '64', face: '🙂', word: '好' } });
@@ -194,11 +203,11 @@ export const START = [
   {
     id: 'B1', title: '主界面', from: '打开游戏（离线收益收下之后）；所有浮层关掉以后都回到这里',
     query: MAIN,
-    notes: ['城市徽章：中间是等级，外圈金色是经验；经验满了整圈发光（图里的样子），点了是 B3 升级仪式，没满点了是 C5 等级小卡', '城市名、保护期嫩芽和剩几天、游戏时间（点时间冒“第 N 年 N 月 N 日”）；第一行在胶囊左边，12 个字的城市名也放得下', '站内信，红点只数待处理 → H1', '我的城市 → J1；和信封一起竖排在胶囊下面', '资金（顶部不带 ¥，超过 99,999 写“12.5万”）；最近一个游戏小时净收入为负时旁边多一个灰色 ▼（图里是正的，不画）；＋ 看视频领钱 → C1', '人口 → C3', '满意度表情和一个词 → C4', '在建工程的进度环 → D8', '建造；金色小星是托盘里还有带“新”的卡片（红点只留给待处理） → D1', '视图 → F0', '地区 → I1', '回到全城档、城市中心（G1）'],
+    notes: ['城市徽章：中间是等级，外圈金色是经验；经验满了整圈发光（图里的样子），点了是 B3 升级仪式，没满点了是 C5 等级小卡', '城市名和游戏时间（点时间冒“第 N 年 N 月 N 日”）；保护期内城市名旁多一个嫩芽写剩几天（样子见 B1a），4 级的青川市早过了保护期；第一行在胶囊左边，12 个字的城市名也放得下', '站内信，红点只数待处理 → H1', '我的城市 → J1；和信封一起竖排在胶囊下面', '资金（顶部不带 ¥，超过 99,999 写“12.5万”）；最近一个游戏小时净收入为负时旁边多一个灰色 ▼（图里是正的，不画）；＋ 看视频领钱 → C1', '人口 → C3', '满意度表情和一个词 → C4', '在建工程的进度环 → D8', '建造；金色小星是托盘里还有带“新”的卡片（红点只留给待处理） → D1', '视图 → F0', '地区 → I1', '回到全城档、城市中心（G1）'],
     draw(a) {
       const p = a.near(1, 33, 41);
       const [sx, sy] = site(a, p);
-      base(a, { hud: { full: true, xp: 1, sprout: '剩 3 天' } });
+      base(a, { hud: { full: true, xp: 1 } });
       const np = document.querySelector('.nameplate');
       a.coAt(1, document.querySelector('.emblem'), 4, 4);
       a.coAt(2, np, np.offsetWidth - 4, 6);
@@ -222,7 +231,7 @@ export const START = [
     notes: ['用手机上的存档进主界面，城市名旁一个断线图标；城市照常在本地跑', '要联网的按钮置灰并带同一个断线图标：站内信、看视频领钱、地区，还有升级（徽章发光也点不了）', '建造、视图照常能用；修接拆线头、撤销线头、改名、好友、参观要联网', '联网后自动同步，不弹窗；离开超过 10 分钟的，同步拿到离线记录后补出 B2（等没有浮层、没在画东西时）。图里是挖孔屏的顶部'],
     draw(a) {
       a.chrome({ hole: true });
-      base(a, { hud: { offline: true, full: true, xp: 1, mail: 2 }, dock: { offline: true } });
+      base(a, { hud: { offline: true, full: true, xp: 1 }, dock: { offline: true } });
       a.coAt(1, document.querySelector('.nameplate .offn'), 34, 10);
       a.coAt(2, document.querySelector('.topright .sq'), -12, 22);
       a.coAt(2, document.querySelector('.db.region'), 70, 10);
@@ -235,13 +244,13 @@ export const START = [
   {
     id: 'B1n', title: '主界面：夜里', from: '游戏时间到了晚上（游戏里一天是现实 24 分钟）',
     query: q({ t: 21.5 }),
-    notes: ['夜里只把画面调暗、楼和路灯亮起来；界面和白天（B1）一样，保护期嫩芽照样在', '城市名下的游戏时间换成月亮', '视图打开时一律用白天光照', '挖孔屏的顶部：状态栏里只有一个小孔，第一行照样放在胶囊左边'],
+    notes: ['夜里只把画面调暗、楼和路灯亮起来；界面和白天（B1）一样', '城市名下的游戏时间换成月亮', '视图打开时一律用白天光照', '挖孔屏的顶部：状态栏里只有一个小孔，第一行照样放在胶囊左边'],
     draw(a) {
       a.chrome({ hole: true });
-      base(a, { hud: { clock: '🌙 21:30', sprout: '剩 3 天' } });
+      base(a, { hud: { clock: '🌙 21:30' } });
       const clock = document.querySelector('.nameplate small');
       a.co(1, 200, 420);
-      a.coAt(2, clock, clock.offsetWidth + 4, 6);
+      a.coAt(2, clock, clock.offsetWidth + 24, 6);
       a.coAt(3, document.querySelector('.db.view'), 4, 10);
       a.co(4, 222, 20);
     },
@@ -249,11 +258,10 @@ export const START = [
   {
     id: 'B1a', title: '主界面：1 级的空城', from: '跳过新手引导以后（走完引导的城市已经升到 2 级）；每座新城都从 1 级开始',
     query: EARLY,
-    notes: ['1 级只有第一批路、几栋一星的楼、水厂和电厂；大片空地，河从城市中间穿过', '人口和资金都小；保护期嫩芽写剩几天，期间谁都不能往你这边修', '经验环还很短', '托盘里的东西都是新的，建造按钮上一直有金色小星，直到每张卡点过一次'],
+    notes: ['城里还什么都没有，大片空地，河从城市中间穿过；只有 1 级就能造的东西可用', '人口是 0、资金是开局的数；保护期嫩芽写剩几天，期间谁都不能往你这边修', '经验环还很短', '托盘里的东西都是新的，建造按钮上一直有金色小星，直到每张卡点过一次'],
     draw(a) {
       a.chrome({ hole: true });
-      earlyCity(a, 4);
-      base(a, { hud: { ...L1, xp: 0.35, money: '3,260', pop: '64', face: '🙂', word: '好' } });
+      base(a, { hud: L1 });
       a.co(1, ...a.P(26, 36));
       a.coAt(2, document.querySelector('.nameplate .sprout'), 30, 30);
       a.coAt(3, document.querySelector('.emblem'), 4, 4);
@@ -293,9 +301,9 @@ export const START = [
   {
     id: 'B2c', title: '离线收益：翻倍以后', from: 'B2 看完翻倍的视频',
     query: MAIN,
-    notes: ['税滚到两倍，旁边盖一个“×2”的章', '维护费是手机真正扣掉的钱，翻倍时不变', '翻倍只能一次：翻倍按钮消失', '过路费不翻倍', '延长还在，可以再看一次；延长出来的税也自动翻倍', '收下 → B1'],
+    notes: ['税滚到两倍，旁边盖一个金色的“×2”章', '维护费是手机真正扣掉的钱，翻倍时不变', '翻倍只能一次：翻倍按钮消失', '过路费不翻倍', '延长还在，可以再看一次；延长出来的税也自动翻倍', '收下 → B1'],
     draw(a) {
-      const m = moment(a, `${AWAY_LONG}<div class="chest emo">💰</div><div class="big" style="position:relative;display:inline-block">¥7,280<span style="position:absolute;right:-58px;top:2px;transform:rotate(14deg);font-size:20px;color:#fff;background:linear-gradient(#ff8a7a,#c7271a);border:2px solid #fff3c4;border-radius:10px;padding:0 8px;text-shadow:none">×2</span></div><div class="sub2">维护费 −¥1,120</div>${TOLL_PAID}<div style="margin-top:14px">${a.btn('延长 2 小时', 'wide', true)}</div><div style="margin-top:10px">${a.btn('收下', 'green wide')}</div>`);
+      const m = moment(a, `${AWAY_LONG}<div class="chest emo">💰</div><div class="big" style="position:relative;display:inline-block">¥7,280${DOUBLE_STAMP}</div><div class="sub2">维护费 −¥1,120</div>${TOLL_PAID}<div style="margin-top:14px">${a.btn('延长 2 小时', 'wide', true)}</div><div style="margin-top:10px">${a.btn('收下', 'green wide')}</div>`);
       const bs = m.querySelectorAll('.btn');
       const sub = m.querySelector('.sub2');
       const txt = m.querySelectorAll('.mtx');
@@ -324,9 +332,9 @@ export const START = [
   {
     id: 'B3', title: '升级仪式', from: 'B1 经验满了，徽章发光，点徽章（要联网）',
     map: false,
-    notes: ['新等级的数字从上面落下来，3 秒以内', '只亮解锁配置里标了“仪式里展示”的、现在就用得上的东西，其余放在 C5 里', '星级上限解锁时，星的图标飞向左上的徽章', '这个玩家第一次到这一级：最后一个图标是升级奖励，飞进信封，红点 +1（H1 领取，可以看视频翻倍）', '点任意处 → B1；新东西在建造托盘里带“新”字'],
+    notes: ['新等级的数字从上面落下来，3 秒以内', '只亮解锁配置里标了“仪式里展示”的、现在就用得上的东西，其余放在 C5 里', '星级上限解锁时，星的图标飞向左上的徽章', '这个玩家第一次到这一级：最后一个图标是升级奖励，飞进信封，红点 +1（图里从 3 变成 4；H1 领取，可以看视频翻倍）', '点任意处 → B1；新东西在建造托盘里带“新”字'],
     draw(a) {
-      const { lv, unl, tip, tiles, em } = ceremony(a, 5, [['⭐', '三星'], ['🌬️', '风电'], ['☀️', '太阳能'], ['🏭<b style="position:absolute;right:4px;bottom:0;font:900 13px/1 serif;color:#5a3a0c">Ⅱ</b>', '二级厂'], ['🏆', '物流园'], ['🎁', '升级奖励']]);
+      const { lv, unl, tip, tiles, em } = ceremony(a, 5, [['⭐', '三星'], ['🌬️', '风电'], ['☀️', '太阳能'], ['🏭<b style="position:absolute;right:4px;bottom:0;font:900 13px/1 serif;color:#5a3a0c">Ⅱ</b>', '二级厂'], ['🏆', '物流园'], ['🎁', '升级奖励']], 4);
       const s0 = tiles[0].getBoundingClientRect();
       const s5 = tiles[5].getBoundingClientRect();
       const env = document.querySelector('.topright .sq').getBoundingClientRect();
@@ -344,8 +352,7 @@ export const START = [
     map: false,
     notes: ['新等级落下，解锁的东西照常亮出来', '星级上限解锁照样飞向徽章', '没有奖励：不飞信封、红点不加；底下一行小字说明', '点任意处 → B1'],
     draw(a) {
-      const { lv, tip, tiles, em } = ceremony(a, 3, [['⭐', '二星'], ['🏘️', '中密度'], ['🚆', '铁路']]);
-      document.querySelector('.topright .sq .badge').remove();
+      const { lv, tip, tiles, em } = ceremony(a, 3, [['⭐', '二星'], ['🏘️', '中密度'], ['🚆', '铁路']], 0);
       const s0 = tiles[0].getBoundingClientRect();
       flyPaths(a, [`M${s0.left + 20} ${s0.top} C ${s0.left - 30} 300, 60 200, ${em.left + 32} ${em.bottom + 4}`]);
       const note = a.add('<div style="position:absolute;left:0;right:0;top:600px;text-align:center;font-weight:800;color:#6b4300;font-size:13px">升级奖励在第一座城市领过了</div>');
@@ -378,14 +385,15 @@ export const START = [
   {
     id: 'B5', title: '微信订阅授权', from: '玩家自己点按钮的时刻：引导结束、升级奖励点“领取”、第一次造码头或货运站、收下离线收益',
     map: false,
-    notes: ['订阅消息只能在玩家点按钮时请求，所以挑这些一定会点的时刻提前要，攒几次授权；图里是在站内信里点了升级奖励的“领取”', '只发两件要紧事：有线头对着你（第 1、3、6 天各一次）、破产保护快到期', '玩家拒绝了也不影响游戏，下次同样的时刻再问；设置里可以手动再授权（J2）'],
+    notes: ['订阅消息只能在玩家点按钮时请求，所以挑这些一定会点的时刻提前要，攒几次授权；图里是在站内信（H1）里点了升级奖励的“领取”', '只发两件要紧事：有线头对着你（第 1、3、6 天各一次）、破产保护快到期', '玩家拒绝了也不影响游戏，下次同样的时刻再问；设置里可以手动再授权（J2）'],
     draw(a) {
       const rows = [
-        ['🎁', '升到 4 级的奖励', '<b style="color:#7a4a00">¥5,000</b>', `${a.btn('翻倍', '', true)}${a.btn('领取', 'green')}`],
+        ['🚆', `${NB.n.av} ${NB.n.name}的铁路对着你`, ddl('剩 5 天'), a.btn('去看看', 'blue')],
         ['👤', `${NB.w.av} ${NB.w.name}想加你为好友`, '', `${a.btn('✕', 'gray')}${a.btn('✓', 'green')}`],
+        ['🎁', '升到 4 级的奖励', '<b style="color:#7a4a00">¥5,000</b>', `${a.btn('翻倍', '', true)}${a.btn('领取', 'green')}`],
         ['🎁', '升到 3 级的奖励', '¥3,000', '<span>已领取</span>', 'done'],
       ];
-      a.add(`<div class="screen"><div class="top"><div class="back">‹</div><div class="title emo">✉️ 站内信</div><div style="width:44px"></div></div><div class="tabs"><div class="on">待处理 2</div><div>通知</div></div><div class="body">${rows.map(mailRow).join('')}</div></div>`);
+      a.add(`<div class="screen"><div class="top"><div class="back">‹</div><div class="title emo">✉️ 站内信</div><div style="width:44px"></div></div><div class="tabs"><div class="on">待处理 3</div><div>通知<i class="gd"></i></div></div><div class="body">${rows.map(mailRow).join('')}</div></div>`);
       a.add('<div class="dim" style="background:rgba(0,0,0,.45)"></div>');
       const sh = a.add('<div class="wxsheet"><div class="app"><i></i>城市首席规划师 申请</div><h3>向你发送下列消息</h3><div class="opt">邻居的线头等你接上<span class="chk">✓</span></div><div class="opt">破产保护快到期<span class="chk">✓</span></div><div class="keep"><i></i>总是保持以上选择，不再询问</div><div class="acts"><span>取消</span><span class="ok">允许</span></div></div>');
       a.coAt(1, sh, 20, 10);
@@ -410,15 +418,15 @@ export const START = [
   {
     id: 'B6b', title: '看视频领钱：广告不可用', from: 'C1 里广告服务还没开通，或拉不到广告',
     query: MAIN,
-    notes: ['同一个按钮变成“直接领取”，不带 ▶，写今天还剩几次', '用完变灰；点下变转圈，不能连点（虚线框里是这两种样子）', '加速、翻倍、延长、换位置一样按天限次；次数和金额在运营配置里，广告恢复以后变回看视频', scrimNote],
+    notes: ['小卡和 C1 一样，只是底部按钮变成“直接领取”，不带 ▶，写今天还剩几次', '用完变灰；点下变转圈，不能连点（虚线框里是这两种样子）', '加速、翻倍、延长、换位置一样按天限次；次数和金额在运营配置里，广告恢复以后变回看视频', scrimNote],
     draw(a) {
-      base(a);
-      const c = a.panel('card', '<span class="emo">💰</span> 每小时 +¥1,250', `<div class="row" style="justify-content:center;color:#7a5a30;font-weight:800">广告暂时不可用</div>${a.btn('直接领取 ¥3,600 <span class="cnt">今天还剩 2 次</span>', 'wide')}`);
-      const st = states(a, '其他样子', [['用完', a.btn('直接领取 <span class="cnt">今天还剩 0 次</span>', 'gray off')], ['点下', a.btn(`${ICON.spinner} 直接领取`, '')]], `left:30px;right:30px;top:${c.getBoundingClientRect().bottom + 24}px`);
+      const c = cityMoneyCard(a, a.btn('直接领取 ¥3,600 <span class="cnt">今天还剩 2 次</span>', 'wide'));
+      const cb = c.getBoundingClientRect();
+      const st = states(a, '其他样子', [['用完', a.btn('直接领取 <span class="cnt">今天还剩 0 次</span>', 'gray off')], ['点下', a.btn(`${ICON.spinner} 直接领取`, '')]], `left:30px;right:44px;top:${cb.bottom + 20}px`);
       a.coAt(1, c.querySelector('.btn'), 10, 6);
       a.coAt(2, st, st.offsetWidth - 20, 0);
       a.coAt(3, c, c.offsetWidth - 20, 20);
-      a.co(4, 200, 640);
+      a.co(4, 372, st.getBoundingClientRect().top + 56);
     },
   },
   {

@@ -1,6 +1,7 @@
 // 加载、隐私、设备和版本、断网、空状态和等待：L、N、S 组和 K2。
 import { ICON } from './api.js';
 import { MAIN, ME, base, states, thumb, regionSvg } from './screens-common.js';
+import { NET_HEAD } from './screens-hud.js';
 
 const LOGO = '<div style="text-align:center;font-weight:900;font-size:34px;letter-spacing:3px;color:#fff3c4;-webkit-text-stroke:1.5px #6b4308;text-shadow:0 4px 0 #6b4308,0 0 18px rgba(255,214,90,.7)">城市首席规划师</div>';
 const SKY = 'position:absolute;inset:0;background:linear-gradient(#7fc8e6 0%,#bfe6f2 45%,#2f6f86 46%,#12303c 100%)';
@@ -55,7 +56,7 @@ export const SYSTEM = [
     notes: ['整屏盖住地图，不能关', '告诉玩家这台上没同步的操作丢了', '只有一个按钮：在这台继续，点了重新拉存档 → B1'],
     draw(a) {
       a.add('<div class="screen"></div>');
-      const box = a.add(`<div style="position:absolute;left:24px;right:24px;top:220px;text-align:center"><div class="emo" style="font-size:64px">📱<span style="font-size:36px;vertical-align:middle;margin:0 8px">⇄</span>📱</div><div style="color:#ffeab0;font-weight:900;font-size:20px;margin-top:12px">在另一台设备上打开了</div><div style="color:#cfe6ee;font-size:14px;margin-top:10px;line-height:1.6">这台设备上还没同步的操作已经丢了</div></div>`);
+      const box = a.add(`<div style="position:absolute;left:24px;right:24px;top:220px;text-align:center"><div class="emo" style="font-size:64px">📱<span style="font-size:36px;vertical-align:middle;margin:0 8px;font-family:var(--font);font-weight:900;color:#ffeab0">⇄</span>📱</div><div style="color:#ffeab0;font-weight:900;font-size:20px;margin-top:12px">在另一台设备上打开了</div><div style="color:#cfe6ee;font-size:14px;margin-top:10px;line-height:1.6">这台设备上还没同步的操作已经丢了</div></div>`);
       const btn = a.add(`<div style="position:absolute;left:40px;right:40px;bottom:calc(var(--sab) + 60px)">${a.btn('在这台继续', 'green wide')}</div>`);
       a.coAt(1, box, 10, 0);
       a.coAt(2, box.lastElementChild, 20, 0);
@@ -81,9 +82,9 @@ export const SYSTEM = [
     query: MAIN,
     notes: ['顶部城市名旁一个断线图标', '服务器维护时顶部一条“维护中，预计 HH:MM 结束”', '要联网的按钮置灰并带同一个断线图标（这里是看视频领钱）；本地能做的照常', '恢复后自动同步，不弹窗；本地算的钱换成服务端的数时按秒平滑跳过去'],
     draw(a) {
-      base(a, { hud: { offline: true, mail: 2 }, dock: { offline: true } });
+      base(a, { hud: { offline: true }, dock: { offline: true } });
       const mt = a.add('<div class="maint" style="right:60px">🛠️ 维护中，预计 03:00 结束</div>');
-      const c = a.panel('card', '<span class="emo">💰</span> 每小时 +¥1,250', `<div class="row" style="justify-content:center;color:#7a5a30;font-weight:800">现在连不上服务器</div>${a.btn(`${ICON.offline} 看视频领 ¥3,600`, 'gray wide off')}`, 'top:186px');
+      const c = a.panel('card', NET_HEAD, `<div class="row" style="justify-content:center;color:#7a5a30;font-weight:800">现在连不上服务器</div>${a.btn(`${ICON.offline} 看视频领 ¥3,600`, 'gray wide off')}`, 'top:186px');
       a.coAt(1, document.querySelector('.nameplate .offn'), 34, 10);
       a.coAt(2, mt, 10, 4);
       a.coAt(3, c.querySelector('.btn'), 10, 6);
@@ -100,8 +101,7 @@ export const SYSTEM = [
       const b1 = box(10, 100, 370, 96, '地区地图：没有好友', '<div class="friends emo" style="margin:10px"><span class="lbl">好友</span><span class="btn green small">＋ 邀请好友</span></div>');
       const b2 = box(10, 210, 180, 170, 'J1：没有历史城市', '<div class="illus"><span class="pic emo">🏞️</span>还没有结束过的城市</div>');
       const b3 = box(200, 210, 180, 170, '站内信：空', '<div class="illus"><span class="pic emo">📭</span>信都处理完了</div>');
-      // 共用的小地区图在你的位置上另画一个红点；红点只留给待处理，这里只留金框。
-      const svg = regionSvg({ cw: 20, ox: 90, oy: 20, mini: true, me: [1, 1] }).svg.replace(/<circle[^>]*fill="#d2473a"[^>]*\/>/, '');
+      const { svg } = regionSvg({ cw: 20, ox: 90, oy: 20, mini: true, me: [1, 1] });
       const b4 = box(10, 394, 180, 190, '全国：只有一个地区', `<svg viewBox="0 0 180 160" width="180" height="160"><defs><radialGradient id="fog"><stop offset="40%" stop-color="#cfd8dc" stop-opacity="0"/><stop offset="100%" stop-color="#e8eef0"/></radialGradient></defs><rect width="180" height="160" fill="#dfe6e8"/><g transform="translate(0,30)">${svg}</g><rect width="180" height="160" fill="url(#fog)"/></svg>`);
       const b5 = box(200, 394, 180, 190, 'F2：没有任何服务', `<div style="position:relative;height:166px">${thumb('position:absolute;inset:0;height:auto;border:0;border-radius:0;filter:grayscale(.6)')}<div style="position:absolute;inset:0;background:rgba(240,138,36,.55)"></div><div class="legend" style="left:6px;bottom:6px;padding:4px 6px"><i style="background:#3fa75a;width:16px"></i><i style="background:#f2c94c;width:16px"></i><i style="background:#f08a24;width:16px"></i></div></div>`);
       const b6 = box(10, 598, 370, 150, 'C3：1 级', '<div class="panel" style="position:relative;margin:8px;padding:8px 10px"><div class="row" style="margin:2px 0"><span class="emo">👥 64</span></div><div class="row"><span class="stars" style="width:30px">★</span><div style="flex:1;display:grid;gap:4px"><div class="duo emo"><span>👥</span><i style="width:60%;background:#e07a3f"></i></div><div class="duo emo"><span>💼</span><i style="width:48%;background:#3b5ba9"></i></div></div></div></div>');
@@ -171,9 +171,10 @@ export const SYSTEM = [
       const hold = a.add(`<div style="position:absolute;left:24px;right:24px;bottom:calc(var(--sab) + 150px);text-align:center"><span class="btn red wide hold" style="min-height:58px;font-size:17px"><i class="fill" style="width:45%"></i><span><span class="vid">▶</span> 按住结束</span></span><div style="color:#cfe6ee;font-size:13px;margin-top:8px">按住约 1 秒，再看一次视频</div></div>`);
       const st = states(a, '广告不可用时', [['', '<span class="btn red small">按住结束</span><span style="color:#cfe6ee">按住就结束，不限次数</span>']], 'left:24px;right:24px;bottom:calc(var(--sab) + 30px)');
       const cards = document.querySelectorAll('.citycard');
+      const medal = document.querySelector('.xout');
       a.coAt(1, document.querySelector('.back'), 0, 40);
       a.coAt(2, cards[1], cards[1].offsetWidth - 16, 14);
-      a.coAt(3, document.querySelector('.xout'), 40, 0);
+      a.coAt(3, medal, medal.offsetWidth / 2, -20);
       a.coAt(4, hold.querySelector('.btn'), 10, 6);
       a.coAt(5, st, st.offsetWidth - 20, 0);
       a.coAt(6, hold.lastElementChild, hold.lastElementChild.offsetWidth - 20, 4);
