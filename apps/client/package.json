@@ -16,7 +16,7 @@
     "@city-link/protocol": "workspace:*",
     "@pixi/layout": "3.2.1",
     "@pixi/ui": "2.4.1",
-    "pixi.js": "8.22.0",
+    "pixi.js": "8.23.0",
     "yoga-layout": "3.2.1"
   },
   "devDependencies": {
