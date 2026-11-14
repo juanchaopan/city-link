@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<style>
+  html, body { margin: 0; background: #e9e4d8; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; color: #2a1d0c; }
+  .wrap { display: flex; gap: 20px; padding: 20px; width: 780px; box-sizing: border-box; }
+  .phone { flex: none; width: 390px; height: 844px; border-radius: 34px; overflow: hidden; box-shadow: 0 0 0 8px #1b1b1b, 0 0 0 10px #555, 0 18px 40px rgba(0,0,0,.35); background: #000; }
+  iframe { width: 390px; height: 844px; border: 0; display: block; }
+  .notes { flex: 1; display: flex; flex-direction: column; gap: 10px; padding-top: 4px; min-width: 0; }
+  .id { align-self: flex-start; font-weight: 900; font-size: 13px; color: #ffd76a; background: #13303d; border-radius: 8px; padding: 2px 10px; }
+  h1 { margin: 2px 0 0; font-size: 22px; line-height: 1.3; }
+  .from { font-size: 13px; color: #5f4a2a; background: #f7efdc; border-left: 4px solid #c99a3e; padding: 8px 10px; border-radius: 6px; line-height: 1.5; }
+  ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+  li { display: grid; grid-template-columns: 26px 1fr; gap: 8px; font-size: 13px; line-height: 1.45; }
+  li b { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #13303d; color: #ffd76a; font-size: 12px; border: 2px solid #ffd76a; }
+  .foot { margin-top: auto; font-size: 11px; color: #8a7a5a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="phone"><iframe id="f"></iframe></div>
+  <div class="notes">
+    <span class="id" id="id"></span>
+    <h1 id="title"></h1>
+    <div class="from" id="from"></div>
+    <ol id="list"></ol>
+    <div class="foot">《城市首席规划师》界面效果图 · 底图是美术探针的 2.5D 城市（64 格样张，正式地图 256 格），数字只是示意 · 右上角是微信胶囊，顶部按胶囊和安全区排 · 深青底金边的圆圈、小签和虚线框是标注，不是界面的一部分</div>
+  </div>
+</div>
+<script type="module">
+import { SCREENS } from '/mock/screens.js';
+const id = new URLSearchParams(location.search).get('s');
+const s = SCREENS.find((x) => x.id === id);
+document.getElementById('id').textContent = s.id;
+document.getElementById('title').textContent = s.title;
+document.getElementById('from').textContent = `从哪来：${s.from}`;
+document.getElementById('list').innerHTML = s.notes.map((n, i) => `<li><b>${i + 1}</b><span>${n}</span></li>`).join('');
+document.getElementById('f').src = `/mock/inner.html?s=${id}&${s.map === false ? 'map=0' : s.query}`;
+</script>
+</body>
+</html>
