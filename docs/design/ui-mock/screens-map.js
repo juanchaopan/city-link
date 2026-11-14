@@ -1,4 +1,5 @@
 // 点地图上的东西（E1 至 E12）和视图（F0 至 F8 及分项）。
+// 示例城市是 4 级：气泡里的星级、品种和奖励建筑都不超过 4 级能有的（工业、商业最高二星，粮食一星）。
 import { q, MAIN, NB, base, built, circleIcon, scrimNote } from './screens-common.js';
 import { ROW2, modeTop, coBack, row2, subBtn, carBtn, tri, grey, nbName, port, BROKEN } from './parts-b.js';
 
@@ -6,8 +7,12 @@ const EDU_COL = ['#c7c2b8', '#9ccf6a', '#2a9d8f', '#3b5ba9'];
 const EDU = `<div class="stack" style="margin-top:8px">${[15, 45, 30, 10].map((v, i) => `<i style="flex:${v};background:${EDU_COL[i]}"></i>`).join('')}</div>`;
 const SEL = 'fill="rgba(255,236,150,.35)" stroke="#ffd76a" stroke-width="3"';
 const big = (html) => `<div style="margin-top:4px;font-weight:800;font-size:14px" class="emo">${html}</div>`;
+/** 失业：空公文包（只画轮廓）；岗位是实心的公文包。 */
+const NO_JOB = '<svg class="ico" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9 8V6.2A1.2 1.2 0 0 1 10.2 5h3.6A1.2 1.2 0 0 1 15 6.2V8" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>';
 const SUBS_SVC = ['🛡️', '🚒', '🏥', '🏫', '♻️'];
-const SUBS_POP = ['👥', '💼', '🎓', '🙅', '🛒'];
+const SUBS_POP = ['👥', '💼', '🎓', NO_JOB, '🛒'];
+/** 公共服务这一组的图标，和 C1、C4 里的一样；盾牌只表示派出所。 */
+const SVC = '🏛️';
 
 /** 标注放在元素左边；左边没地方时放右边。 */
 function side(a, n, el, dy = 14) {
@@ -43,12 +48,12 @@ export const MAP = [
   {
     id: 'E1', title: '点住宅', from: 'B1 点一栋住宅',
     query: q({ zoom: 0.36, x: 44, y: 26 }),
-    notes: ['住宅、星（住户收入）和表情', '住了多少人', '五种服务（派出所是盾牌）和水、电、燃气：亮着是有，暗着是没有；垃圾是全城的，不在单栋楼的气泡里', '学历四色条：没上学、小学、中学、大学', '右下角“车 + 路线”：看这栋楼的车去哪 → E5', '改规划、征收不在气泡里：拿工具直接画在上面（D5）', scrimNote],
+    notes: ['品种名（多层公寓、平房这类）、星（住户收入）和表情', '住了多少人', '五种服务（派出所是盾牌）和水、电、燃气：亮着是有，暗着是没有；垃圾是全城的，不在单栋楼的气泡里', '学历四色条：没上学、小学、中学、大学', '右下角“车 + 路线”：看这栋楼的车去哪 → E5', '改规划、征收不在气泡里：拿工具直接画在上面（D5）', scrimNote],
     draw(a) {
       const p = a.near(1, 47, 30, built);
       a.svg(a.parcelShape(p, SEL));
       base(a);
-      const b = a.bubble(p.px, p.py, `<div class="t emo">🏠 住宅 ${a.stars(2, 2)} <span style="margin-left:auto">😀</span></div>${big('👥 46')}<div class="svc emo">${['🛡️', '🚒', '🏥', '🏫', '🎓', '|', '💧', '⚡', '🔥'].map((e, i) => (e === '|' ? '<span style="width:1px;background:#c99a3e;margin:0 2px"></span>' : `<span class="${i === 4 ? 'off' : ''}">${e}</span>`)).join('')}</div>${EDU}<div class="bb">${carBtn()}</div>`, { lift: 24 });
+      const b = a.bubble(p.px, p.py, `<div class="t emo">🏠 多层公寓 ${a.stars(2, 2)} <span style="margin-left:auto">😀</span></div>${big('👥 46')}<div class="svc emo">${['🛡️', '🚒', '🏥', '🏫', '🎓', '|', '💧', '⚡', '🔥'].map((e, i) => (e === '|' ? '<span style="width:1px;background:#c99a3e;margin:0 2px"></span>' : `<span class="${i === 4 ? 'off' : ''}">${e}</span>`)).join('')}</div>${EDU}<div class="bb">${carBtn()}</div>`, { lift: 24 });
       side(a, 1, b, 16);
       side(a, 2, b, 46);
       side(a, 3, b.querySelector('.svc'), 10);
@@ -62,13 +67,13 @@ export const MAP = [
   {
     id: 'E2', title: '点工业或办公', from: 'B1 点一栋工业、办公或商场',
     query: q({ zoom: 0.4, x: 45, y: 40 }),
-    notes: ['类别和星：实心星是卖得出去的档，空心星是有本事但没通道或没需求', '空心星旁一个灰色虚线圈，画着缺的那种通道（按码头、铁路、飞机取第一种还没造、对这一星有用的）；点它打开建造托盘里那张卡片', '都造了还空心时画邻居头像：点了打开货运视图（F7）', '岗位用了多少；工业多一个污染图标', '一句“销往某某地区”', '右下角“车 + 路线”：看它的车去哪 → E5'],
+    notes: ['品种名（食品厂、律师事务所这类）和星：实心星是卖得出去的档，空心星是有本事但没通道或没需求；4 级最高二星', '空心星旁一个灰色虚线圈，画着缺的那种通道（按码头、铁路、飞机取第一种还没造、对这一星有用的）；点它打开建造托盘里那张卡片', '都造了还空心时画邻居头像：点了打开货运视图（F7）', '岗位用了多少；工业多一个污染图标', '一句销往哪里：二星没卖出去时只卖本市，有了通道写“销往某某地区”', '右下角“车 + 路线”：看它的车去哪 → E5'],
     draw(a) {
       const p = a.near(3, 44, 41);
       a.svg(a.parcelShape(p, SEL));
       base(a);
-      const b = a.bubble(p.px, p.py, `<div class="t emo">🏭 消费品 ${a.stars(3, 2)}<span class="chan">⚓</span></div>${big('💼 112 / 130 · 💨')}<div style="margin-top:4px;color:#7a5a30;font-weight:700;font-size:13px">销往临江地区</div><div class="bb">${carBtn()}</div>`, { lift: 30 });
-      const alt = a.add(`<div class="states" style="left:12px;top:560px;width:220px"><span class="lbl">都造了还空心时</span><div class="st emo" style="font-size:15px">🏭 ${a.stars(3, 2)}<span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#fff;border:2px dashed #8a8a8a;font-size:16px">${NB.e.av}</span></div></div>`);
+      const b = a.bubble(p.px, p.py, `<div class="t emo">🏭 食品厂 ${a.stars(2, 1)}<span class="chan">⚓</span></div>${big('💼 112 / 130 · 💨')}<div style="margin-top:4px;color:#7a5a30;font-weight:700;font-size:13px">只卖本市</div><div class="bb">${carBtn()}</div>`, { lift: 30 });
+      const alt = a.add(`<div class="states" style="left:12px;top:560px;width:220px"><span class="lbl">都造了还空心时</span><div class="st emo" style="font-size:15px">🏭 ${a.stars(2, 1)}<span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#fff;border:2px dashed #8a8a8a;font-size:16px">${NB.e.av}</span></div></div>`);
       side(a, 1, b, 16);
       a.coAt(2, b.querySelector('.chan'), b.querySelector('.chan').offsetWidth + 14, 4);
       a.coAt(3, alt, alt.offsetWidth - 8, 8);
@@ -132,12 +137,12 @@ export const MAP = [
   {
     id: 'E6', title: '点农田', from: 'B1 点一片农田',
     query: q({ zoom: 0.42, x: 33, y: 54 }),
-    notes: ['作物和星：农业最高两星，造了农业科技园后部分类别到三星', '每天的产量', '没有按钮', '整片农田的轮廓描金'],
+    notes: ['品种和星：稻田属于粮食，只有一星；农业最高两星，造了农业科技园后部分类别到三星', '每天的产量', '没有按钮', '整片农田的轮廓描金'],
     draw(a) {
       for (const o of a.city.overlays.filter((v) => v.key.startsWith('f-'))) a.svg(a.cellDiamond(o.x, o.y, 'fill="rgba(255,236,150,.25)" stroke="#ffd76a" stroke-width="1.5"'));
       base(a);
       const fx = a.parcels.find((p) => p.zone === 4) ?? { px: 33.5, py: 52.5 };
-      const b = a.bubble(fx.px, fx.py, `<div class="t emo">🌾 稻田 ${a.stars(2, 1)}</div>${big('📦 每天 120')}`, { lift: 20 });
+      const b = a.bubble(fx.px, fx.py, `<div class="t emo">🌾 稻田 ${a.stars(1, 1)}</div>${big('📦 每天 120')}`, { lift: 20 });
       side(a, 1, b, 16);
       side(a, 2, b, 46);
       a.coAt(3, b, b.offsetWidth + 14, 30);
@@ -147,7 +152,7 @@ export const MAP = [
   {
     id: 'E7', title: '点水厂、电厂、燃气厂', from: 'B1 点一座厂',
     query: q({ zoom: 0.3, x: 38, y: 31 }),
-    notes: ['种类和级别：厂房加罗马数字', '用了多少：满了条变红', '它供应到的楼一起亮起来（同一片路网里离它近的先供）', '没有按钮；换等级、换种类拿工具直接放在上面（D15）'],
+    notes: ['种类和级别：厂房加罗马数字。这座在城中间、不挨水面，是地下水厂；挨着河、湖、海的才是普通水厂', '用了多少：一根条，不写数，满了变红', '它供应到的楼一起亮起来（同一片路网里离它近的先供）', '没有按钮；换等级、换种类拿工具直接放在上面（D15）'],
     draw(a) {
       a.fade(0.55);
       const w = a.parcels.find((p) => p.use === 'water');
@@ -155,7 +160,7 @@ export const MAP = [
       for (const p of lit) a.svg(a.parcelShape(p, 'fill="rgba(70,150,214,.75)" stroke="#d6efff" stroke-width="1"'));
       a.svg(a.parcelShape(w, SEL));
       base(a);
-      const b = a.bubble(w.px, w.py, `<div class="t emo">💧 水厂 <span style="display:inline-flex;align-items:center;gap:2px;padding:0 6px;border-radius:8px;background:#e6d4a6;font-size:13px">🏭<b style="font-family:serif">Ⅰ</b></span></div><div class="meter"><i style="width:72%;background:linear-gradient(#9fd6f5,#2f86c4)"></i></div>${big('用了 72%')}`, { lift: 24 });
+      const b = a.bubble(w.px, w.py, `<div class="t emo">💧 地下水厂 <span style="display:inline-flex;align-items:center;gap:2px;padding:0 6px;border-radius:8px;background:#e6d4a6;font-size:13px">🏭<b style="font-family:serif">Ⅰ</b></span></div><div class="meter"><i style="width:72%;background:linear-gradient(#9fd6f5,#2f86c4)"></i></div>`, { lift: 24 });
       side(a, 1, b, 16);
       side(a, 2, b.querySelector('.meter'), 4);
       const one = nearest(lit, w.px - 2, w.py + 6);
@@ -225,14 +230,14 @@ export const MAP = [
   {
     id: 'E11', title: '点奖励建筑', from: 'B1 点一座奖励建筑',
     query: q({ zoom: 0.36, x: 26, y: 44 }),
-    notes: ['奖杯和名字', '作用画成图标：湿地公园是“周边工业污染清零”', '每天的维护费；带游客的多一行每天来多少人', '有范围的（只有湿地公园）把范围画在地图上', '没有按钮'],
+    notes: ['奖杯和名字', '作用画成图标：动物园是“一星、二星收入的住户更满意”', '每天的维护费；带游客的多一行每天来多少人', '作用或代价按固定半径算的，把范围画在地图上：湿地公园的作用，体育场、物流园、游乐场的噪音，动物园的气味；这里画的是动物园的气味范围', '没有按钮'],
     draw(a) {
       const area = [[23, 44], [27, 44], [27.5, 47.5], [23, 47.8]];
-      a.svg(a.poly(area, 'fill="rgba(110,190,120,.85)" stroke="#ffd76a" stroke-width="3"'));
-      a.label(25, 46, '<span class="emo" style="font-size:24px">🦢</span>');
-      a.svg(a.ring(25, 46, 7, 'fill="rgba(126,224,138,.12)" stroke="#7ee08a" stroke-width="3" stroke-dasharray="10 6"'));
+      a.svg(a.poly(area, 'fill="rgba(150,180,100,.85)" stroke="#ffd76a" stroke-width="3"'));
+      a.label(25, 46, '<span class="emo" style="font-size:24px">🦁</span>');
+      a.svg(a.ring(25, 46, 7, 'fill="rgba(190,140,70,.12)" stroke="#b07a3a" stroke-width="3" stroke-dasharray="10 6"'));
       base(a);
-      const b = a.bubble(25, 45, `<div class="t emo">🏆 湿地公园</div><div class="emo" style="margin-top:6px;font-size:18px;display:flex;align-items:center;gap:4px">🏭💨 → <b style="font-size:15px">0</b></div>${big('每天 −¥60')}`, { lift: 20 });
+      const b = a.bubble(25, 45, `<div class="t emo">🏆 动物园</div><div class="emo" style="margin-top:6px;font-size:18px;display:flex;align-items:center;gap:4px">🏠${a.stars(2, 2)} → 😀</div>${big('每天 −¥40')}`, { lift: 20 });
       side(a, 1, b, 16);
       side(a, 2, b, 46);
       side(a, 3, b, 76);
@@ -243,13 +248,13 @@ export const MAP = [
   {
     id: 'E12', title: '其余几种气泡', from: 'B1 点公园、垃圾处理用地、铁路、车站、划了区没长楼的格子',
     query: MAIN,
-    notes: ['公园：环境加分、每天维护费；地图上描出公园的轮廓和环境范围', '垃圾处理用地：一个容量环，处理了多少、还能处理多少；全城的垃圾用地一起描边', '铁路线段：每天过多少趟货车；连到的站一起亮', '货运站：每天装卸的货；经过它的货运线路画出来', '客运站：每天上下车的人；没接上邻居的铁路网时一个断链图标', '划了区没长楼的格子：缺什么画什么（缺路、缺水、缺电、需求短）；什么都不缺时一个小工地图标，楼正在来的路上', '一张图摆了六种，游戏里一次只出一个气泡'],
+    notes: ['公园：环境加多少用一根短条、每天维护费；地图上描出公园的轮廓和环境范围', '垃圾处理用地：一个容量环，处理了多少人、还能处理多少；全城的垃圾用地一起描边', '铁路线段：每天过多少趟货车；连到的站一起亮', '货运站：每天装卸的货；经过它的货运线路画出来', '客运站：每天上下车的人；没接上邻居的铁路网时一个断链图标', '划了区没长楼的格子：缺什么画什么（缺路、缺水、缺电、需求短）；什么都不缺时一个小工地图标，楼正在来的路上', '一张图摆了六种，游戏里一次只出一个气泡'],
     draw(a) {
       a.fade(0.45);
-      const ring = (p) => `<svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#d9c38f" stroke-width="7"/><circle cx="23" cy="23" r="18" fill="none" stroke="#8a6a3a" stroke-width="7" stroke-dasharray="${113 * p} 113" transform="rotate(-90 23 23)"/><text x="23" y="27" text-anchor="middle" font-size="12" font-weight="900" fill="#5a3a12">${Math.round(p * 100)}%</text></svg>`;
+      const ring = (p) => `<svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#d9c38f" stroke-width="7"/><circle cx="23" cy="23" r="18" fill="none" stroke="#8a6a3a" stroke-width="7" stroke-dasharray="${113 * p} 113" transform="rotate(-90 23 23)"/><text x="23" y="28" text-anchor="middle" font-size="15">♻️</text></svg>`;
       const miss = (e) => `<span style="position:relative;display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;background:#fff;border:2px solid #c99a3e">${e}<i style="position:absolute;left:3px;right:3px;top:13px;height:3px;background:#8a8a8a;transform:rotate(-35deg)"></i></span>`;
       const cards = [
-        ['🌳 公园', big('🌿 +3 · 每天 −¥10')],
+        ['🌳 公园', '<div class="emo" style="margin-top:4px;display:flex;align-items:center;gap:6px;font-weight:800;font-size:14px">🌿<div class="meter" style="flex:0 0 44px;margin:0"><i style="width:40%;background:linear-gradient(#a6e39a,#3fa75a)"></i></div>每天 −¥10</div>'],
         ['♻️ 垃圾处理用地', `<div style="display:flex;align-items:center;gap:8px;margin-top:4px">${ring(0.8)}<b style="font-size:13px">3,200 / 4,000 人</b></div>`],
         ['🛤️ 铁路', big('🚂 每天 18 趟')],
         ['🚉 货运站', big('📦 每天 240')],
@@ -272,7 +277,7 @@ export const MAP = [
     notes: ['八个视图，选一个 → F1 至 F8', '没解锁的灰掉，写解锁等级', '点托盘外面：收起，回到 B1'],
     draw(a) {
       base(a, { dock: { on: 'view' } });
-      const v = [['🚗', '交通'], ['🚓', '公共服务'], ['💧', '水电燃气'], ['👥', '人口岗位'], ['🙂', '满意度'], ['🌿', '环境'], ['📦', '货运'], ['🚇', '地铁', 6]];
+      const v = [['🚗', '交通'], [SVC, '公共服务'], ['💧', '水电燃气'], ['👥', '人口岗位'], ['🙂', '满意度'], ['🌿', '环境'], ['📦', '货运'], ['🚇', '地铁', 6]];
       const t = a.panel('tray', '视图', `<div class="views emo">${v.map(([e, n, lv]) => `<div class="vbtn ${lv ? 'lock' : ''}"><span>${lv ? '🔒' : e}</span>${n}${lv ? `<small style="font-size:10px">Lv${lv}</small>` : ''}</div>`).join('')}</div>`);
       a.coAt(1, t.querySelector('.vbtn'), 4, 4);
       a.coAt(2, t.querySelectorAll('.vbtn')[7], 70, 4);
@@ -342,7 +347,7 @@ export const MAP = [
         a.svg(a.parcelShape(p, mid ? 'fill="rgba(42,157,143,.85)"' : pri ? 'fill="rgba(242,201,76,.9)"' : 'fill="rgba(240,120,60,.9)" stroke="#fff" stroke-width="1.5"'));
       }
       for (const s of schools) a.label(s.px, s.py, circleIcon(mids.includes(s) ? '🎓' : '🏫', '#2a8fa8'));
-      const top = viewTop(a, '🛡️', '公共服务', SUBS_SVC, 3);
+      const top = viewTop(a, SVC, '公共服务', SUBS_SVC, 3);
       const leg = a.add('<div class="legend"><span class="emo">🏫</span><i style="background:#f0783c"></i><i style="background:#f2c94c"></i><i style="background:#2a9d8f"></i></div>');
       a.coAt(1, top.sub(3), top.sub(3).offsetWidth + 6, -2);
       const n = nearest(none, 32, 30);
@@ -354,7 +359,7 @@ export const MAP = [
   {
     id: 'F2b', title: '视图：公共服务的垃圾分项', from: 'F2 点分项里的垃圾；或 C4 点垃圾',
     query: q({ zoom: 0.24, x: 44, y: 30 }),
-    notes: ['分项选垃圾', '左上一根全城处理率的条：处理了多少人 / 全城多少人', '每块垃圾处理用地一个容量环；用地不分片、不管距离，连上路就处理全城', '处理不够时，全城住宅一起淡橙色一闪一闪（不挑楼，按比例一起扣分）'],
+    notes: ['分项选垃圾', '左上一根全城处理率的条：处理了多少人 / 全城多少人，只画条长，不写数', '每块垃圾处理用地一个容量环；用地不分片、不管距离，连上路就处理全城', '处理不够时，全城住宅一起淡橙色一闪一闪（不挑楼，按比例一起扣分）'],
     draw(a) {
       a.fade(0.45);
       for (const p of a.parcels.filter((x) => x.zone === 1)) a.svg(a.parcelShape(p, 'fill="rgba(240,150,90,.55)" stroke="#fff" stroke-width="1"'));
@@ -367,8 +372,8 @@ export const MAP = [
         a.svg(`<circle cx="${cx}" cy="${cy - 26}" r="20" fill="rgba(255,255,255,.92)" stroke="#d9c38f" stroke-width="7"/><circle cx="${cx}" cy="${cy - 26}" r="20" fill="none" stroke="${p >= 1 ? '#e07a3f' : '#8a6a3a'}" stroke-width="7" stroke-dasharray="${len * p} ${len}" transform="rotate(-90 ${cx} ${cy - 26})"/><text x="${cx}" y="${cy - 21}" text-anchor="middle" font-size="14">♻️</text>`);
         first ??= [cx, cy - 26];
       }
-      const top = viewTop(a, '🛡️', '公共服务', SUBS_SVC, 4);
-      const rate = a.add(`<div class="emo" style="position:absolute;left:10px;top:${ROW2 + 54}px;width:200px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:rgba(13,36,46,.88);border:1.5px solid #ffd76a;color:#fff;font-weight:800;font-size:13px">♻️<div class="meter" style="flex:1;margin:0"><i style="width:82%;background:linear-gradient(#ffcf8a,#e07a3f)"></i></div>82%</div>`);
+      const top = viewTop(a, SVC, '公共服务', SUBS_SVC, 4);
+      const rate = a.add(`<div class="emo" style="position:absolute;left:10px;top:${ROW2 + 54}px;width:200px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:rgba(13,36,46,.88);border:1.5px solid #ffd76a;color:#fff;font-weight:800;font-size:13px">♻️<div class="meter" style="flex:1;margin:0"><i style="width:82%;background:linear-gradient(#ffcf8a,#e07a3f)"></i></div></div>`);
       a.coAt(1, top.sub(4), top.sub(4).offsetWidth + 6, -2);
       a.coAt(2, rate, rate.offsetWidth + 12, 16);
       a.co(3, first[0] + 30, first[1]);
@@ -379,7 +384,7 @@ export const MAP = [
   {
     id: 'F3', title: '视图：水电燃气', from: 'F0 选水电燃气；或 C4 点水电燃气',
     query: q({ zoom: 0.24, x: 34, y: 33 }),
-    notes: ['三根进度条浮在地图上，颜色固定：水蓝、电黄、燃气橙；满了外框变红', '有供应的楼着蓝色；断了的楼变灰、一闪一闪，楼头上冒缺的那样的小图标（离厂最远的先停）', '厂的位置一圈圈往外扩', '三样画在同一张图上，不分页'],
+    notes: ['三根进度条浮在地图上，颜色固定：水蓝、电黄、燃气橙；满了外框变红', '有供应的楼着蓝色；断了的楼变灰、一闪一闪，楼头上冒缺的那样的小图标（离厂最远的先停）', '厂的位置一圈圈往外扩；城中间这座水厂不挨水面，是地下水厂', '三样画在同一张图上，不分页'],
     draw(a) {
       a.fade(0.4);
       let gray = null;
@@ -395,6 +400,10 @@ export const MAP = [
       for (const p of plants) {
         a.svg(a.ring(p.px, p.py, 2.5, 'fill="none" stroke="#1f6fa3" stroke-width="3"') + a.ring(p.px, p.py, 4, 'fill="none" stroke="#1f6fa3" stroke-width="2" opacity=".5"'));
         a.label(p.px, p.py, circleIcon(p.use === 'power' ? '⚡' : '💧', '#1f6fa3'));
+        if (p.use === 'water') {
+          const [sx, sy] = a.P(p.px, p.py);
+          a.add(`<span style="position:absolute;left:${sx - 20}px;top:${sy}px;transform:translate(-100%,-50%);font-size:11px;font-weight:900;color:#fff;background:#1f6fa3;border-radius:6px;padding:1px 5px;white-space:nowrap">地下水厂</span>`);
+        }
       }
       viewTop(a, '<span style="font-size:13px">💧⚡🔥</span>', '水电燃气');
       const fb = a.add(`<div class="floatbars emo" style="top:${ROW2}px">${[['💧', 72, '#5aa9d6'], ['⚡', 91, '#f2c94c'], ['🔥', 100, '#f08a3c']].map(([e, p, c]) => `<div style="${p >= 100 ? 'border-color:#e5332a;box-shadow:0 0 0 2px #e5332a' : ''}">${e}<div class="meter"><i style="width:${p}%;background:${c}"></i></div></div>`).join('')}</div>`);
@@ -407,7 +416,7 @@ export const MAP = [
   {
     id: 'F4', title: '视图：人口和岗位', from: 'F0 选人口岗位；或 C3 点小卡',
     query: q({ zoom: 0.26, x: 32, y: 32 }),
-    notes: ['分项：人口、岗位、学历、失业、商场', '人口：每栋住宅上一根小柱子，越高住得越多', '人口小卡的缩小版浮在角上', '点楼照样冒气泡'],
+    notes: ['分项：人口、岗位、学历、失业（空公文包）、商场', '人口：每栋住宅上一根小柱子，越高住得越多', '人口小卡的缩小版浮在角上；人人都找工作，没找到岗位的就是失业，所以失业不少于人口减岗位', '点楼照样冒气泡'],
     draw(a) {
       a.fade(0.45);
       for (const p of a.parcels.filter((x) => x.zone === 1)) {
@@ -415,8 +424,8 @@ export const MAP = [
         const h = Math.min(56, 12 + (p.capacity ?? 20) / 2);
         a.svg(`<rect x="${x - 5}" y="${y - h}" width="10" height="${h}" rx="2" fill="#e07a3f" stroke="#fff" stroke-width="1.5"/><ellipse cx="${x}" cy="${y - h}" rx="5" ry="2" fill="#f4a26c"/>`);
       }
-      const bar = a.add('<div class="modebar"><div class="back">‹</div><div class="title emo">👥 人口岗位</div><div class="subs emo"><div class="sub on">👥</div><div class="sub">💼</div><div class="sub">🎓</div><div class="sub">🙅</div><div class="sub">🛒</div></div></div>');
-      const mini = a.panel('', '', `<div class="emo" style="font-weight:900">👥 8,450 · 💼 7,900 · 🙅 120</div>${EDU}`, 'left:10px;right:110px;bottom:18px;padding:8px 10px');
+      const bar = a.add(`<div class="modebar"><div class="back">‹</div><div class="title emo">👥 人口岗位</div><div class="subs emo">${SUBS_POP.map((e, i) => `<div class="sub ${i === 0 ? 'on' : ''}">${e}</div>`).join('')}</div></div>`);
+      const mini = a.panel('', '', `<div class="emo" style="font-weight:900;display:flex;align-items:center;gap:4px">👥 8,450 · 💼 8,330 · ${NO_JOB} 120</div>${EDU}`, 'left:10px;right:110px;bottom:18px;padding:8px 10px');
       a.coAt(1, bar.querySelector('.subs .sub'), -6, -4);
       const p = a.near(1, 30, 30);
       a.co(2, ...a.P(p.px, p.py));
@@ -447,15 +456,16 @@ export const MAP = [
   {
     id: 'F4b', title: '视图：人口的商场分项', from: 'F4 点分项里的商场；或 C4 点购物',
     query: q({ zoom: 0.24, x: 30, y: 28 }),
-    notes: ['分项选商场', '商场按星着色：星越高颜色越深，楼头上写几星', '就近有商场的住宅青绿；没有的橙色，一闪一闪', '居民买东西按收入档找同档的商场，所以高收入住户附近要有高星商场'],
+    notes: ['分项选商场', '商场按星着色：星越高颜色越深，楼头上写几星（4 级最高二星）', '就近有商场的住宅青绿；没有的橙色，一闪一闪。“就近”只看住宅门口几格内有没有商场，不看星级', '居民按收入档先去同星级的商场，满了往低一星溢出；这一步按全城算，不按距离、不按路网分片'],
     draw(a) {
       a.fade(0.4);
       const shops = a.parcels.filter((p) => p.use === 'shop');
-      const big3 = a.parcels.filter((p) => p.zone === 2 && p.level >= 3).filter((_, i) => i % 3 === 0);
-      const malls = [...shops, ...big3];
-      const tone = ['#f6d98a', '#e9a93a', '#c77412', '#8a4a06'];
-      for (const m of malls) a.svg(a.parcelShape(m, `fill="${tone[Math.min(4, Math.max(1, m.level)) - 1]}" stroke="#5a3a12" stroke-width="1.5"`));
-      for (const m of big3) a.label(m.px, m.py - 0.8, `<span style="font-size:11px;font-weight:900;color:#5a3a12;background:#fff8d6;border-radius:6px;padding:0 4px;border:1px solid #c99a3e">${'★'.repeat(Math.min(4, m.level))}</span>`);
+      const big2 = a.parcels.filter((p) => p.zone === 2 && p.level >= 3).filter((_, i) => i % 3 === 0);
+      const malls = [...shops, ...big2];
+      const tone = ['#f2c56a', '#b8650c'];
+      const starOf = (m) => (big2.includes(m) ? 2 : 1);
+      for (const m of malls) a.svg(a.parcelShape(m, `fill="${tone[starOf(m) - 1]}" stroke="#5a3a12" stroke-width="1.5"`));
+      for (const m of big2) a.label(m.px, m.py - 0.8, '<span style="font-size:11px;font-weight:900;color:#5a3a12;background:#fff8d6;border-radius:6px;padding:0 4px;border:1px solid #c99a3e">★★</span>');
       const far = [];
       for (const p of a.parcels.filter((x) => x.zone === 1)) {
         const ok = malls.some((m) => Math.hypot(m.px - p.px, m.py - p.py) <= 9);
@@ -465,7 +475,7 @@ export const MAP = [
       const top = viewTop(a, '👥', '人口岗位', SUBS_POP, 4);
       a.add(`<div class="legend"><span class="emo">🛒</span>${tone.map((c) => `<i style="background:${c};width:18px"></i>`).join('')}<span style="width:6px"></span><i style="background:#2a9d8f;width:18px"></i><i style="background:#f0783c;width:18px"></i></div>`);
       a.coAt(1, top.sub(4), top.sub(4).offsetWidth + 6, -2);
-      const m = big3[0] ?? malls[0];
+      const m = big2[0] ?? malls[0];
       a.co(2, ...a.P(m.px + 1, m.py));
       const f = nearest(far, 30, 28);
       if (f) a.co(3, ...a.P(f.px, f.py));
@@ -473,7 +483,7 @@ export const MAP = [
     },
   },
   {
-    id: 'F5', title: '视图：满意度', from: 'F0 选满意度；或 C4 点奖励建筑',
+    id: 'F5', title: '视图：满意度', from: 'F0 选满意度',
     query: q({ zoom: 0.3, x: 32, y: 34 }),
     notes: ['每栋住宅头上一个表情，颜色跟着表情', '五档五色：很好、好、一般、差、很差；最差一档用深橙，不用红', '不显示分数，也不写原因；看原因就去对应的视图（C4 点因素）'],
     draw(a) {
@@ -522,7 +532,7 @@ export const MAP = [
     notes: ['分项：全部、公路、铁路、水运、航空', '货从楼流向出口：流动的箭头，越粗货越多；公路橙色、水运蓝色', '出口旁只写去哪', '有别人的货穿过的接口和码头上，用“过路”图标写每天收的过路费', '邻居的名字在每条边中点的外侧；边界外是邻居的灰色画面', '水运沿着穿城的河，谁也挡不住，但卖得便宜'],
     draw(a) {
       grey(a, 'e', { lines: [{ kind: 'highway', pts: [[64, 7.5], [124, 7.5]] }, { kind: 'river', pts: [[64, 52], [124, 56]] }] });
-      grey(a, 's', { lines: [{ kind: 'highway', pts: [[12.5, 64], [12.5, 124]] }] });
+      grey(a, 's', { lines: [] });
       grey(a, 'n', { lines: [] });
       a.fade(0.5);
       const ind = a.near(3, 45, 41);
@@ -536,7 +546,6 @@ export const MAP = [
       a.svg(a.line([dock, [52, 48.5], [60, 51.5], [63.9, 52.5]], 'stroke="#2f86c4" stroke-width="9" stroke-linecap="round" stroke-dasharray="12 7"'));
       a.label(...dock, circleIcon('⚓', '#2f86c4'));
       const p1 = port(a, 64, 7.5, '🛤️', 'ok', { r: 12 });
-      port(a, 12.5, 64, '🛤️', 'ok', { r: 12 });
       const ex1 = a.add(`<div class="cap emo" style="position:absolute;left:${Math.min(p1[0] - 190, a.W - 200)}px;top:${p1[1] - 14}px;padding:0 10px;height:28px;font-size:13px">→ ${NB.e.av} ${NB.e.name}</div>`);
       const t1 = a.add(`<div style="position:absolute;left:${Math.min(p1[0] - 190, a.W - 200)}px;top:${p1[1] + 20}px">${tollTag('+¥180/天')}</div>`);
       const [rx, ry] = a.P(63.9, 52.5);

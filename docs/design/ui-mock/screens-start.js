@@ -1,6 +1,6 @@
 // 开局、主界面和偶尔出现的时刻：A1 至 A3、B1 至 B6、K1。
 import { ICON } from './api.js';
-import { q, MAIN, BARE, ME, base, site, ddl, states, earlyCity, isoRoad, regionMini, scrimNote } from './screens-common.js';
+import { q, MAIN, BARE, ME, NB, base, site, ddl, states, earlyCity, isoRoad, regionMini, scrimNote } from './screens-common.js';
 import { modeTop } from './parts-b.js';
 
 const steps = (n, done = n - 1) => `<div class="steps">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= done ? 'ok' : i === n ? 'on' : ''}"></i>`).join('')}</div>`;
@@ -9,10 +9,9 @@ const L1 = { level: 1, money: '5,000', pop: '0', xp: 0.04, mail: 0, sprout: '剩
 const EARLY = BARE({ zoom: 0.32, x: 30, y: 42 });
 const PREVIEW = BARE({ zoom: 0.046, x: 32, y: 32 });
 
-/** 开局预览上的地形补充：湖、森林、东南角的海岸。 */
+/** 开局预览上的地形补充：湖和森林。这块位置在内陆，没有海岸。 */
 function terrainExtras(a) {
   a.svg(a.ring(12, 16, 5, 'fill="#5aa7d0" stroke="#e6f4fa" stroke-width="2"'));
-  a.svg(a.poly([[64, 24], [64, 64], [42, 64], [48, 57], [55, 46], [58, 34]], 'fill="#4f9cc9" stroke="#e8d9a6" stroke-width="3"'));
   for (let i = 0; i < 40; i += 1) {
     const x = 40 + ((i * 7) % 17) + (i % 3) * 0.5;
     const y = 6 + ((i * 5) % 13);
@@ -30,8 +29,10 @@ function oldStub(a, x, y) {
 
 function previewTop(a, back) {
   a.add(`<div class="modebar">${back ? '<div class="back">‹</div>' : ''}<div class="title" style="flex:1;justify-content:center">选一块地方</div></div>`);
-  const tags = a.add(`<div style="position:absolute;left:10px;top:104px;display:grid;gap:8px;justify-items:start">${['🏞️ 内陆 · 有海岸', `${ME.climate}`, '⛰️ 有山 · 🌲 有森林', '🛶 能通航的河'].map((t) => `<span class="cap emo" style="padding:0 10px;height:30px;font-size:14px">${t}</span>`).join('')}</div>`);
+  const tags = a.add(`<div style="position:absolute;left:10px;top:104px;display:grid;gap:8px;justify-items:start">${['🏞️ 内陆', `${ME.climate}`, '⛰️ 有山 · 🌲 有森林', '🛶 能通航的河'].map((t) => `<span class="cap emo" style="padding:0 10px;height:30px;font-size:14px">${t}</span>`).join('')}</div>`);
   const mini = regionMini(a, [2, 2]);
+  // 共用的小缩略图在这块位置上另画一个红点；红点只留给待处理，这里只用金框标出位置。
+  mini.querySelector('circle[fill="#d2473a"]')?.remove();
   return { tags, mini };
 }
 
@@ -56,12 +57,16 @@ const moment = (a, body) => {
   return a.panel('moment', '欢迎回来', body);
 };
 const AWAY_LONG = '<div class="mtx emo">离开了 9 时 30 分　<span class="chipcity">🧊 只补算 8 小时</span></div>';
+const TOLL_PAID = '<div class="mtx emo" style="margin-top:8px">🚚 过路费 +¥420 已到账</div>';
+
+/** 站内信的一行，和 H1 的排法一样：图标、标题，第二行是金额或说明和按钮。 */
+const mailRow = ([e, l1, l2, act, cls = '']) => `<div class="mail ${cls}"><span class="e emo">${e}</span><span class="l1 emo">${l1}</span><span class="l2">${l2}<span class="grow"></span>${act}</span></div>`;
 
 export const START = [
   {
     id: 'A1', title: '开局：位置预览', from: '第一次进游戏（隐私指引 L2 之后）；K1 点“开新城”。被邀请进来的朋友跳过这一步，直接到 A2',
     query: PREVIEW,
-    notes: ['位置类型和气候；保证有一条能通航的河从这块地上穿过', '整块地不裁切：山、河、湖、森林、海岸，还没有任何建筑', '胶囊下方靠右：本地区 4×4 的小缩略图，红点是这块位置', '位置上原来留下的线头画在边界上，标“保护期后要接”', '这块位置给你留 30 分钟', '看视频换一个：只在顺序最前面的约 4 个空位里换（新玩家按地形加权）；换过以后和广告不可用见 A1b', '就这里（绿色） → A2 取名。第一次进游戏没有返回；从 K1 开新城进来时左上有返回，回 K1'],
+    notes: ['位置类型和气候；保证有一条能通航的河从这块地上穿过', '整块地不裁切：山、河、湖、森林（沿海的位置还有海岸），还没有任何建筑', '胶囊下方靠右：本地区 4×4 的小缩略图，金框是这块位置', '位置上原来留下的线头画在边界上，标“保护期后要接”', '这块位置给你留 30 分钟', '看视频换一个：只在顺序最前面的约 4 个空位里换（新玩家按地形加权）；换过以后和广告不可用见 A1b', '就这里（绿色） → A2 取名。第一次进游戏没有返回；从 K1 开新城进来时左上有返回，回 K1'],
     draw(a) {
       terrainExtras(a);
       const { tags, mini } = previewTop(a, false);
@@ -189,11 +194,11 @@ export const START = [
   {
     id: 'B1', title: '主界面', from: '打开游戏（离线收益收下之后）；所有浮层关掉以后都回到这里',
     query: MAIN,
-    notes: ['城市徽章：中间是等级，外圈金色是经验；经验满了整圈发光（图里的样子），点了是 B3 升级仪式，没满点了是 C5 等级小卡', '城市名、保护期嫩芽和剩几天、游戏时间（点时间冒“第 N 年 N 月 N 日”）；第一行在胶囊左边，12 个字的城市名也放得下', '站内信，红点只数待处理 → H1', '我的城市 → J1；和信封一起竖排在胶囊下面', '资金（顶部不带 ¥，超过 99,999 写“12.5万”）；灰色 ▼ 是最近一个游戏小时净收入为负；＋ 看视频领钱 → C1', '人口 → C3', '满意度表情和一个词 → C4', '在建工程的进度环 → D8', '建造；金色小星是托盘里还有带“新”的卡片（红点只留给待处理） → D1', '视图 → F0', '地区 → I1', '回到全城档、城市中心（G1）'],
+    notes: ['城市徽章：中间是等级，外圈金色是经验；经验满了整圈发光（图里的样子），点了是 B3 升级仪式，没满点了是 C5 等级小卡', '城市名、保护期嫩芽和剩几天、游戏时间（点时间冒“第 N 年 N 月 N 日”）；第一行在胶囊左边，12 个字的城市名也放得下', '站内信，红点只数待处理 → H1', '我的城市 → J1；和信封一起竖排在胶囊下面', '资金（顶部不带 ¥，超过 99,999 写“12.5万”）；最近一个游戏小时净收入为负时旁边多一个灰色 ▼（图里是正的，不画）；＋ 看视频领钱 → C1', '人口 → C3', '满意度表情和一个词 → C4', '在建工程的进度环 → D8', '建造；金色小星是托盘里还有带“新”的卡片（红点只留给待处理） → D1', '视图 → F0', '地区 → I1', '回到全城档、城市中心（G1）'],
     draw(a) {
       const p = a.near(1, 33, 41);
       const [sx, sy] = site(a, p);
-      base(a, { hud: { full: true, xp: 1, trend: 'down', sprout: '剩 3 天' } });
+      base(a, { hud: { full: true, xp: 1, sprout: '剩 3 天' } });
       const np = document.querySelector('.nameplate');
       a.coAt(1, document.querySelector('.emblem'), 4, 4);
       a.coAt(2, np, np.offsetWidth - 4, 6);
@@ -230,18 +235,19 @@ export const START = [
   {
     id: 'B1n', title: '主界面：夜里', from: '游戏时间到了晚上（游戏里一天是现实 24 分钟）',
     query: q({ t: 21.5 }),
-    notes: ['夜里只把画面调暗、楼和路灯亮起来；界面不变', '城市名下的游戏时间换成月亮', '视图打开时一律用白天光照', '挖孔屏的顶部：状态栏里只有一个小孔，第一行照样放在胶囊左边'],
+    notes: ['夜里只把画面调暗、楼和路灯亮起来；界面和白天（B1）一样，保护期嫩芽照样在', '城市名下的游戏时间换成月亮', '视图打开时一律用白天光照', '挖孔屏的顶部：状态栏里只有一个小孔，第一行照样放在胶囊左边'],
     draw(a) {
       a.chrome({ hole: true });
-      base(a, { hud: { clock: '🌙 21:30' } });
+      base(a, { hud: { clock: '🌙 21:30', sprout: '剩 3 天' } });
+      const clock = document.querySelector('.nameplate small');
       a.co(1, 200, 420);
-      a.coAt(2, document.querySelector('.nameplate small'), 60, 6);
+      a.coAt(2, clock, clock.offsetWidth + 4, 6);
       a.coAt(3, document.querySelector('.db.view'), 4, 10);
       a.co(4, 222, 20);
     },
   },
   {
-    id: 'B1a', title: '主界面：1 级的空城', from: '新手引导结束或跳过以后；每座新城都从 1 级开始',
+    id: 'B1a', title: '主界面：1 级的空城', from: '跳过新手引导以后（走完引导的城市已经升到 2 级）；每座新城都从 1 级开始',
     query: EARLY,
     notes: ['1 级只有第一批路、几栋一星的楼、水厂和电厂；大片空地，河从城市中间穿过', '人口和资金都小；保护期嫩芽写剩几天，期间谁都不能往你这边修', '经验环还很短', '托盘里的东西都是新的，建造按钮上一直有金色小星，直到每张卡点过一次'],
     draw(a) {
@@ -259,7 +265,7 @@ export const START = [
     query: MAIN,
     notes: ['离开了多久；离开超过 8 小时时画出冻结的小图标：只补算 8 小时', '离线期间的税，数字从零往上滚；下面小一号灰字是维护费', '过路费单列，已经在结算时到账，不翻倍', '看视频翻倍（只能一次）', '看视频延长补算几小时（只能一次）；离开不到 8 小时没有这个按钮（B2b）', '收下（绿色）→ B1；离线期间升了星的楼在地图上一起闪一下；这时顺便请求订阅授权（B5）'],
     draw(a) {
-      const m = moment(a, `${AWAY_LONG}<div class="chest emo">💰</div><div class="big">¥3,640</div><div class="sub2">维护费 −¥1,120</div><div class="mtx emo" style="margin-top:8px">🚚 过路费 +¥420 已到账</div><div style="display:flex;gap:8px;margin-top:14px">${a.btn('翻倍', 'wide', true)}${a.btn('延长 2 小时', 'wide', true)}</div><div style="margin-top:10px">${a.btn('收下', 'green wide')}</div>`);
+      const m = moment(a, `${AWAY_LONG}<div class="chest emo">💰</div><div class="big">¥3,640</div><div class="sub2">维护费 −¥1,120</div>${TOLL_PAID}<div style="display:flex;gap:8px;margin-top:14px">${a.btn('翻倍', 'wide', true)}${a.btn('延长 2 小时', 'wide', true)}</div><div style="margin-top:10px">${a.btn('收下', 'green wide')}</div>`);
       const txt = m.querySelectorAll('.mtx');
       const chip = txt[0].querySelector('.chipcity');
       a.coAt(1, chip, chip.offsetWidth + 4, -8);
@@ -287,15 +293,18 @@ export const START = [
   {
     id: 'B2c', title: '离线收益：翻倍以后', from: 'B2 看完翻倍的视频',
     query: MAIN,
-    notes: ['数字滚到两倍，旁边盖一个“×2”的章', '翻倍只能一次：按钮变成“已翻倍”，不能再点', '过路费不翻倍', '延长还在，可以再看一次', '收下 → B1'],
+    notes: ['税滚到两倍，旁边盖一个“×2”的章', '维护费是手机真正扣掉的钱，翻倍时不变', '翻倍只能一次：翻倍按钮消失', '过路费不翻倍', '延长还在，可以再看一次；延长出来的税也自动翻倍', '收下 → B1'],
     draw(a) {
-      const m = moment(a, `${AWAY_LONG}<div class="chest emo">💰</div><div class="big" style="position:relative;display:inline-block">¥7,280<span style="position:absolute;right:-58px;top:2px;transform:rotate(14deg);font-size:20px;color:#fff;background:linear-gradient(#ff8a7a,#c7271a);border:2px solid #fff3c4;border-radius:10px;padding:0 8px;text-shadow:none">×2</span></div><div class="sub2">维护费 −¥2,240</div><div class="mtx emo" style="margin-top:8px">🚚 过路费 +¥420 已到账</div><div style="display:flex;gap:8px;margin-top:14px">${a.btn('✓ 已翻倍', 'gray wide off')}${a.btn('延长 2 小时', 'wide', true)}</div><div style="margin-top:10px">${a.btn('收下', 'green wide')}</div>`);
+      const m = moment(a, `${AWAY_LONG}<div class="chest emo">💰</div><div class="big" style="position:relative;display:inline-block">¥7,280<span style="position:absolute;right:-58px;top:2px;transform:rotate(14deg);font-size:20px;color:#fff;background:linear-gradient(#ff8a7a,#c7271a);border:2px solid #fff3c4;border-radius:10px;padding:0 8px;text-shadow:none">×2</span></div><div class="sub2">维护费 −¥1,120</div>${TOLL_PAID}<div style="margin-top:14px">${a.btn('延长 2 小时', 'wide', true)}</div><div style="margin-top:10px">${a.btn('收下', 'green wide')}</div>`);
       const bs = m.querySelectorAll('.btn');
+      const sub = m.querySelector('.sub2');
+      const txt = m.querySelectorAll('.mtx');
       a.coAt(1, m.querySelector('.big span'), 40, 0);
-      a.coAt(2, bs[0], 6, 6);
-      a.coAt(3, m.querySelectorAll('.mtx')[1], 20, 8);
-      a.coAt(4, bs[1], 6, 6);
-      a.coAt(5, bs[2], 20, 8);
+      a.coAt(2, sub, sub.offsetWidth / 2 + 80, -2);
+      a.coAt(3, bs[0], 6, 6);
+      a.coAt(4, txt[1], txt[1].offsetWidth / 2 + 110, 8);
+      a.coAt(5, bs[0], bs[0].offsetWidth - 30, 6);
+      a.coAt(6, bs[1], 20, 8);
     },
   },
   {
@@ -303,7 +312,7 @@ export const START = [
     query: MAIN,
     notes: ['看视频的按钮变成直接领取：不带 ▶，写今天还剩几次', '次数用完变灰；次数和金额在运营配置里，广告恢复后变回看视频', '按钮点下变转圈，不能连点（虚线框）', '收下 → B1'],
     draw(a) {
-      const m = moment(a, `${AWAY_LONG}<div class="chest emo">💰</div><div class="big">¥3,640</div><div class="sub2">维护费 −¥1,120</div><div style="display:grid;gap:8px;margin-top:14px">${a.btn('直接翻倍 <span class="cnt">今天还剩 2 次</span>', 'wide')}${a.btn('直接延长 2 小时 <span class="cnt">今天还剩 0 次</span>', 'gray wide off')}</div><div style="margin-top:10px">${a.btn('收下', 'green wide')}</div>`);
+      const m = moment(a, `${AWAY_LONG}<div class="chest emo">💰</div><div class="big">¥3,640</div><div class="sub2">维护费 −¥1,120</div>${TOLL_PAID}<div style="display:grid;gap:8px;margin-top:14px">${a.btn('直接翻倍 <span class="cnt">今天还剩 2 次</span>', 'wide')}${a.btn('直接延长 2 小时 <span class="cnt">今天还剩 0 次</span>', 'gray wide off')}</div><div style="margin-top:10px">${a.btn('收下', 'green wide')}</div>`);
       const bs = m.querySelectorAll('.btn');
       a.coAt(1, bs[0], 6, 6);
       a.coAt(2, bs[1], 6, 6);
@@ -369,9 +378,14 @@ export const START = [
   {
     id: 'B5', title: '微信订阅授权', from: '玩家自己点按钮的时刻：引导结束、升级奖励点“领取”、第一次造码头或货运站、收下离线收益',
     map: false,
-    notes: ['订阅消息只能在玩家点按钮时请求，所以挑这些一定会点的时刻提前要，攒几次授权', '只发两件要紧事：有线头对着你（第 1、3、6 天各一次）、破产保护快到期', '玩家拒绝了也不影响游戏，下次同样的时刻再问；设置里可以手动再授权（J2）'],
+    notes: ['订阅消息只能在玩家点按钮时请求，所以挑这些一定会点的时刻提前要，攒几次授权；图里是在站内信里点了升级奖励的“领取”', '只发两件要紧事：有线头对着你（第 1、3、6 天各一次）、破产保护快到期', '玩家拒绝了也不影响游戏，下次同样的时刻再问；设置里可以手动再授权（J2）'],
     draw(a) {
-      a.add('<div class="screen"><div class="top"><div class="back">‹</div><div class="title emo">✉️ 站内信</div><div style="width:44px"></div></div><div class="tabs"><div class="on">待处理 2</div><div>通知</div></div><div class="body"><div class="mail done"><span class="e emo">🎁</span><span class="l1">升到 4 级的奖励 ¥5,000</span><span class="l2"><span class="chipcity">青川市</span><span>已领取</span></span></div></div></div>');
+      const rows = [
+        ['🎁', '升到 4 级的奖励', '<b style="color:#7a4a00">¥5,000</b>', `${a.btn('翻倍', '', true)}${a.btn('领取', 'green')}`],
+        ['👤', `${NB.w.av} ${NB.w.name}想加你为好友`, '', `${a.btn('✕', 'gray')}${a.btn('✓', 'green')}`],
+        ['🎁', '升到 3 级的奖励', '¥3,000', '<span>已领取</span>', 'done'],
+      ];
+      a.add(`<div class="screen"><div class="top"><div class="back">‹</div><div class="title emo">✉️ 站内信</div><div style="width:44px"></div></div><div class="tabs"><div class="on">待处理 2</div><div>通知</div></div><div class="body">${rows.map(mailRow).join('')}</div></div>`);
       a.add('<div class="dim" style="background:rgba(0,0,0,.45)"></div>');
       const sh = a.add('<div class="wxsheet"><div class="app"><i></i>城市首席规划师 申请</div><h3>向你发送下列消息</h3><div class="opt">邻居的线头等你接上<span class="chk">✓</span></div><div class="opt">破产保护快到期<span class="chk">✓</span></div><div class="keep"><i></i>总是保持以上选择，不再询问</div><div class="acts"><span>取消</span><span class="ok">允许</span></div></div>');
       a.coAt(1, sh, 20, 10);
