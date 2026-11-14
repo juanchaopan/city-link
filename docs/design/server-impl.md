@@ -11,7 +11,7 @@
 ## 1. 身份和账号（identity）
 
 - **登录**：`enter` 从云函数上下文拿 openid，按 player_openid 找玩家，没有就建；做法见 `data-model.md` 第 3 节 player_openid。player.last_online_at 日期变了才写。
-- **进入城市**：先看 city.last_batch_result 的标记，上一次同步盖章以后的写入没做完，就先补做完（`data-model.md` 第 7 节第 13 步后面的“补做”）。再生成 session_id 写进 city；响应带服务端时间、城市文档里手机要的字段、save_file 和 save_seq、sync_seq、city_inbox、还没计入的 credit、今天各用途还剩几次、配置版本。save_seq 比 sync_seq 落后时，手机走重建基线（`data-model.md` 第 7 节）。
+- **进入城市**：先看 city.last_batch_result 的标记。上一次同步盖章以后的写入没做完、城市还在用，就照它补建离线记录和它的 credit、启动记下的“城市结束”任务，不改标记；接口、过路费、广告的执行和城市摘要不在这里补，等下一次同步。城市已经不在用，就不补，直接把标记改成做完（`data-model.md` 第 7 节“盖章以后中断”）。再生成 session_id 写进 city；响应带服务端时间、城市文档里手机要的字段、save_file 和 save_seq、sync_seq、city_inbox、还没计入的 credit、今天各用途还剩几次、配置版本。save_seq 比 sync_seq 落后时，手机走重建基线（`data-model.md` 第 7 节）。
 - **开新城**：取名先过内容安全，服务不可用时用默认名；写入的事务和“城市入住”任务见 `data-model.md` 第 8 节。另一台设备的事务失败后进入已经建好的那座。
 - **两台设备**：同步带 session_id，和 city.session_id 不一致就返回“会话过期”。
 - **注销**：player.status 改成注销中，启动 job_queue 的“注销”任务；删什么、按什么顺序见 `data-model.md` 第 8 节。
@@ -29,10 +29,11 @@
 
 - **频率**：手机在线时每 2 分钟一次，间隔在 ops_switch 里；退后台时再发一次。手机保证同一时刻只有一个同步在路上。
 - **请求、流程和响应**：按 `data-model.md` 第 7 节“一次同步”的步骤和第 10 节的请求、响应表。要点：
-  - 先看 last_batch_result 的标记，上一次盖章以后的写入没做完就先补做完；再核会话和批次号，批次号等于 last_batch_id 时原样返回上次的结果。
-  - 读、核、算：用 `libs/sim` 增量核这次的变化、算上下限、截断得出调整量；要建的离线记录、接口的新状态、期限和破产判定、要转的过路费、要执行的 ad_grant、要写的 city_summary 都只算不写。
-  - 盖章：上传新的已核数据文件，再以 sync_seq 为条件更新 city，同时写 last_batch_result：这次要做哪几项写入（种类和防重键），离线记录和过路费入账再记下算好的金额（离线收益各类的税、离线维护费、过路费合计和 toll_upto），和“做完没有”的标记；本城自己的字段（比如破产判定）随这次更新一起写。条件更新失败就删掉刚传的已核数据文件，3 秒内重来一次，再失败返回“请重试”，什么都没写。
-  - 盖章成功以后，才写 offline_claim、credit、border_pair、ad_grant 的执行、job_queue 的“城市结束”任务和 city_summary；改 city.running_port 和写 border_pair 在同一个事务里，以读到的 running_port 为条件。写完以 sync_seq 为条件把标记改成做完。这些写入的 _id 或防重键由城市编号和盖章前读到的值推出（`data-model.md` 第 7 节第 13 步、第 10 节和附录），重复写不会多出一份；函数在盖章后、这些写完以前中断，下一次进入游戏或同步时补做：离线记录和过路费照 last_batch_result 记下的金额写，不重算；接口状态和城市摘要从盖章写下的新已核数据文件重算。
+  - 先看 last_batch_result 的标记：上一次盖章以后的写入没做完，城市还在用就照它补建 offline_claim 和它的 credit、启动记下的“城市结束”任务，城市已经不在用就直接把标记改成做完。再核会话和批次号，批次号等于 last_batch_id 时按 last_batch_result 返回上次的结果。
+  - 读、核、算：用 `libs/sim` 增量核这次的变化、算上下限、截断得出调整量；要建的离线记录、接口的新状态、期限和破产判定、要启动的“城市结束”任务、要转的过路费、要执行的 ad_grant、要写的 city_summary 都只算不写。第一步看到标记没做完时，重判本城全部 border_pair，city_summary 一定写。
+  - 盖章：上传新的已核数据文件，再以 sync_seq 为条件更新 city，同时整份写 last_batch_result：新 sync_seq、调整量、这次要建的离线记录（offline_claim 的 _id 和建记录要的全部字段）、要启动的“城市结束”任务的 kind_key，和“盖章以后的写入做完没有”的标记；接口状态、过路费和城市摘要不记。本城自己的字段（比如破产判定）随这次更新一起写。条件更新失败就删掉刚传的已核数据文件，3 秒内重来一次，再失败返回“请重试”，除了第一步的补做什么都没写。
+  - 盖章成功以后，才写 offline_claim、credit、border_pair、ad_grant 的执行、job_queue 的“城市结束”任务和 city_summary；改 city.running_port 和写 border_pair 在同一个事务里，以读到的 running_port 为条件；过路费的 credit 不存在才写，写进去才在同一个事务里从 toll_pending 扣掉这笔、改 toll_credited_at，已经有了就什么都不扣。写完以 sync_seq 为条件把标记改成做完。这些写入的 _id 或防重键见 `data-model.md` 第 7 节第 13 步、第 10 节和附录，重复写不会多出一份。
+  - 盖章以后中断：只补离线记录和“城市结束”任务（第一条），其余由下一次同步按常规步骤重做：过路费还在 toll_pending 里，照常转；已确认的 ad_grant 照常执行；重判全部 border_pair 时，本城已核数据里有修到边界的线头、border_pair 里却没占到的，照常去占，占不到就按服务端替你取消的工程处理，并给本城的 city_inbox.ports_version 加一；city_summary 整份重写。同步在补做以后不改标记，盖章时整份换成这一次的；进入游戏和同一 batch_id 重发只补做、不改标记，其余等下一次同步。sync_audit 是统计，不补，函数中断时少记一次可以接受（`data-model.md` 第 7 节“盖章以后中断”）。
 - **手机侧**：离线队列按批次保存，断网时指数退避重试；调整量静默计入，资金按秒平滑过去。超过平台的请求包上限就分批发。错误码按 `data-model.md` 第 10 节处理。
 
 ## 4. 邻居和线头（city）
@@ -61,7 +62,7 @@
 
 ## 7. 站内信、订阅通知和定时任务（ops）
 
-- **信**：mail 按玩家建，写信时给收信玩家当前城市的收件箱 mail_version 加一。没有城市的玩家，进入游戏时直接读信。线头的信 _id 是 border_pair 编号 + 侧 + kind，同一个接口同一侧同一种线头始终是这一封：期限开始时生成，期限反复开始又清掉时原地更新，接好时写 resolved_at；同步补做时也不会多建一封（`data-model.md` 第 13 节和附录）。
+- **信**：mail 按玩家建，写信时给收信玩家当前城市的收件箱 mail_version 加一。没有城市的玩家，进入游戏时直接读信。线头的信 _id 是 border_pair 编号 + 侧 + kind，同一个接口同一侧同一种线头始终是这一封：期限开始时生成，期限反复开始又清掉时原地更新，接好时写 resolved_at（`data-model.md` 第 13 节和附录）。
 - **订阅通知**：手机在引导结束、领取升级奖励、第一次造码头或货运站、收下离线收益这四个时刻调 requestSubscribeMessage，结果报给服务端，累加订阅额度。每小时的通知任务按 `data-model.md` 第 13 节 wx_notify_quota 的方式找要发的，规则见 `game-design.md` 第 14 节（每个玩家每天最多一条），用云调用 subscribeMessage.send 发送，要在 config.json 里声明云调用权限。发送失败按额度用完处理。
 - **tick（每分钟）**，依次做下面几件事，总共做满约 40 秒就停：
   1. 接口期限的开始、冻结到期和到期判定（按 next_due_at，不发通知）。
