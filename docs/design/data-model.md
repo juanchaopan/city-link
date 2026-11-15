@@ -73,7 +73,7 @@ city 的字段：
 | protected_until | 保护期到期的时刻；之前邻居不能往这座城市修线头，原来留在位置上的线头也不算请求 |
 | status、ended_at、end_reason、end_step、end_seen_at | status：在用、结束中、历史；end_reason：30 天不上线、接口没接好、破产、玩家结束；end_step 是结束任务做到第几步（第 8 节）；end_seen_at 记玩家看过结束画面的时刻 |
 | session_id、session_at | 当前打开这座城市的设备会话；进入时拿会话，带旧会话的同步被拒绝 |
-| config_version、schema_version、sync_seq、last_sync_at、last_batch_id、last_batch_result | 规则配置版本、存档格式版本、同步序号、最后一次同步的服务端时间（离线记录从它算起）、最后处理的同步批次号；last_batch_result 是那次的结果（新 sync_seq、调整量、建的离线记录、转入的过路费），手机带同一批次重发时原样返回 |
+| config_version、schema_version、sync_seq、last_sync_at、last_batch_id、last_batch_result | 规则配置版本、存档格式版本、同步序号、最后一次同步的服务端时间（离线记录从它算起）、最后处理的同步批次号；last_batch_result 记下那次盖章的结果和盖章以后要补的东西：新 sync_seq、调整量、这次要建的离线记录（offline_claim 的 _id 和建这条记录要的全部字段）、要启动的“城市结束”任务的 kind_key、这次请求里当场确认的操作清单（每一项的种类、接口、方案或目标状态、当场的结果，见第 7 节），和一个标记，写明盖章以后的写入做完没有；清单以外的接口状态、过路费和城市摘要不记。进入游戏和每一次同步都先看这个标记，补做什么见第 7 节“盖章以后中断”；手机带同一批次重发时按它返回上次的结果，当场确认的操作按清单原样回复 |
 | save_file、save_seq、saved_at、save_hash、save_money | 完整存档在云存储里的位置和对应的同步序号；存档头写 save_seq、config_version、schema_version、credits_applied、money、sim_time；手机上传存档后，下一次同步报存档的哈希和资金，服务端记进 save_hash 和 save_money，重建基线只认它们 |
 | visit_file | 参观快照在云存储里的位置；历史城市用结束那一刻的 |
 | verified_file、verified_version | 已核数据文件的位置和格式版本，文件名带同步序号；见第 7 节 |
@@ -150,6 +150,7 @@ building 的字段：
 | delivered | game_date、sale_rates、visitors_short、visitors_long、shoppers、through_flows | 这座城市参加过的最近 3 次地区结算的结果，手机按平均用，不够 3 次就用已有的几次；离线时和回来后第一次同步前沿用 |
 | service_grace | 各项服务还剩多少在线游戏小时的等待期，和计满的进度 |
 | tutorial_step、seen_new_tags | 引导进度（每座新城从头开始，跳过时记成已完成）、点过的“新”卡片，按城记 |
+| first_tax_reported | “第一笔税用了多久”的微信自定义事件报过没有（REQ-028）。只在玩家的第一座城市（player.city_count 是 1）报：时长从 city.created_at 算到第一笔税入账的时刻，都按服务端时间；报过就置位，随完整存档上云，换手机恢复后不再报 |
 | local_net_since_ack | 上次同步确认以来本地计入的税减维护费，是临时的；同步成功清零。响应带回离线记录时，这一段整段换成离线记录的净额：手机先计入一笔 −local_net_since_ack 的更正，把本地那段的税和维护费一起撤掉，再按离线记录计入离线税、扣 maintenance；差额静默平滑修正 |
 | tax_high_days | 各类税率在高档的连续游戏日数 |
 | low_sale_days | 按“类别 × 星级”记商场售出比例低于实心星门槛、商业和工业计税星级低于 0.5 各连续了几个游戏日，每天第 0 小时更新；同类别同星级的楼售出率相同，所以共用一个计数 |
@@ -174,22 +175,40 @@ building 的字段：
 | sale_caps | 售出率上限：外地市场取最近 3 份 region_result 每档的最大值，并记下用到的最新一份的游戏日；本城市场每档 ≤ min(1, 本城最大需求 ÷ 已核供应) |
 
 - **谁读写**：只有这座城市自己的同步会读写它，而且只有云函数能写。地区结算不读它，读的是数据库里的 city_summary。
-- **一次同步**：
-  1. 读 city：核会话；batch_id 等于 last_batch_id 就直接返回 last_batch_result。
+- **一次同步**：先读、核、算。盖章以前数据库里只做第 1 步的补做，它补的是上一次盖章记下的东西，本身防重；这次同步的东西一律盖章以后才写，盖章以前只上传新的已核数据文件。盖章是以 sync_seq 为条件更新 city，成功以后才写会影响别人或别的集合的东西，而且只有盖了最新一个章的那次同步写（第 13 步）。条件更新没成功的同步，除了第 1 步的补做，不留下任何副作用。
+  1. 读 city。status 不是在用，说明城市已经结束（结束中或历史）：不补做，last_batch_result 的标记没做完的直接改成做完，返回“城市已结束”（第 10 节的错误码），后面的步骤都不做；手机按 `game-design.md` 第 2 节和 `ui-map.md` 的 K1 出结束画面，不重试。进入游戏读到的 city 不是在用时也这样返回。还在用就看 last_batch_result 的标记：上一次盖章以后的写入没做完，就按下面“盖章以后中断”先补做，并记住标记没做完，第 7 步和第 10 步要用。再核会话和批次号：batch_id 等于 last_batch_id，就按 last_batch_result 返回上次的新 sync_seq、调整量、离线记录和当场确认操作的结果（按清单原样回复），city_inbox 和新的 credit 照常读。
   2. 读 city_inbox。
   3. 下载已核数据文件。
   4. 用 `libs/sim` 增量核这次上报的楼、分区、道路和设施：开工时刻按第 5 节夹到区间内；完工时刻按工期减去 ad_grant 里记下的加速时长核对，只有完工晚于收到时刻却报“在用”的按在建算，手机上已完工的不回退；按配置价格算建造费下限。
   5. 算资金、税、经验的上下限，核不上就截断，得出调整量。
-  6. 和上次同步的间隔超过离线门槛（Q-006，默认 10 分钟；机器人城市 60 分钟），就为这段建 offline_claim 和它的 credit（第 10 节）。没网时玩的那段也在这段里：手机在本地记的税和维护费都只是临时的，收到离线记录后整段换成它的净额（税减维护费），本地那段的税和维护费一起撤掉（第 6 节 local_net_since_ack）。
-  7. 路网图或铁路图变了，或者 city_inbox.ports_version 变了，才读 ports 里对应的 border_pair 重判接口，状态变了才写；顺带检查期限，判定破产到期。
-  8. 过路费满 1 小时就转成一笔 credit（第 9 节）；有“已确认、还没执行”的 ad_grant 就执行（第 10 节）。
+  6. 和上次同步的间隔超过离线门槛（Q-006，默认 10 分钟；机器人城市 60 分钟），就为这段算出 offline_claim 和它的 credit（第 10 节），先不写。没网时玩的那段也在这段里：手机在本地记的税和维护费都只是临时的，收到离线记录后整段换成它的净额（税减维护费），本地那段的税和维护费一起撤掉（第 6 节 local_net_since_ack）。
+  7. 路网图或铁路图变了，或者 city_inbox.ports_version 变了，才读 ports 里对应的 border_pair 重判接口；第 1 步看到标记没做完时，不论变没变，读 ports 里全部的 border_pair 重判（见“盖章以后中断”）。算出状态变了的那几侧；顺带检查期限，判定破产到期，期限或破产保护到期的，记下要启动“城市结束”任务。手机这次报了某项工程已取消（本地冲减完），而它正记在某一侧的 cancelled_construction 上，也读那份 border_pair，记下要把这一侧的 cancelled_construction 清掉。这次请求附了当场确认的操作的，也在这一步按“当场确认的操作”做检查，算出每一项的结果和目标状态。这一步只读不写。
+  8. 过路费满 1 小时，就算出要转的那一笔 credit（第 9 节）；有“已确认、还没执行”的 ad_grant，就记下要执行它（第 10 节）。都先不写。
   9. 按本地区的 settle_offset（不会变，函数实例里缓存）和国家日历推出最近一次结算的游戏日，比 sale_caps 用到的最新一份晚，就按 _id 读那份 region_result（读不到就往前找一天），刷新 sale_caps，并在响应里带回这座城市的那一份；手机比 delivered 里最新的那份晚才收下。
-  10. 上传新的已核数据文件，文件名带新的 sync_seq。
-  11. 以“status 是在用、sync_seq 还是读到的值”为条件更新 city，同时写 last_batch_result；条件不满足说明同时有另一次同步，删掉刚传的文件，3 秒内重来一次，再不行就返回“请重试”。
-  12. 删掉旧的已核数据文件。函数中途崩溃留下的文件很少也很小，不另登记；城市结束时按 verified_file 删。
-  13. city_summary 只在三种情况下写：国家日历进入新的游戏日后的第一次同步；码头、设施、穿城路线、接口状态这些影响别人的字段变了；城市结束。写的时候 population、docks、reward_attraction、facilities、through_routes 的路线由服务端从已核数据算；unmet_demand 取手机上报的数，夹在 0 到按已核数据算的本城最大需求之间。
-  14. sync_audit 每个游戏日写一行。
-- **当场确认的操作**：修到边界、接线头、拆边界段、撤销线头，和一次同步合成一个请求；服务端先核完这批变化、写好新的已核数据，再在最新的路网上做检查。
+  10. city_summary 只在三种情况下写：国家日历进入新的游戏日后的第一次同步；码头、设施、穿城路线、接口状态这些影响别人的字段变了；城市结束。第 1 步看到标记没做完时，不论是不是这三种情况都写，因为上一次要写的可能没写进去。要写时在这一步算出内容，先不写：population、docks、reward_attraction、facilities、through_routes 的路线由服务端从已核数据算；unmet_demand 取手机上报的数，夹在 0 到按已核数据算的本城最大需求之间。
+  11. 上传新的已核数据文件，文件名带新的 sync_seq。
+  12. 盖章：以“status 是在用、sync_seq 还是读到的值”为条件更新 city，写新的 sync_seq、last_sync_at、last_batch_id、verified_file；本城自己的字段（credits_applied、adjust_pending、滑动平均、破产判定这类）随这次一起写。同时整份写 last_batch_result：新 sync_seq、调整量；这次要建的离线记录，记 offline_claim 的 _id 和建这条记录要的全部字段（from_time、to_time、cap_hours、tax_rate_by_class、tax_by_class、maintenance、tolls_shown）；要不要启动“城市结束”任务，要就记它的 kind_key；这次请求里当场确认的操作清单，每一项记种类（修到边界、接线头、拆边界段、撤销线头）、接口（border_pair 编号和 kind）、方案（含工程编号）或目标状态、当场的结果（接受，或者被拒和原因），盖章以后因为占不到接口或重跑检查通不过而取消的，再改成被取消和原因（第 13 步）；和一个标记，写明盖章以后的写入做完没有。清单以外的接口状态、过路费和城市摘要不记。标记写成没做完，这次盖章以后没有要写的东西时直接写成做完。条件不满足时删掉刚传的文件，重读 city：status 已经不是在用，说明城市结束了，返回“城市已结束”，不重来；还是在用，说明同时有另一次同步，3 秒内重来一次，再不行就返回“请重试”。这两种情况下除了第 1 步的补做，数据库里什么都没写，上一次的 last_batch_result 原样留着。
+  13. 盖章成功以后依次写。每个事务都先读 city：sync_seq 已经不是这次盖章写下的值，说明后来的同步盖了新章，就停手，这一项和后面的都不再写；没写的由盖新章的那次同步在它的第 1 步按 last_batch_result 补做，它读到的标记是没做完。status 已经不是在用，说明“城市结束”任务开始了（它在把 status 改成结束中的同一次更新里把 sync_seq 加一，第 8 节），也停手，城市结束以后不再补做。border_pair 只由当前盖章的那次同步或它的补做写，旧同步不会用旧数据覆盖新的。
+      - offline_claim 和离线收益的 credit，在同一个事务里，照 last_batch_result 记下的字段写（第 10 节）；
+      - 过路费的 credit：一个事务里 credit 不存在才写入，写入了才把 city_inbox.toll_pending 减掉这一笔、把 toll_credited_at 改成这次的时刻；credit 已经有了就什么都不扣（第 9 节第 7 步）；
+      - 执行 ad_grant（第 10 节激励视频第 3 步）；
+      - 当场确认的操作清单里接受的每一项：按第 9 节以 version 为条件写这份 border_pair 的目标状态。没写进去的，重读这份 border_pair：这一侧已经是这一项的目标状态（看法和“盖章以后中断”的补做相同；比如原来那次同步和它的重做同时在写），就算写成了，不取消、不退款，清单里这一项仍是接受。不是目标状态的，和补做一样处理。修到边界、接线头在重读的 border_pair 和盖章写下的已核数据上，把第 9 节对应的整套检查重跑一遍（修到边界查对方的保护期、对方那几格、间距、冷却、连到人口最多的片，接线头查方案完工后会不会接好）：通过就以新的 version 再写目标状态；接口被别人占了或检查通不过的，比如对方同时修到边界、先写进了这份 border_pair，才按“服务端替你取消的工程”处理（第 9 节“修到边界”）：这一侧的 cancelled_construction 记下这项工程，全额冲减支出，同一个事务里给本城的 city_inbox.ports_version 加一，让手机重读，并把清单里这一项改成被取消和原因：接口被别人占了是“被对方抢先”，检查通不过是没通过的那一项检查。拆边界段、撤销线头以新的 version 再写一次目标状态，连同它引起的期限变化（对方期限的开始、清掉或冻结的变化），不会失败、不会取消。再写还没写进去的，照样重读再判；
+      - 其余状态变了、或者要清 cancelled_construction 的 border_pair：按第 9 节以 version 为条件写，没写进去就重读这份再判；
+      - 上面两项写 border_pair 的每个事务都带上跟着它的写入：给对方的 city_inbox.ports_version 加一；期限开始的一侧写这一侧的线头信，信的 _id 是 border_pair 编号 + 侧 + kind，已有这封就原地更新（第 13 节）；要改 city.running_port 的，以读到的 running_port 为条件改。running_port 和清单里这一项的结果要和接口状态在同一个事务里改，所以不随盖章写，是盖章以后还改 city 字段的例外。函数中断时这几样要么都写进去了、要么都没写，不会漏掉给对方的通知；
+      - 要启动“城市结束”任务的，按 last_batch_result 记下的 kind_key 建 job_queue 任务（第 8 节）；
+      - city_summary，_id 是 city_id，带新的 sync_seq 整份写，以“存着的 sync_seq 比这次的旧、而且没有标 ended”为条件，存着的已经不旧、或者城市结束任务已经标了 ended，就不写。
+
+      全部写完后，以“sync_seq 还是盖章写下的值”为条件把标记改成做完；条件不满足说明后来又有同步盖了新章，或者城市结束了，不用再改。
+  14. 删掉旧的已核数据文件。函数中途崩溃留下的文件很少也很小，不另登记；城市结束时按 verified_file 删。
+  15. sync_audit 每个游戏日写一行，_id 是 city_id 加游戏日，重复写还是那一行。它是统计，不进补做：函数在写它以前中断，这一天少记一次，可以接受。
+- **盖章以后中断**：函数在第 13 步写完以前中断，last_batch_result 的标记停在没做完。离线记录、“城市结束”任务和当场确认的操作由那次盖章算出、记在 last_batch_result 里，之后的同步不会再算出来，所以照记下的补做；其余的写入不单独补，由下一次同步按常规步骤做。
+  - 补做：进入游戏或同步看到标记没做完、城市还在用，就照 last_batch_result 逐项做。城市已经是结束中或历史，就不补，直接把标记改成做完，返回“城市已结束”（第 1 步）。
+    - offline_claim 和它的 credit：offline_claim 不存在才建（_id 是“城市编号_from_time”），credit 按“source:source_id”防重（第 10 节的防重键表）。
+    - “城市结束”任务：按记下的 kind_key 建，已有就不建。
+    - 当场确认的操作：清单里结果是接受的，逐项重做；已经写进去的跳过，也就是这一侧已是这一项的目标状态（修到边界看这一侧的 cell 和 head，接线头看 connect_construction 或已接好，拆边界段、撤销线头看这一侧的 head），或者这一侧的 cancelled_construction 已是这项工程。修到边界、接线头在盖章写下的已核数据上按第 9 节对应的检查重跑：修到边界查对方的保护期、对方那几格、间距、冷却、连到人口最多的片，接线头查方案完工后会不会接好。通过就写 border_pair 的目标状态，接线头连同开工冻结和 connect_construction、connect_finish；通不过或占不到，就按“服务端替你取消的工程”处理：这一侧的 cancelled_construction 记下这项工程，全额冲减支出，给本城的 city_inbox.ports_version 加一，让手机重读，并把清单里这一项改成被取消。拆边界段、撤销线头直接写目标状态，连同它引起的期限变化（对方期限的开始、清掉或冻结的变化），不会失败。每一项和它跟着的写入照第 13 步放在同一个事务里，事务先读 city，sync_seq 已经不是 last_batch_result 记下的值、或者 status 不是在用，就停手。
+  - 标记：同步在第 1 步补做以后不改标记，这次盖章把 last_batch_result 整份换成这一次的，第 13 步写完再改成做完。进入游戏和同一 batch_id 重发只补做、不改标记，标记留给下一次同步，由它做其余的写入；补做按上面的防重和跳过规则，做两遍不会多写。
+  - 其余的写入：同步在第 1 步看到标记没做完，第 7 步读 ports 里全部的 border_pair 重判，补上非当场操作引起、上一次没写进去的接口变化，第 10 步写 city_summary；过路费还在 toll_pending 里，照常转；已确认没执行的 ad_grant 照常执行；cancelled_construction 记着的工程已经从已核数据里去掉的，照常清掉。这些写入都按第 13 步写。
+- **当场确认的操作**：修到边界、接线头、拆边界段、撤销线头，和一次同步合成一个请求。服务端先核完这批变化，在新的已核路网上做检查（第 9 节），只读不写（第 7 步）；每一项的种类、接口、方案或目标状态和当场的结果（接受，或者被拒和原因）记进 last_batch_result 的清单，接受的随这批变化进新的已核数据文件、一起盖章，接口对象在第 13 步以 version 为条件写。盖章以后写不进去的，服务端重读这份 border_pair：这一侧已经是这一项的目标状态，就算写成了，不取消、不退款。不是目标状态的，拆边界段、撤销线头再写一次目标状态，不会失败、不会取消；修到边界、接线头把第 9 节对应的整套检查重跑一遍，通过就再写，接口被别人占了或检查通不过的，比如对方同时修到边界、先写进了这份 border_pair，才按 `game-design.md` 第 9 节“服务端替你取消的工程”处理：在这一侧的 cancelled_construction 记下这项工程，表示已取消、全额冲减支出；同一个事务里给本城的 city_inbox.ports_version 加一，把清单里这一项改成被取消和原因：接口被别人占了是“被对方抢先”，检查通不过是没通过的那一项检查（和 `game-design.md` 第 9 节“修到边界前的检查”的各项一样）。这次请求的响应带回这个原因，手机取消本地工程：被对方抢先的，提示改接对方的接口；检查没通过的，和当场被拒一样按 `ui-map.md` 的 D3c 用对应的图标说明。手机下一次同步报这项工程已取消（本地冲减完），服务端从已核数据里去掉它，按全额退款核支出，并在那次盖章以后的写入里把这一侧的 cancelled_construction 清掉（第 7 步、第 13 步）。同一 batch_id 重发时，按清单原样回复每一项的结果，不从 border_pair 推断：被拒的照旧是被拒和原因，被取消的是被取消，接受的是接受。接受了而盖章以后没写完的，由补做去写；补做时取消的，手机从本城 ports_version 的变化重读接口得知。
 - **分批**：离线回来第一次同步可能有上千栋楼变化，请求超过 256 KB（按探针核实的平台上限改）就分批发；报完之前，服务端按旧的已核数据封顶。
 - 税的上限、供应上限、支出下限（维护费 + 建造费 − 有效退款）、岗位和学历的核对、接口接没接好、连通分块和各块人口、穿城路线、线头落点能不能接，都从这里算，不读完整存档。
 - **穿城路线的拥堵**：服务端没有交通负荷。一条穿城路线用两端接口的（border_pair 编号, kind）标识。手机在自己的路网上按前一天的通行时间找这两点之间最快的路，系数 = 这条路的通行时间（含路口延误）÷ 同一条路不堵时的时间，每次同步给每条穿城路线报一个。服务端在已核路网上算出不堵时的代价再乘它，系数夹在 1 到配置上限之间。穿城路线里只有这一个数采用上报；city_summary 里采用上报的另一项是 unmet_demand。
@@ -199,8 +218,8 @@ building 的字段：
 
 - **开新城**：前提是 player.city_id 为空。一个事务里写 slot（city_id、free）、player（city_id、city_count 加一）、city、city_summary、city_inbox、credit_counter 和开局资金的 credit；两台设备同时开只成功一台，失败的一方发现 player 已有城市就直接进那座。邻居的 border_pair、给邻居的信、city_snapshot 放进 job_queue 的“城市入住”任务。region.city_count 加一，16 个位置都有城时地区改成已满。
 - **城市结束**：job_queue 的“城市结束”任务按步骤接力，end_step 记做到哪一步：
-  1. city.status 改成结束中。
-  2. city_summary 标 ended，结算从此跳过它。
+  1. city.status 改成结束中，同一次更新里把 sync_seq 加一：盖过章、还在做第 7 节第 13 步写入的旧同步，事务里读到的 sync_seq 不再是自己的，从此停手。
+  2. city_summary 标 ended，结算从此跳过它；标了 ended 的摘要不再被同步覆盖（第 7 节第 13 步）。
   3. 逐份处理它的 border_pair：它这一侧清成“无”；对面正在接它的工程取消、全额退款（第 9 节）；对面的期限按规则重排；给邻居写“邻居结束了”的信。邻居修到它边界上的高速线和铁路线留在原处，等新城市入住、过了保护期后算对新城市的请求；邻居为接它造的匝道和货运站留在邻居城里，不算请求。
   4. 清 slot（city_id 为空、free）和 player.city_id；region.city_count 减一，地区回到开放。
   5. 删完整存档和已核数据文件。
@@ -215,7 +234,7 @@ building 的字段：
 | 表 | 主要字段 | 说明 |
 |---|---|---|
 | border_pair | id、slot_a、slot_b、region_a、region_b、city_a、city_b、gateway_id、version、next_due_at、ports | 一对相邻位置之间的全部接口，一对位置一份文档，_id 是“slot_a_slot_b”（a < b）；ports 里按 kind（高速公路、铁路）各放一个接口对象，同一种 kind 只能有一个，两种接口的间距检查在同一个事务里读；city_a、city_b 是两边现在住着的城市，入住和结束时更新；gateway_id 不为空就是经口岸跨地区，两边都接好时才算出口节点；version 条件更新防并发覆盖；next_due_at 是这份文档里最早要处理的时刻（各侧的到期时刻、冻结一侧的 freeze_until、等待开始的一侧能预知的开始时刻），每分钟的定时任务只按它扫；在走的期限都在 7 天内，所以每小时的通知任务也按它查出 7 天内要处理的文档；两边都没有线头、也没有期限时删掉 |
-| city_summary | city_id、region_id、sync_seq、export_supply、unmet_demand、verified_supply、through_routes、docks、population、reward_attraction、facilities、tax_per_game_day、online_until、ended | 结算只读这份摘要，写的时机见第 7 节。会影响别人的字段里，population、docks、reward_attraction、facilities、through_routes 的路线由服务端从已核数据算出，不采用上报；unmet_demand 采用手机上报，服务端夹在 0 到按已核数据算的本城最大需求之间；through_routes 的拥堵系数采用上报并夹在范围内。供需都按每游戏日的货量单位记，export_supply 和 verified_supply 按“类别 × 星级”，unmet_demand 按类别，都是本城买完以后剩下的；through_routes 是本城里同一张网上各接口之间的路线代价；tax_per_game_day = 每小时平均税收 × 24，过路费封顶用；online_until 是最后一次同步加 8 小时、按小时取整，“在市场里”看它；ended 标志让结算跳过 |
+| city_summary | city_id、region_id、sync_seq、export_supply、unmet_demand、verified_supply、through_routes、docks、population、reward_attraction、facilities、tax_per_game_day、online_until、ended | 结算只读这份摘要，写的时机见第 7 节；sync_seq 是写它的那次同步的序号，存着的比自己旧、而且没有标 ended 才写，旧同步不会覆盖新的，也不会覆盖城市结束时标的 ended。会影响别人的字段里，population、docks、reward_attraction、facilities、through_routes 的路线由服务端从已核数据算出，不采用上报；unmet_demand 采用手机上报，服务端夹在 0 到按已核数据算的本城最大需求之间；through_routes 的拥堵系数采用上报并夹在范围内。供需都按每游戏日的货量单位记，export_supply 和 verified_supply 按“类别 × 星级”，unmet_demand 按类别，都是本城买完以后剩下的；through_routes 是本城里同一张网上各接口之间的路线代价；tax_per_game_day = 每小时平均税收 × 24，过路费封顶用；online_until 是最后一次同步加 8 小时、按小时取整，“在市场里”看它；ended 标志让结算跳过 |
 | region_result | region_id、game_date、inputs、per_city、tier_average、links、leftover_demand、leftover_supply | 一次地区结算的结果，_id 是“地区_游戏日”，写入就是提交点。inputs 记下这次结算的输入：本地区没有 ended 的城市各自的 {摘要 sync_seq, 在不在市场里}，和用的 national_demand 的游戏日，下一次结算靠它判断能不能跳过重算。per_city 只写参加了这次分配的城市，以城市编号为键：每个“类别 × 星级 × 市场档”的售出比例（折扣已计入）、短途游客、远途游客、购物客、过境流量、by_port（每个接口和设施的货量和过路费）、主要去向；tier_average 给新解锁的档位第一次结算前用；links 是接好的接口对和水运连通的城市对，地区视图画线用；leftover_demand 按类别、leftover_supply 按“类别 × 星级”，给国家汇总用；保留最近 3 天 |
 | national_demand | country_id、game_date、by_region | 每国家每游戏日一份文档；by_region 按地区记各类别的全国需求份额和外国份额：别的地区上一天剩下的需求之和，按各地区上一天剩下的、能到出口节点的三星及以上供应切份额；没有结算的地区按零计 |
 | foreign_market | country_id、category、demand_cap、cities_with_gateway、price_factor_airport、price_factor_port、foreign_names | 系统模拟的外国市场；demand_cap 按国内有国际机场或国际港的城市数增长，每天的维护任务更新；两种出口折扣；虚构国名列表 |
@@ -225,7 +244,7 @@ building 的字段：
 修到边界（服务端当场确认）：
 
 - 读对方位置的 slot 摘要、对方的已核数据文件和 border_pair，检查：对面那一格和往里几格能造（edge_buildable），对方那几格没有设施、不紧挨对方的高速和铁路干线；对方城市不在保护期；这对位置还没有同一种接口；和已有接口隔够最小间距，不落在对方已有的接口和干线上；本城这一侧的线在已核路网加这次方案上连得到人口最多的片；没有在冷却期内（拆掉没人接的头后 N 天不能再往这个邻居修同种接口）。
-- 通过就在事务里以 version 为条件写接口对象：cell、本侧的 head 和 head_since，对方那一侧 state 设为等待开始。两边同时来时只有一方写得进去，后到的一方工程全额退款，手机提示改接对方的接口。
+- 检查在盖章以前做，只读不写。通过的，盖章以后在事务里以 version 为条件写接口对象：cell、本侧的 head 和 head_since，对方那一侧 state 设为等待开始（第 7 节第 13 步）。两边同时来时只有一方写得进去；后到的一方重读这份 border_pair 再判。这一侧已经是这一项的目标状态（cell 和本侧的 head 是这次方案的，比如原来那次同步和它的重做同时在写），就算写成了，不取消、不退款。这一侧不是目标状态的，在重读的 border_pair 上把上面的检查整套重跑一遍，和补做相同：通过就以新的 version 再写；这种接口已经被对方占了或检查通不过，才是服务端替它取消的工程：这一侧的 cancelled_construction 记下这项工程，全额冲减支出，同一个事务里给本城的 city_inbox.ports_version 加一，响应带回取消的原因：这种接口被对方占了是“被对方抢先”，手机提示改接对方的接口；检查通不过是没通过的那一项检查，手机用对应的图标说明（第 7 节“当场确认的操作”）。盖章以后中断、由补做来写的，检查重跑一遍，按同样的规则判：已是目标状态的跳过，通不过或占不到也这样取消（第 7 节“盖章以后中断”）。
 
 接口对象（ports 里每个 kind 一个）的字段，每一侧各一份：
 
@@ -236,15 +255,15 @@ building 的字段：
 | matched、since、last_matched_at、split_strikes | 这一侧有没有接好（由这一侧的已核数据判断：经匝道、立交或货运站连到人口最多的那片，或者连到另一个接好的接口）；变成没接好的时刻；上一次接好的时刻；别的片人口超过当前片两成以上的连续同步次数 |
 | state、deadline、freeze_until、remaining、notified | state：无、等待开始、排队、在走、冻结、已接好；deadline 是实际到期时刻，只有在走时有值；冻结时 freeze_until 是冻结最多到哪，remaining 是剩余时长；notified 是已发过的第几天的通知 |
 | connect_construction、connect_finish | 这一侧开工接的工程编号和完工时刻；服务端在已核路网加方案上确认完工后会接好才写；到 connect_finish 时服务端直接置为接好 |
-| cancelled_construction | 服务端替这一侧取消的接线工程编号（对方城市结束、两边同时修到边界），表示全额退款；手机读到后取消本地工程、全额冲减支出，服务端核支出时按“见过在建又取消”认 |
+| cancelled_construction | 服务端替这一侧取消的工程编号，表示全额退款，有三种情况：对方城市结束；两边同时修到边界、这一侧是后到的一方，或者盖章以后没写进去、重跑检查通不过（第 7 节第 13 步）；盖章以后中断、补做时重新检查通不过或占不到（第 7 节“盖章以后中断”）。写它的事务里给这一侧城市的 city_inbox.ports_version 加一；手机重读后取消本地工程、全额冲减支出，服务端核支出时按“见过在建又取消”认，并从已核数据里去掉这项工程；手机下一次同步报这项工程已取消（本地冲减完）以后，服务端在那次盖章以后的写入里把它清空（第 7 节第 13 步） |
 | cooldown_until | 这一侧拆掉没人接的头后的冷却期 |
 
 期限（每侧各算各的）：
 
 - 一侧有线头、另一侧没接好，没接好的一侧有期限。线头指高速线或铁路线；匝道和货运站单独对着别人时不算。例外是这个接口两边接好过：一方拆掉自己修到边界的那段以后，对方留下的匝道或货运站算对着拆掉一方的线头，期限照常走。对面是空白位置或在保护期的城市时不算。
 - 开始的时刻取这几个里最晚的：since、这座城市的 protected_until、xp_level_at 里接它要用的等级的时刻（铁路 3 级，对着的是匝道时 7 级）、这座城市上一个期限接好的时刻。还没到时 state 是等待开始；能预知的开始时刻写进 next_due_at，经验够上等级这类没法预知的由同步发现后启动。
-- 一座城市同一时刻只有一个期限在走，记在 city.running_port；其余是排队。期限开始时，在同一个事务里改这一侧的 state 和 city.running_port。在走的一侧不论是接好了还是变成“无”（对面拆了边界段、对面城市结束、本城拆了自己的线头），都在同一个事务里清 city.running_port，并按 (city_a)、(city_b) 两个索引查出这座城市的接口，把 since 最早的一个“排队”转成“在走”。所有改 running_port 的事务（本城的同步、邻居的请求、定时任务）都以读到的 running_port 为条件，没写进去就重读再来。
-- 开始时 deadline = 开始 + 7 天，清空 notified，生成线头的信。同一侧 last_matched_at 在 1 天内又变成没接好，deadline 接着上次剩的算。
+- 一座城市同一时刻只有一个期限在走，记在 city.running_port；其余是排队。期限开始时，在同一个事务里改这一侧的 state 和 city.running_port。在走的一侧不论是接好了还是变成“无”（对面拆了边界段、对面城市结束、本城拆了自己的线头），都在同一个事务里清 city.running_port，并按 (city_a)、(city_b) 两个索引查出这座城市的接口，把 since 最早的一个“排队”转成“在走”。所有改 running_port 的事务（本城的同步、邻居的请求、定时任务）都以读到的 running_port 为条件，没写进去就重读再来。本城的同步在盖章以后（或中断后的补做里）、和写 border_pair 同一个事务里改它（第 7 节第 13 步），不随盖章写。
+- 开始时 deadline = 开始 + 7 天，清空 notified，写这一侧的线头信（没有就建，已有就原地更新，第 13 节）。同一侧 last_matched_at 在 1 天内又变成没接好，deadline 接着上次剩的算。
 - 人口换片：split_strikes 到 2 才判为没接好。
 - connect_construction 不为空时冻结：remaining = deadline − 现在，freeze_until = 开工 + 配置工期 + 1 小时；取消时 deadline = 现在 + remaining；到 freeze_until 还没接好，由定时任务把 state 改回在走，deadline = 现在 + remaining。
 - 到期判定给 1 小时宽限。ops_switch 的“暂停全部接口期限”打开时记下 paused_at，定时任务跳过到期判定；关闭时，由任务把所有在走的 deadline 加上暂停的时长，并重算 next_due_at。服务端出故障时由维护者打开这个开关。
@@ -257,9 +276,9 @@ building 的字段：
 2. 触发：每分钟的定时任务查 next_settle_at ≤ 现在的地区。处理一个地区前，先以“next_settle_at 还是读到的值”为条件把它加一个结算周期，这一步就是租约，抢不到就跳过。地区结算不进 job_queue。
 3. 一次查询读出本地区全部 city_summary（最多 16 条）；8 小时内一座都没上线就结束。读已写好的最新一份 national_demand 和 foreign_market，不等，同一次触发里缓存。
 4. 算这次的 inputs：本地区没有 ended 的城市，每座记 {摘要 sync_seq, 在不在市场里（online_until 没过）}，再加用的 national_demand 的游戏日。和上一份 region_result 的 inputs 完全相同时不重算：照抄上一份的结果，按这次的游戏日写一份 region_result，过路费照它发给在市场里的城市；不同就往下重算。
-5. 在内存里一次算完：用 verified_supply 截断 export_supply，排除 online_until 已过和 ended 的城市；二星及以上在本地区内按真实穿城路线分（只走两边都接好的接口；穿城只走同一张网；选路代价算上过路费、拥堵和折扣；水运两端都要有码头，按河网的 slot_entries 走，可以穿过空白位置，空白位置不收费）；剩下的三星及以上在出口节点按 national_demand 卖；剩下的四星按 foreign_market 卖。写 region_result（带上 inputs）；中途失败这一天就丢掉，手机沿用最近的结果。
+5. 在内存里一次算完：用 verified_supply 截断 export_supply，排除 online_until 已过和 ended 的城市；二星及以上在本地区内按真实穿城路线分（只走两边都接好的接口；穿城只走同一张网；选路代价算上过路费、拥堵和折扣；水运两端都要有码头，按河网的 slot_entries 走，可以穿过空白位置，空白位置不收费；同一地区两城之间的河段经过别的地区时照常能走，途经别的地区的城市按空白位置处理：不读那边的 city_summary、不给那边过路费）；剩下的三星及以上在出口节点按 national_demand 卖；剩下的四星按 foreign_market 卖。写 region_result（带上 inputs）；中途失败这一天就丢掉，手机沿用最近的结果。
 6. 过路费：每座收费城市一个游戏日的过路费不超过它 tax_per_game_day 的 10%，只给 online_until 没过的城市；对它的 city_inbox 原子加 toll_pending，改 toll_upto。
-7. 这座城市自己同步时，toll_pending 大于零，并且距 toll_credited_at 满 1 个现实小时（或者这是进入游戏后的第一次同步），就在一个事务里把它转成一笔 credit，source_id = 城市编号 + toll_upto，同时把 toll_pending 减掉同样的数。
+7. 这座城市自己同步时，toll_pending 大于零，并且距 toll_credited_at 满 1 个现实小时（或者这是进入游戏后的第一次同步），就在盖章以后用一个事务把它转成一笔 credit（第 7 节第 13 步），source_id = 城市编号 + toll_upto：credit 不存在才写入，写入了才把 toll_pending 减掉同样的数、把 toll_credited_at 改成这次的时刻；credit 已经有了就什么都不扣。
 
 ## 10. 入账和校验
 
@@ -269,7 +288,7 @@ building 的字段：
 | credit_counter | city_id、next_seq | 每座城市一条，写 credit 时原子加一；单独一条记录，不和 city 的同步争用 |
 | ad_grant | id、player_id、city_id、purpose、target_id、state、transaction_id、shown_at、verified_at、executed_at、result | 看视频前先建，每个玩家同一时刻只有一条待确认；purpose：换位置、领资金、加速工程、离线翻倍、离线延长、升级奖励翻倍、结束城市；state：待确认、已确认、已执行；transaction_id 来自微信广告回调，唯一；result 是执行结果，加速工程时记工程编号和减去的时长，手机在响应里拿到后改自己 construction 的 finish_at，下一次同步报上来的 finish_at 由服务端按这条记录核对 |
 | free_grant | id、player_id、city_id、purpose、target_id、date、seq | 广告不可用时的直接领取或直接执行；_id 是“玩家_用途_日期_第几次”，插入撞了就试下一个，超过当天次数就拒绝；次数和开关在运营配置里；进入和同步的响应返回每种用途今天还剩几次。结束城市不限次数，不记在这里 |
-| offline_claim | id、city_id、from_time、to_time、cap_hours、extra_hours、tax_rate_by_class、tax_by_class、maintenance、tolls_shown、doubled、extended、claimed_at | 一次离线补算，由同步在间隔超过离线门槛时建；from_time = 这次同步读到的 city.last_sync_at，to_time = 服务端收到请求的时刻，_id 是“城市编号_from_time”，同一段只建一次。离线税按四类分开记：每一类 = 离线经过的游戏小时数（最多 cap_hours，延长另加 extra_hours）× 这一类的每小时平均税收 × 这一类离开时的税率和“正常”档中低的那一档的折算系数。maintenance = 按已核数据和 city 上的预算算出的离开时每小时维护费 × min(离线游戏小时, cap_hours)，手机按这个数扣，不自己算。这段时间里手机没网时本地记的税和维护费都撤掉，整段只认这条记录的净额。tolls_shown 是这段时间已经入账的过路费，只用来展示。手机没网时卡片推迟到联网后第一次同步再出 |
+| offline_claim | id、city_id、from_time、to_time、cap_hours、extra_hours、tax_rate_by_class、tax_by_class、maintenance、tolls_shown、doubled、extended、claimed_at | 一次离线补算，同步发现间隔超过离线门槛时算出，盖章以后再写（第 7 节）；from_time = 这次同步读到的 city.last_sync_at，to_time = 服务端收到请求的时刻，_id 是“城市编号_from_time”，同一段只建一次。离线税按四类分开记：每一类 = 离线经过的游戏小时数（最多 cap_hours，延长另加 extra_hours）× 这一类的每小时平均税收 × 这一类离开时的税率和“正常”档中低的那一档的折算系数。maintenance = 按已核数据和 city 上的预算算出的离开时每小时维护费 × min(离线游戏小时, cap_hours)，手机按这个数扣，不自己算。这段时间里手机没网时本地记的税和维护费都撤掉，整段只认这条记录的净额。tolls_shown 是这段时间已经入账的过路费，只用来展示。手机没网时卡片推迟到联网后第一次同步再出 |
 | reward | mail_id、player_id、city_id、level、money、claimed_at、doubled | 升级奖励，按玩家每级一条；player.levels_rewarded 里已有这一级时不生成 |
 | sync_audit | city_id、game_date、checks、clips | 按游戏日汇总一行，每游戏日写一次：这一天核了多少次、截断了几次和截断的数额；发生截断时才展开记细节 |
 
@@ -291,7 +310,7 @@ building 的字段：
 
 1. 手机请求开始看视频，服务端建 ad_grant。手机在 show() 之前调用 setServerSideVerificationData，customData 放 ad_grant 编号，userId 放玩家编号。基础库低于 3.10.3 时走直接领取。
 2. 微信回调 `game` 的 adCallback 动作：Token、timestamp、nonce、encrypt 排序拼接后做 SHA-256 验签，用 EncodingAESKey 做 AES-256-CBC 解密，Token 和 EncodingAESKey 放环境变量。以“ad_grant 是待确认、player_id 等于回调里的 user_id”为条件改成已确认，写 transaction_id，回 is_valid；不读别的文档，1 秒内回包；微信重试时按 transaction_id 返回同样的结果。配置地址时的校验请求原样回 echostr。
-3. 执行：这个玩家的下一次请求（同步、进入或任何操作），或者定时任务（已确认超过 2 分钟还没执行的），按用途执行：领资金写 credit；加速把工程编号和减去的时长写进 ad_grant.result，手机在响应里拿到后改自己 construction 的 finish_at，下一次同步报上来的 finish_at，服务端按这条记录核对；翻倍和延长在事务里置位再写 credit；换位置换出新的 slot_offer；结束城市启动结束任务。执行完置 executed_at。手机不单独轮询，结果在下一次请求的响应里带回。
+3. 执行：这个玩家的下一次请求（同步、进入或任何操作；同步时在盖章以后执行，见第 7 节），或者定时任务（已确认超过 2 分钟还没执行的），按用途执行：领资金写 credit；加速把工程编号和减去的时长写进 ad_grant.result，手机在响应里拿到后改自己 construction 的 finish_at，下一次同步报上来的 finish_at，服务端按这条记录核对；翻倍和延长在事务里置位再写 credit；换位置换出新的 slot_offer；结束城市启动结束任务。执行完置 executed_at。手机不单独轮询，结果在下一次请求的响应里带回。
 4. 退路：回调地址做不到时（第 16 节），按前端 onClose 的“看完了”执行，每种用途按天限次，和直接领取共用一套次数配置。
 
 校验：
@@ -311,7 +330,7 @@ building 的字段：
 | 请求 | batch_id、第几批和共几批、session_id、sync_seq、操作日志、变了的楼、分区、道路和设施、城市摘要的原始量、每条穿城路线的拥堵系数、资金和经验的变化、计入到哪条 credit、刚上传的存档头（save_seq、哈希、资金）；当场确认的操作附在后面 |
 | 响应 | 服务端时间、新的 sync_seq、调整量、city_inbox、新的 credit、这次建的离线记录、新的地区结算结果、广告的结果、每种用途今天还剩几次、游戏日期、当场确认操作的结果；或错误码 |
 
-错误码和手机的处理：会话过期（整屏“在另一台设备上打开了”）、城市已结束（显示结束画面，丢掉本地操作，允许上传最后一张参观快照）、同步冲突（请重试）、配置版本太旧（提示更新）、协议不兼容（整屏只有“重启”）、截断（静默计入调整量）、修线头被拒（界面用图标说明原因）。
+错误码和手机的处理：会话过期（整屏“在另一台设备上打开了”）、城市已结束（显示结束画面，丢掉本地操作，允许上传最后一张参观快照，不重试）、同步冲突（请重试）、配置版本太旧（提示更新）、协议不兼容（整屏只有“重启”）、截断（静默计入调整量）、修线头被拒（界面用图标说明原因）。
 
 ## 11. 运营配置和机器人
 
@@ -336,7 +355,7 @@ building 的字段：
 
 | 表 | 主要字段 | 说明 |
 |---|---|---|
-| mail | id、player_id、city_id、category、kind、payload、created_at、read_at、resolved_at、expires_at | 只放跨玩家和服务端产生的信。category：通知、待处理；kind 和 payload：线头（border_pair 编号、kind、侧）、邻居接好了、邻居拆了、邻居结束了、新邻居入住、旧线头开始算请求、保护期明天结束、好友申请（player）、升级奖励（level）、公告（文本）。按 player_id 查；写信时给收信玩家当前城市的 city_inbox.mail_version 加一，没有城市的玩家进入游戏时直接读；线头这一类由期限开始时生成，接好就自动解决，反复开始又清掉时一封信原地更新；待处理和未领取的不过期，其余已读、已解决的 30 天后删。本城的完工、资金为负、破产保护只存在手机上 |
+| mail | id、player_id、city_id、category、kind、payload、created_at、read_at、resolved_at、expires_at | 只放跨玩家和服务端产生的信。category：通知、待处理；kind 和 payload：线头（border_pair 编号、kind、侧）、邻居接好了、邻居拆了、邻居结束了、新邻居入住、旧线头开始算请求、保护期明天结束、好友申请（player）、升级奖励（level）、公告（文本）。按 player_id 查；写信时给收信玩家当前城市的 city_inbox.mail_version 加一，没有城市的玩家进入游戏时直接读；线头这一类的 _id 是 border_pair 编号 + 侧 + kind，同一个接口同一侧同一种线头始终是同一封：期限开始时生成，接好就自动解决，期限反复开始又清掉时原地更新；待处理和未领取的不过期，其余已读、已解决的 30 天后删。本城的完工、资金为负、破产保护只存在手机上 |
 | wx_notify_quota | player_id、template、remaining、updated_at | 订阅消息多为一次性授权，记剩余次数；在玩家点按钮的时刻请求（引导结束、领升级奖励、第一次造码头或货运站、收下离线收益），攒几次。每小时的通知任务按 border_pair.next_due_at 查出 7 天内要处理的接口、按 city.bankrupt_deadline 查快到期的破产保护，读各侧的 deadline 和 notified 决定发不发，每玩家每天只发最早的一件；额度只剩一次时留给线头期限的第 6 天；发送失败按额度用完处理 |
 
 ## 14. 更新节拍
@@ -421,4 +440,5 @@ building 的字段：
 | national_demand | country_id_game_date | |
 | city_inbox | city_id | |
 | job_queue | kind_key | (state, lease_until) |
-| mail | 自动 | (player_id, category, created_at) |
+| mail | 线头信是 border_pair 编号_侧_kind，期限反复开始又清掉时原地更新；其余自动 | (player_id, category, created_at) |
+| sync_audit | city_id_game_date | |
