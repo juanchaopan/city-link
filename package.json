@@ -21,11 +21,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "dependency-cruiser": "^18.7.2",
+    "dependency-cruiser": "^18.8.0",
     "eslint": "^10.14.0",
     "miniprogram-ci": "^2.1.31",
     "prettier": "^3.10.0",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.72.2"
+    "typescript-eslint": "^8.73.0"
   }
 }
