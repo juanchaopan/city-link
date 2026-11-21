@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@city-link/server": "workspace:*",
-    "@playwright/test": "1.65.0",
+    "@playwright/test": "1.65.1",
     "@types/node": "catalog:",
     "minigame-api-typings": "^3.8.22",
     "typescript": "catalog:",
